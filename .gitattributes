@@ -1,0 +1,6 @@
+# Giữ LF cho mọi file text để build/chạy được trong WSL/Linux (make, .data, shader)
+* text=auto eol=lf
+*.pdf binary
+*.png binary
+*.gif binary
+*.mp4 binary

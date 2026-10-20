@@ -1,5 +1,20 @@
-# Build artifacts
+# C++ build artifacts
 *.o
+code/a.out
+code/a.exe
+*.exe
+code/solution.txt
+solution.txt
 
-# Demo media from upstream (~30MB) – kept locally, not tracked
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Experiment outputs
+results/
+
+# Demo media from upstream (~30MB) - kept locally, not tracked
 demo/

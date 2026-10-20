@@ -1,0 +1,9 @@
+[project]
+name = "bloxorz-solver"
+version = "0.1.0"
+description = "Bloxorz Solver - CSC14003 Project 1, Group 9"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
