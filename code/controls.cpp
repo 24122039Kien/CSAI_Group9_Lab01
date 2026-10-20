@@ -2,6 +2,8 @@
 #include "noedit.h"
 #include "camera.h"
 #include "superblock.h"
+#include "game.h"
+#include "autoplay.h"
 
 int proj_type;
 float nearr = 0.1f;
@@ -47,7 +49,9 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
             case GLFW_KEY_DOWN:
             case GLFW_KEY_LEFT:
             case GLFW_KEY_RIGHT:
-                superblock.move(key);
+                // Khóa điều khiển tay khi đang phát lại lời giải hoặc ván đã kết thúc.
+                if(!autoplayer.is_active() && !game.is_won() && !game.is_gameover())
+                    superblock.move(key);
                 break;
         	default:
         	    break;

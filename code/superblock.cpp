@@ -321,6 +321,11 @@ void SuperBlock::draw(glm::mat4 M)
     draw3DObject(vao);
 }
 
+bool SuperBlock::is_moving()
+{
+    return rot_dir != NO;
+}
+
 void SuperBlock::move(int m)
 {
     if(rot_dir!=NO)return;

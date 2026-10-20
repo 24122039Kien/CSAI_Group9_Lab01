@@ -148,6 +148,11 @@ int Floor::get_tile_type(int i, int j)
     return tiles[i][j]->get_tile_type();
 }
 
+bool Floor::has_tile(int i, int j)
+{
+    return i >= 0 && i < n && j >= 0 && j < m && tiles[i][j] != NULL;
+}
+
 void Floor::heavy_bridge_toggle(int i, int j)
 {
     int q = heavy_bridge[i*m+j];
@@ -165,7 +170,7 @@ void Floor::heavy_bridge_toggle(int i, int j)
     }
     else
     {
-        free(tiles[a][b]);
+        delete tiles[a][b];
         tiles[a][b] = NULL;
     }
 }
@@ -187,7 +192,7 @@ void Floor::normal_bridge_toggle(int i, int j)
     }
     else
     {
-        free(tiles[a][b]);
+        delete tiles[a][b];
         tiles[a][b] = NULL;
     }
 }

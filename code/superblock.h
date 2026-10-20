@@ -23,6 +23,7 @@ class SuperBlock
         void draw(glm::mat4 M);
         void move(int m);
         void update();
+        bool is_moving();   // true khi khối đang trong animation lăn
         glm::vec2 get_current_pos();
         glm::vec3 get_pos();
         glm::vec3 get_real_pos();

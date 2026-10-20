@@ -1,3 +1,12 @@
+// M_PI trên MinGW/MSVC
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
+#endif
+// GLM >= 0.9.9 bắt buộc khai báo này để dùng các header gtx/*
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL
+#endif
+
 #include <iostream>
 #include <cstdlib>
 #include <cmath>

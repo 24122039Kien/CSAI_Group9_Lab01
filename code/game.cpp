@@ -18,7 +18,9 @@ int Game::check()
     int tx = stage.tx, ty = stage.ty;
     int along = superblock.along;
 
-    if(!stage.tiles[sx][sy])
+    // has_tile() kiểm tra cả biên lưới: ra ngoài lưới = rơi (bản gốc truy cập ngoài mảng).
+    // Luật này được chép y hệt trong ai/problem.py (BloxorzProblem.check).
+    if(!stage.has_tile(sx, sy))
     {
         if(!(sx==tx && sy==ty))
             gameover = true;
@@ -31,10 +33,10 @@ int Game::check()
             gameover = true;
     }
 
-    if(along == X && !stage.tiles[sx+1][sy])
+    if(along == X && !stage.has_tile(sx+1, sy))
         if(!(sx+1==tx && sy==ty))
             gameover = true;
-    if(along == Y && !stage.tiles[sx][sy+1])
+    if(along == Y && !stage.has_tile(sx, sy+1))
         if(!(sx==tx && sy+1==ty))
             gameover = true;
 
@@ -52,16 +54,16 @@ void Game::check_after_step()
     int sx = superblock.ix, sy = superblock.iy;
     int along = superblock.along;
 
-    if(stage.tiles[sx][sy] && stage.tiles[sx][sy]->tile_type==normal_bridge)
+    if(stage.has_tile(sx, sy) && stage.tiles[sx][sy]->tile_type==normal_bridge)
         stage.normal_bridge_toggle(sx, sy);
 
-    if(along==X && stage.tiles[sx+1][sy] && stage.tiles[sx+1][sy]->tile_type==normal_bridge)
+    if(along==X && stage.has_tile(sx+1, sy) && stage.tiles[sx+1][sy]->tile_type==normal_bridge)
         stage.normal_bridge_toggle(sx+1, sy);
 
-    if(along==Y && stage.tiles[sx][sy+1] && stage.tiles[sx][sy+1]->tile_type==normal_bridge)
+    if(along==Y && stage.has_tile(sx, sy+1) && stage.tiles[sx][sy+1]->tile_type==normal_bridge)
         stage.normal_bridge_toggle(sx, sy+1);
 
-    if(along==Z && stage.tiles[sx][sy] && stage.tiles[sx][sy]->tile_type==heavy_bridge)
+    if(along==Z && stage.has_tile(sx, sy) && stage.tiles[sx][sy]->tile_type==heavy_bridge)
         stage.heavy_bridge_toggle(sx, sy);
 }
 

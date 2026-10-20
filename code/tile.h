@@ -47,6 +47,7 @@ class Floor
         glm::vec3 get_initial_pos();
         pair<int, int> get_initial_index();
         int get_tile_type(int i, int j);
+        bool has_tile(int i, int j);    // false nếu ngoài lưới hoặc ô trống
         int get_color(int k);
         void heavy_bridge_toggle(int i, int j);
         void normal_bridge_toggle(int i, int j);

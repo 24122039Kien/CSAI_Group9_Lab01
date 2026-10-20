@@ -7,9 +7,15 @@
 #include "tile.h"
 #include "superblock.h"
 #include "game.h"
+#include "autoplay.h"
 
-//change here to change level : 1 or 2
+// Màn mặc định (đổi bằng tham số dòng lệnh: ./a.out <level>)
 int level = 2;
+
+// Kết quả ván: -1 đang chơi, 0 thua, 1 thắng. Khi kết thúc, giữ màn hình END_HOLD_SECONDS rồi thoát.
+int game_result = -1;
+double game_end_time = 0.0;
+const double END_HOLD_SECONDS = 1.5;
 
 
 struct GLMatrices Matrices;
@@ -39,17 +45,20 @@ void draw (GLFWwindow* window, float x, float y, float w, float h, int varo)
     if(varo==0)
     {
         camera.update();
-        superblock.update();
-        int a = game.check();
-        if(a==0)
+        if(game_result == -1)
         {
-            game.gameover_fun();
-            exit(0);
-        }
-        else if(a==1)
-        {
-            game.won_fun();
-            exit(0);
+            autoplayer.update(glfwGetTime());
+            superblock.update();
+            int a = game.check();
+            if(a==0)
+                game.gameover_fun();
+            else if(a==1)
+                game.won_fun();
+            if(a!=-1)
+            {
+                game_result = a;
+                game_end_time = glfwGetTime();
+            }
         }
 
         Matrices.view = camera.get_view();
@@ -145,8 +154,60 @@ void initGL (GLFWwindow* window, int width, int height)
     // cout << "GLSL: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << endl;
 }
 
+static void usage(const char *prog)
+{
+    cout << "Usage: " << prog << " [level] [--solve <bfs|dfs|ucs|astar> | --play <solution_file>]" << endl
+         << "  level            level number, loads data/<level>.data (default " << level << ")" << endl
+         << "  --solve <algo>   run ../main.py with the given algorithm, then replay its solution" << endl
+         << "  --play <file>    replay a solution file containing moves U/D/L/R" << endl
+         << "Run from the code/ directory. Python interpreter: $BLOXORZ_PYTHON (default python3/python)." << endl;
+}
+
 int main (int argc, char** argv)
 {
+    string solve_algo, play_file;
+    for(int i=1; i<argc; i++)
+    {
+        string arg = argv[i];
+        if(arg=="--solve" && i+1<argc)
+            solve_algo = argv[++i];
+        else if(arg=="--play" && i+1<argc)
+            play_file = argv[++i];
+        else if(arg=="-h" || arg=="--help")
+        {
+            usage(argv[0]);
+            return 0;
+        }
+        else if(!arg.empty() && arg.find_first_not_of("0123456789")==string::npos)
+            level = stoi(arg);
+        else
+        {
+            usage(argv[0]);
+            return 2;
+        }
+    }
+    if(!solve_algo.empty() && !play_file.empty())
+    {
+        cerr << "Use either --solve or --play, not both." << endl;
+        return 2;
+    }
+
+    string level_file = "data/" + to_string(level) + ".data";
+    if(!ifstream(level_file))
+    {
+        cerr << "Cannot open " << level_file << " (run the game from the code/ directory)." << endl;
+        return 2;
+    }
+
+    if(!solve_algo.empty())
+    {
+        if(!run_solver(level, solve_algo, "solution.txt"))
+            return 1;
+        play_file = "solution.txt";
+    }
+    if(!play_file.empty() && !autoplayer.load(play_file))
+        return 1;
+
     world_model = glm::mat4(1.0f);
     initialize_colors();
     camera.initialize_camera();
@@ -158,6 +219,9 @@ int main (int argc, char** argv)
     window = initGLFW(width, height);
     //initGLEW();
     initGL (window, width, height);
+
+    if(!play_file.empty())
+        autoplayer.start(glfwGetTime());
 
     double last_update_time = glfwGetTime(), current_time;
 
@@ -184,8 +248,12 @@ int main (int argc, char** argv)
             // do something every 0.5 seconds ..
             last_update_time = current_time;
         }
+
+        // Thắng/thua: giữ màn hình một lúc rồi mới thoát (bản gốc thoát ngay).
+        if(game_result != -1 && current_time - game_end_time >= END_HOLD_SECONDS)
+            break;
     }
 
     glfwTerminate();
-    //    exit(EXIT_SUCCESS);
+    return game_result == 0 ? 1 : 0;   // mã thoát 1 nếu thua
 }
