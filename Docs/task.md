@@ -49,7 +49,7 @@ Khung được dựng với sự hỗ trợ của Claude Code (ghi vào phụ l�
 
 | ID | Nội dung | Kết quả kiểm chứng |
 |---|---|---|
-| D-01 | Import code gốc chaitanya @ `c0ccb55` thành commit mốc; `.gitignore`, `.gitattributes` (LF) | `git diff ffa730b..HEAD -- code/` cho thấy phần nhóm sửa |
+| D-01 | Import code gốc chaitanya @ `c0ccb55` thành commit mốc; `.gitignore`, `.gitattributes` (LF) | `git diff 2f94225..HEAD -- code/` cho thấy phần nhóm sửa |
 | D-02 | `ai/`: `Level`, `State`, `BloxorzProblem` (chép đúng luật C++), `BaseSolver`, `SearchResult`; 4 solver + heuristic để TODO | — |
 | D-03 | `tests/`: 36 test luật/khung **PASS**, 10 test solver **SKIP** (chờ cài) | `python -m pytest -q` |
 | D-04 | `main.py` CLI (`--algo`, `--out`, `--compare`, `--memory`) | Solver chưa cài → báo "chưa cài", mã 2 |
