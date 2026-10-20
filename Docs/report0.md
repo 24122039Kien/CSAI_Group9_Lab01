@@ -4,6 +4,8 @@
 > **Tài liệu gốc:** `AI - Project 1.pdf`
 > **Mục đích của tài liệu này:** đọc kỹ đề, phát biểu lại bài toán một cách chặt chẽ, liệt kê đầy đủ yêu cầu và thang điểm, đề xuất thiết kế kỹ thuật, lập kế hoạch thực hiện theo sprint và tổng hợp các lưu ý/bẫy cần tránh. Đây là "report 0", tức tài liệu định hướng nội bộ của nhóm **trước khi** bắt tay vào code, không phải báo cáo nộp cuối kỳ.
 
+> **Cập nhật 20/10/2026 — hướng thực hiện đã chốt.** Nhóm dùng game 3D C++/OpenGL của repo [`chaitanya100100/Bloxorz`](https://github.com/chaitanya100100/Bloxorz) (commit `c0ccb55`) làm nền, theo sự cho phép của giảng viên (xem mục 1.1). Phần AI viết bằng Python trong `ai/`; game C++ gọi solver Python và tự phát lại lời giải. Các mục thay đổi so với bản đầu: **1.1–1.2** (Q&A và hướng đi), **2.6** (luật thực tế của game nền và khác biệt so với đề), **3.7** (mô hình trạng thái đã cài), **4.3** (GUI 3D), **6** (kiến trúc thật của repo), **7.1** (tối thiểu 10 màn, số liệu nền), **8** (kế hoạch 5 người), **9.6** (lưu ý kỹ thuật mới). Kế hoạch chi tiết từng bước xem `Docs/implementation_plan.md`, danh sách task xem `Docs/task.md`.
+
 ---
 
 ## Mục lục
@@ -13,7 +15,7 @@
 3. [Mô hình hóa thành bài toán tìm kiếm](#3-mô-hình-hóa-thành-bài-toán-tìm-kiếm)
 4. [Yêu cầu của đồ án và thang điểm](#4-yêu-cầu-của-đồ-án-và-thang-điểm)
 5. [Phân tích từng thuật toán và hướng thiết kế](#5-phân-tích-từng-thuật-toán-và-hướng-thiết-kế)
-6. [Kiến trúc phần mềm đề xuất](#6-kiến-trúc-phần-mềm-đề-xuất)
+6. [Kiến trúc phần mềm (đã chốt)](#6-kiến-trúc-phần-mềm-đã-chốt)
 7. [Thiết kế bộ test và thực nghiệm](#7-thiết-kế-bộ-test-và-thực-nghiệm)
 8. [Kế hoạch thực hiện theo Sprint](#8-kế-hoạch-thực-hiện-theo-sprint)
 9. [Các lưu ý quan trọng](#9-các-lưu-ý-quan-trọng)
@@ -28,8 +30,8 @@
 | Tên đồ án | **Bloxorz Solver** |
 | Hình thức | Làm **theo nhóm** |
 | Thời lượng | Khoảng **3 tuần** |
-| Ngôn ngữ bắt buộc | **Python** |
-| Sản phẩm phải nộp | Mã nguồn (có GUI) + `README.md` + `requirements.txt` + **Report.pdf** (có link video YouTube) |
+| Ngôn ngữ bắt buộc | **Python** cho thuật toán tìm kiếm (GUI được viết bằng ngôn ngữ khác — Q&A câu 7) |
+| Sản phẩm phải nộp | Mã nguồn (có **GUI 3D**) + `README.md` + `requirements.txt` + **Report.pdf** (có link video YouTube) |
 | Trọng tâm học thuật | Mô hình hóa bài toán tìm kiếm, cài đặt **BFS, DFS/IDS, UCS, A\***, thiết kế **hàm chi phí** và **heuristic chấp nhận được**, thực nghiệm so sánh |
 
 **Bloxorz** là trò chơi giải đố: người chơi lăn một khối hộp chữ nhật kích thước **1 × 1 × 2** trên một mặt sàn gồm các ô vuông. Mục tiêu là làm cho khối **đứng thẳng** rơi vào **lỗ đích**. Điểm thú vị là khối không phải một điểm: tùy theo đang **đứng** hay **nằm**, nó chiếm 1 hoặc 2 ô và tương tác khác nhau với mặt sàn.
@@ -40,6 +42,27 @@ Vì sao trò chơi này phù hợp để luyện thuật toán tìm kiếm?
 - **Tất định (deterministic):** mỗi lần lăn cho ra đúng một trạng thái kế tiếp, không có yếu tố ngẫu nhiên hay đối thủ.
 - **Hướng (orientation) của khối là một phần của trạng thái**, không chỉ tọa độ → bài toán rất hợp để thiết kế và phân tích heuristic.
 - Khi thêm công tắc/cầu, **trạng thái của các cây cầu cũng là một phần của trạng thái** → không gian trạng thái phình to theo cấp số nhân, khiến sự khác biệt giữa các thuật toán thể hiện rõ.
+
+### 1.1. Kết luận từ buổi Q&A với giảng viên
+
+| # | Câu hỏi | Trả lời | Ảnh hưởng tới nhóm |
+|---:|---|---|---|
+| 1 | Test case dùng nguồn có sẵn? | Được | Được dựng lại màn kinh điển, ghi nguồn |
+| 2, 9 | Số test case / số màn? | **Tối thiểu 10** | Bộ màn G1–G6 (mục 7.1) phải có ≥ 10 màn |
+| 3 | Báo cáo tiếng Anh hay Việt? | Tùy, nhưng thống nhất | Viết toàn bộ bằng một ngôn ngữ |
+| 4 | Bấm Solve thì GUI hiện gì? | **GUI cho khối tự lăn đến đích** | Bắt buộc có phát lại lời giải (đã có `autoplay`) |
+| 5 | Dùng source game có sẵn? | **Được, cite đầy đủ** | Dùng repo chaitanya làm nền |
+| 6 | Tiêu chí GUI? | **3D** | GUI Pygame 2D không còn phù hợp → dùng OpenGL 3D |
+| 7 | GUI viết bằng ngôn ngữ khác? | Được, **thuật toán phải bằng Python** | GUI C++, solver Python |
+| 10 | Dùng ML suy ra trọng số chi phí? | Được, trình bày rõ | Một hướng mở rộng cho hàm chi phí UCS |
+| 11 | Agent biết đầy đủ thông tin? | Được, giữ giả thiết fully observable | Mô hình trạng thái hiện tại không đổi |
+
+### 1.2. Hướng thực hiện đã chốt
+
+- **Game/GUI:** C++/OpenGL 3.3 từ `chaitanya100100/Bloxorz` @ `c0ccb55` (không có license — dùng theo phép của giảng viên, cite trong `THIRD_PARTY_NOTICES.md`, `README.md` và mục References). Nhóm sửa/bổ sung trong `code/`.
+- **AI:** package Python `ai/` (OOP) mô phỏng **chính xác** luật của game C++; 4 solver do nhóm tự cài.
+- **Cầu nối:** game chạy `python ../main.py data/<n>.data --algo <algo> --out solution.txt` rồi tự phát lại lời giải (`./a.out <n> --solve <algo>`).
+- **Môi trường build chính:** WSL Ubuntu (có WSLg để mở cửa sổ OpenGL); Python ≥ 3.10.
 
 ---
 
@@ -114,6 +137,43 @@ Thắng khi và chỉ khi khối **nguyên vẹn (1×1×2)** ở trạng thái *
 - người chơi điều khiển **từng khối một** (ví dụ bấm phím **Space** để đổi khối đang điều khiển);
 - khi hai khối lập phương nằm ở **hai ô kề nhau**, chúng **tự gộp lại** thành khối 1×1×2 (nằm ngang hoặc dọc);
 - một khối lập phương **có thể** kích hoạt soft switch, nhưng **không thể** kích hoạt heavy switch và **không thể** hoàn thành màn chơi.
+
+### 2.6. Luật thực tế của game nền (chaitanya100100/Bloxorz) và khác biệt so với đề
+
+Đọc từ `code/tile.cpp` (`Floor::initialize`), `code/superblock.cpp` (`SuperBlock::update`) và `code/game.cpp` (`Game::check`, `Game::check_after_step`). Toàn bộ luật này đã được chép sang `ai/problem.py` và kiểm chứng bằng test.
+
+**Tọa độ và quy đổi.** Game lưu `tiles[x][y]`: `x` là chỉ số **dòng** trong file `.data`, `y` là chỉ số **cột**. Hướng đi: `R: x+1`, `L: x−1`, `U: y+1`, `D: y−1`. Trong cửa sổ 3D, trục x hiển thị theo chiều ngang nên `R` nhìn thấy là sang phải; nhưng **khi đọc file text, `R` là đi xuống một dòng, `U` là sang phải một cột**. Quy đổi với ký hiệu ở mục 2.2–2.3: `x ≡ r`, `y ≡ c`; tư thế `Z ≡ S` (đứng), `X ≡ V` (chiếm `(x,y),(x+1,y)`), `Y ≡ H` (chiếm `(x,y),(x,y+1)`).
+
+**Bảng chuyển theo tọa độ của code** (`SuperBlock::update`):
+
+| Tư thế | L | R | U | D |
+|---|---|---|---|---|
+| `Z (x,y)` | `X (x−2, y)` | `X (x+1, y)` | `Y (x, y+1)` | `Y (x, y−2)` |
+| `X (x,y)` | `Z (x−1, y)` | `Z (x+2, y)` | `X (x, y+1)` | `X (x, y−1)` |
+| `Y (x,y)` | `Y (x−1, y)` | `Y (x+1, y)` | `Z (x, y+2)` | `Z (x, y−1)` |
+
+**Định dạng `.data`** (đọc theo token): `n m` → lưới `n×m` (0 trống/lỗ, 1 sàn, 2 fragile, 3 công tắc thường, 4 công tắc nặng) → `sx sy along` (vị trí đầu + tư thế X/Y/Z, **có thể bắt đầu ở tư thế nằm**) → `tx ty` (đích, ô lưới = 0) → `k` + `k` dòng `x y a b` (công tắc thường tại `(x,y)` bật/tắt ô `(a,b)`) → `h` + `h` dòng cho công tắc nặng.
+
+**Luật thắng/thua** (`Game::check`, chạy **mỗi frame**): ô đầu trống → nếu không phải đích thì thua, nếu là đích và đang đứng thì thắng; đứng trên fragile → thua; tư thế X/Y mà ô thứ hai trống và không phải đích → thua. **Thua được ưu tiên hơn thắng.** Nằm vắt qua lỗ đích **không thua, không thắng**.
+
+**Công tắc** (`Game::check_after_step`): nếu nước đi vừa thắng/thua thì **không kích hoạt công tắc**. Ngược lại, kích hoạt **tuần tự**: ô đầu là công tắc thường → toggle; (X/Y) ô thứ hai là công tắc thường → toggle; đứng trên công tắc nặng → toggle. Toggle: ô cầu trống → tạo sàn thường (type 1); có sàn → xóa. Frame sau `check` chạy lại → nếu cầu dưới khối vừa bị xóa thì khối rơi (thua).
+
+**Số liệu kiểm chứng (BFS trên mô phỏng Python):** màn 1 tối ưu **10 bước** (161 trạng thái đạt được); màn 2 tối ưu **68 bước** (378 trạng thái). Hai lời giải `R U U R U R U R D L` (màn 1) và 68 bước (màn 2) được xác nhận thắng trong game thật (`./a.out <n> --play`).
+
+**Khác biệt giữa game nền và đề → việc nhóm phải làm:**
+
+| Yêu cầu của đề | Game chaitanya | Việc cần làm |
+|---|---|---|
+| Floor, void, goal; 3 tư thế; 4 hướng; rơi; thắng | Có đủ | Giữ; đã thêm kiểm tra biên mảng (`Floor::has_tile`) |
+| Fragile | Có (type 2) | Giữ |
+| Soft switch | Có — "normal switch" (type 3), kích hoạt khi bất kỳ ô nào đè | Giữ |
+| Heavy switch | Có (type 4), chỉ khi đứng | Giữ |
+| Một công tắc → **nhiều** ô cầu | Mỗi công tắc đúng **1** ô | Mở rộng định dạng `.data` (v2) — C++ và Python |
+| Toggle **và permanent** | Chỉ toggle | Thêm chế độ permanent |
+| **Split switch**, tách/gộp 2 cube | **Không có** | Thêm (phần khó nhất của 10đ Advanced tiles) |
+| Nút New Game, Restart, Solve | Không có (chỉ phím) | Thêm UI (ví dụ Dear ImGui) |
+| Solve → khối tự lăn | Không có | **Đã có** (`autoplay`, `--solve`, `--play`) |
+| ≥ 10 màn | 2 màn | Thiết kế thêm (mục 7.1) |
 
 ---
 
@@ -207,6 +267,13 @@ is_goal(state) ⇔ BlockConfig == ("S", goal_r, goal_c)
 - BFS/DFS: tập `visited` (hoặc `explored ∪ frontier`).
 - UCS/A*: `dict best_g[state]`; khi lấy một phần tử từ hàng đợi ưu tiên mà `g > best_g[state]` → bỏ qua (lazy deletion).
 
+### 3.7. Mô hình đã cài trong repo (`ai/`)
+
+- `State(x, y, orientation, bridge_mask)` — `@dataclass(frozen=True, slots=True)`, hashable. `bridge_mask`: bit `i` = số lần công tắc thứ `i` đã được kích hoạt (mod 2); một ô cầu mở khi (trạng thái ban đầu) XOR (số bit bật của các công tắc điều khiển nó là lẻ). Khi thêm split, `State` sẽ được mở rộng thêm vị trí hai cube.
+- `BloxorzProblem.simulate(state, action) -> (next_state, Outcome)` chép đúng thứ tự của C++ (mục 2.6): lăn → `check` → (chưa thắng/thua) kích hoạt công tắc tuần tự → `check` lại. Các hàm cho solver: `initial_state()`, `actions()`, `result()`, `successors() -> [(action, next_state, cost)]`, `is_goal()`, `step_cost()` (mặc định 1; nhóm cắm hàm chi phí không đồng nhất qua tham số `cost_fn`).
+- Thứ tự hành động cố định `U, D, L, R` → kết quả BFS/DFS tái lập được.
+- So với đề xuất ở 3.3: game nền **không** có split và permanent, nên hiện tại không có bước 5–6; bước 7 (kiểm tra lại sau khi đổi cầu) **đã có** và khớp hành vi C++.
+
 ---
 
 ## 4. Yêu cầu của đồ án và thang điểm
@@ -242,13 +309,14 @@ is_goal(state) ⇔ BlockConfig == ("S", goal_r, goal_c)
 
 ### 4.3. Yêu cầu GUI
 
-- **Bắt buộc có GUI** (desktop hoặc web).
+- **Bắt buộc có GUI** (desktop hoặc web). **Theo Q&A: GUI phải là 3D**, được viết bằng ngôn ngữ khác Python.
+- **Theo Q&A: bấm Solve thì khối tự lăn tới đích** (phát lại lời giải trong GUI).
 - Hiển thị các nút điều khiển cơ bản: **New Game**, **Restart**, và **nút gọi từng solver** (BFS / DFS / UCS / A*).
 - Nên có thêm (để video đạt điểm tối đa): chọn màn, animate/replay lời giải, hiển thị số nước đi, hiển thị kết quả đo (thời gian, bộ nhớ, số node mở rộng, độ dài lời giải).
 
 ### 4.4. Định dạng màn chơi
 
-- Phải có định dạng **text/JSON** đơn giản để nạp màn, **dùng chung cho mọi solver** (đảm bảo thực nghiệm công bằng).
+- Phải có định dạng **text/JSON** đơn giản để nạp màn, **dùng chung cho mọi solver** (đảm bảo thực nghiệm công bằng). Nhóm dùng định dạng `.data` của game nền (mục 2.6), đọc được bởi cả C++ lẫn Python.
 - Được tự thiết kế màn hoặc dựng lại màn kinh điển.
 
 ### 4.5. Các chỉ số đo bắt buộc (cho mỗi thuật toán, mỗi test case)
@@ -406,97 +474,72 @@ h(goal) = 0
 
 ---
 
-## 6. Kiến trúc phần mềm đề xuất
+## 6. Kiến trúc phần mềm (đã chốt)
 
-### 6.1. Cấu trúc thư mục
+### 6.1. Cấu trúc thư mục (gốc repo = thư mục `Source/` khi nộp)
 
 ```
-Source/
-├── main.py                  # Điểm vào: mở GUI
-├── README.md                # Cách cài đặt / chạy / chạy thực nghiệm
-├── requirements.txt         # pygame, matplotlib, (pytest)...
-├── bloxorz/
-│   ├── core/
-│   │   ├── tiles.py         # Enum loại ô, loại switch, kiểu tác động
-│   │   ├── level.py         # Level: lưới tĩnh, switch→bridges, split targets; load JSON
-│   │   ├── state.py         # State, BlockConfig (immutable, hashable)
-│   │   ├── rules.py         # Bảng chuyển trạng thái, hợp lệ, switch, split/merge, goal
-│   │   └── problem.py       # BloxorzProblem: successors, is_goal, cost function
-│   ├── solvers/
-│   │   ├── base.py          # SearchResult, đo time/memory, giới hạn timeout/node
-│   │   ├── bfs.py
-│   │   ├── dfs.py           # (+ ids.py nếu làm)
-│   │   ├── ucs.py
-│   │   ├── astar.py
-│   │   └── heuristics.py    # h1 Manhattan, h2 relaxed distance (+ portal), PDB
-│   └── gui/
-│       ├── app.py           # Vòng lặp chính, nút bấm, chọn màn
-│       ├── renderer.py      # Vẽ bàn, khối, cube, cầu, switch
-│       └── animator.py      # Phát lại lời giải từng bước
-├── levels/
-│   ├── g1_basic_01.json ... # Nhóm test cố định (xem mục 7)
-│   └── ...
-├── experiments/
-│   ├── run_all.py           # Chạy mọi solver trên mọi màn → results.csv
-│   └── plot.py              # Vẽ biểu đồ từ results.csv
-└── tests/
-    ├── test_transitions.py  # 12 ô của bảng chuyển trạng thái
-    ├── test_tiles.py        # fragile, bridge, switch, split/merge
-    └── test_solvers.py      # Độ dài lời giải tối ưu đã biết, màn vô nghiệm
+CSAI_Group9_Lab01/
+├── main.py                  # CLI: python main.py code/data/1.data --algo astar [--out f] [--compare] [--memory]
+├── ai/                      # Phần AI — Python >= 3.10, chỉ thư viện chuẩn
+│   ├── level.py             # Level: đọc .data đúng định dạng Floor::initialize + validate
+│   ├── state.py             # State(x, y, orientation, bridge_mask), Orientation, ACTIONS
+│   ├── problem.py           # BloxorzProblem: luật game chép CHÍNH XÁC từ C++
+│   ├── heuristics.py        # zero_heuristic (có sẵn), manhattan_heuristic (TODO)
+│   └── solvers/
+│       ├── base_solver.py   # BaseSolver (đo thời gian, bộ nhớ, reconstruct_path), SearchResult
+│       ├── bfs_solver.py    # TODO
+│       ├── dfs_solver.py    # TODO
+│       ├── ucs_solver.py    # TODO
+│       └── astar_solver.py  # TODO
+├── tests/                   # pytest: test_problem.py (luật — PASS), test_solvers.py (SKIP tới khi cài)
+├── code/                    # Game 3D C++/OpenGL: code gốc chaitanya + phần nhóm sửa
+│   ├── main.cpp             # ./a.out [level] [--solve <algo> | --play <file>]
+│   ├── autoplay.h/.cpp      # phát lại lời giải, gọi solver Python
+│   ├── game.cpp, tile.cpp, superblock.cpp, ...   # luật + vẽ
+│   ├── data/*.data          # màn chơi
+│   ├── include/             # header GLAD (OpenGL 3.3 core) + KHR
+│   └── makefile             # Linux/WSL, macOS (Homebrew), MSYS2/MinGW
+├── Docs/                    # đề bài, report0, task, implementation_plan
+├── README.md, CLAUDE.md, THIRD_PARTY_NOTICES.md, requirements.txt, pyproject.toml
+└── demo/                    # gif/mp4 của repo gốc — không đưa lên git
 ```
 
-**Nguyên tắc vàng:** `core/` **không phụ thuộc** vào GUI. GUI và solver cùng gọi đúng một hàm `rules.step(state, action)` → không thể xảy ra chuyện "chơi tay đúng nhưng solver sai luật" (hoặc ngược lại).
+### 6.2. Luồng chạy C++ ↔ Python
 
-### 6.2. Định dạng màn chơi (đề xuất)
-
-Dùng JSON với một lưới ký tự cho phần tĩnh và danh sách đối tượng cho phần động:
-
-```json
-{
-  "name": "G3-02 Soft switch & toggle bridge",
-  "grid": [
-    "x......",
-    "Ss#BB##",
-    "###..#G",
-    "......#"
-  ],
-  "legend": {
-    "#": "floor", ".": "void", "G": "goal", "F": "fragile",
-    "B": "bridge", "s": "soft", "h": "heavy", "x": "split",
-    "S": "start (là ô sàn thường)"
-  },
-  "bridges": {
-    "b1": { "cells": [[1, 3], [1, 4]], "initially_open": false }
-  },
-  "switches": [
-    { "pos": [1, 1], "type": "soft",  "mode": "toggle", "bridges": ["b1"] }
-  ],
-  "splits": [
-    { "pos": [0, 0], "targets": [[2, 0], [2, 2]] }
-  ]
-}
+```
+./a.out 2 --solve astar                         (chạy trong thư mục code/)
+  │ 1. system("python3 ../main.py data/2.data --algo astar --out solution.txt")
+  ▼
+main.py → Level.from_file → BloxorzProblem → AStarSolver.run()
+  │ 2. kiểm tra lời giải bằng problem.is_valid_solution(), ghi "R U U R ..." ra solution.txt
+  ▼
+AutoPlayer.load("solution.txt") → mở cửa sổ → khối đứng yên đủ 0.25 s thì superblock.move(...)
+  │ 3. Game::check mỗi frame → in "WON"/"GAME OVER", giữ màn hình 1.5 s rồi thoát (mã 0 / 1)
 ```
 
-> Ví dụ trên chỉ minh họa cú pháp, chưa phải màn chơi hoàn chỉnh. Gợi ý `mode`: `"toggle"`, `"open"` (permanent mở), `"close"` (permanent đóng).
+- Biến môi trường `BLOXORZ_PYTHON` đổi trình thông dịch (mặc định `python3` trên Linux/macOS, `python` trên Windows).
+- Mã thoát của `main.py`: 0 có lời giải, 1 vô nghiệm, 2 solver chưa cài, 3 lời giải sai luật, 4 lỗi đọc màn.
+- **Rủi ro lớn nhất: luật nằm ở hai nơi** (C++ để chơi và vẽ, Python để tìm kiếm). Quy tắc của nhóm: mọi thay đổi luật phải sửa **đồng thời** `code/*.cpp` và `ai/problem.py`, thêm test vào `tests/test_problem.py`, rồi kiểm chứng bằng `./a.out <n> --play <lời giải>`.
 
-Nên viết thêm hàm **validate** khi nạp màn: đúng một goal, có start, mọi tọa độ trong lưới, mọi bridge/switch tham chiếu tồn tại, ô dịch chuyển của split là sàn hợp lệ...
+### 6.3. Định dạng màn chơi
 
-### 6.3. GUI
+Dùng định dạng `.data` của game nền (mục 2.6). Để đáp ứng đủ đề (một công tắc nhiều ô cầu, permanent, split), nhóm sẽ mở rộng thành **định dạng v2 tương thích ngược**, ví dụ thêm phần mở rộng ở cuối file:
 
-| Lựa chọn | Ưu điểm | Nhược điểm |
-|---|---|---|
-| **Pygame** (khuyến nghị) | Đơn giản, vẽ lưới & animation dễ, nhiều tài liệu | Phải tự làm nút bấm (hoặc dùng `pygame_gui`) |
-| Tkinter (Canvas) | Có sẵn trong Python, nút bấm sẵn | Animation kém mượt hơn |
-| Web (Flask/FastAPI + JS Canvas) | Đẹp, dễ demo | Hai ngôn ngữ, phức tạp hơn; logic luật nên vẫn ở Python |
+```
+# ... phần v1 giữ nguyên ...
+ext 1                          # có phần mở rộng
+switch normal 2 5 toggle 2     # loại, vị trí, chế độ (toggle | on | off), số ô cầu
+6 4  6 5                       # danh sách ô cầu
+split 8 3  4 9  10 9           # split switch tại (8,3) -> 2 cube tại (4,9) và (10,9)
+```
 
-Chức năng GUI nên có:
-- Vẽ đủ loại ô với **màu/biểu tượng phân biệt rõ** (sàn, void, goal, fragile cam, soft tròn, heavy chữ X, split "( )", cầu mở/đóng).
-- Khối hiển thị rõ 3 hướng (2D top-down là đủ; có thể giả 3D isometric nếu dư thời gian); khi tách, **tô sáng cube đang điều khiển**.
-- Bàn phím: mũi tên để lăn, **Space** để đổi cube, **R** để restart.
-- Nút: **New Game / chọn màn**, **Restart**, **Solve BFS / DFS / UCS / A\***, **Play / Pause / Step** khi phát lại lời giải, chỉnh tốc độ.
-- Panel thông số: số nước đã đi, kết quả solver (thời gian, bộ nhớ, expanded, độ dài, chi phí).
-- Thông báo thắng/thua rõ ràng.
-- **Chạy solver trong thread riêng** (hoặc chạy xong mới vẽ, kèm thông báo "Đang giải...") để cửa sổ không bị treo; có timeout.
+> Cú pháp trên chỉ là phác thảo. Nhóm chốt cú pháp trong `Docs/implementation_plan.md` trước khi cài; parser C++ (`Floor::initialize`) và Python (`Level.from_text`) phải đọc giống hệt nhau.
+
+### 6.4. GUI 3D
+
+- **Đã có:** cảnh 3D (OpenGL 3.3), animation lăn, 6 chế độ camera (phím X/C/V/B/N/M), bản đồ nhỏ góc trái dưới, điều khiển bằng phím mũi tên, **tự phát lại lời giải** (`--solve`, `--play`), giữ màn hình 1.5 s khi thắng/thua, khóa phím khi đang phát lại.
+- **Cần thêm:** nút **New Game / chọn màn**, **Restart**, **Solve BFS/DFS/UCS/A\*** và panel số liệu (gợi ý Dear ImGui — license MIT, có sẵn backend GLFW + OpenGL3); hiển thị hai cube khi split; chạy solver không làm treo cửa sổ (`std::thread`).
 
 ---
 
@@ -506,7 +549,7 @@ Chức năng GUI nên có:
 
 | Nhóm | Mô tả | Số màn gợi ý | Mục đích |
 |---|---|---:|---|
-| **G1 – Basic** | Chỉ floor/void/goal | 3–4 | Kiểm chứng core; một màn tái hiện Level 1 gốc (lời giải tối ưu 7 nước) |
+| **G1 – Basic** | Chỉ floor/void/goal | 3–4 | Kiểm chứng core; có thể tái hiện Level 1 của Coolmath |
 | **G2 – Fragile** | Thêm ô fragile | 2–3 | Ràng buộc "không được đứng" làm đổi lời giải |
 | **G3 – Switches & Bridges** | Soft/heavy, toggle/permanent | 3–4 | Không gian trạng thái nhân `2^k`; cần quay lại vị trí cũ với cầu khác |
 | **G4 – Split** | Split switch, tách/gộp | 2–3 | Không gian trạng thái `T²`, hệ số nhánh 8 |
@@ -514,6 +557,8 @@ Chức năng GUI nên có:
 | **G6 – Special** | Màn **vô nghiệm**; màn lớn trống trải (open field 20×30) | 2 | Kiểm tra dừng đúng; stress-test DFS/bộ nhớ |
 
 Mỗi màn nên ghi rõ trong report: kích thước, số ô sàn, số cầu/công tắc, độ dài lời giải tối ưu (từ BFS), và hình minh họa.
+
+> **Theo Q&A: tối thiểu 10 test case (= 10 màn).** Hiện repo có 2 màn của game nền: `code/data/1.data` (13×13, 2 công tắc thường + 1 công tắc nặng, có fragile; tối ưu **10 bước**, 161 trạng thái đạt được) và `code/data/2.data` (19×14, 3 công tắc nặng, nhiều fragile; tối ưu **68 bước**, 378 trạng thái). Cả hai màn đều nhỏ, nên cần thêm màn lớn và nhiều công tắc ở G5/G6 để thấy rõ khác biệt giữa các thuật toán.
 
 ### 7.2. Quy trình đo
 
@@ -543,102 +588,87 @@ Mỗi màn nên ghi rõ trong report: kích thước, số ô sàn, số cầu/c
 
 ## 8. Kế hoạch thực hiện theo Sprint
 
-Giả định nhóm **3–4 thành viên**, thời gian **21 ngày**. Nếu nhóm 3 người, gộp vai trò TV4 vào TV1 và TV2.
+Nhóm **5 thành viên**, thời gian **21 ngày**. Mỗi người phụ trách **một file solver**, người thứ năm phụ trách **heuristic và báo cáo so sánh**; ngoài ra mỗi người nhận thêm một mảng của game/báo cáo. Danh sách task chi tiết (ID, giờ, hạn, phụ thuộc) ở `Docs/task.md`.
 
-### 8.1. Phân vai đề xuất
+### 8.1. Phân vai
 
-| Vai trò | Phụ trách chính | Phụ trách phụ |
-|---|---|---|
-| **TV1 – Engine Lead** | `core/`: state, rules, transitions, advanced tiles, level loader, unit test | Viết mục "Problem Formulation" trong report |
-| **TV2 – Solver Lead** | `solvers/`: BFS, DFS/IDS, UCS, A*, heuristic, đo đạc | Viết mục "Algorithm Description", chứng minh admissible/consistent |
-| **TV3 – GUI Lead** | `gui/`: renderer, input, nút, animation, chạy solver không treo | Quay & dựng video demo |
-| **TV4 – Levels & Experiments Lead** | Thiết kế bộ màn, `experiments/`, biểu đồ, tổng hợp report PDF | Quản lý tiến độ, README, đóng gói nộp bài |
+| Vai trò | Solver | Mảng phụ trách thêm | Phần report |
+|---|---|---|---|
+| **TV1 – BFS & Luật game** | `bfs_solver.py` | Mở rộng luật ở **cả C++ và Python**: định dạng `.data` v2, nhiều ô cầu/công tắc, permanent, **split** (logic) + test | Luật chơi + Hình thức hóa bài toán |
+| **TV2 – DFS & GUI** | `dfs_solver.py` (IDS tùy chọn) | GUI 3D: nút New Game/Restart/Solve, chọn màn, panel số liệu, vẽ cube khi split | Cài đặt & GUI; **quay video** |
+| **TV3 – UCS & Chi phí** | `ucs_solver.py` | Hàm chi phí không đồng nhất (+ tùy chọn ML suy trọng số), quy trình đo time/memory | UCS + hàm chi phí |
+| **TV4 – A\* & Màn chơi** | `astar_solver.py` | Thiết kế **≥ 10 màn** G1–G6, ảnh minh họa | A\* + mô tả bộ test; kịch bản video |
+| **TV5 – Heuristic, Thực nghiệm & PM** | `heuristics.py` | Heuristic + chứng minh admissible/consistent; `experiments/` (chạy, CSV, biểu đồ); Notion; ráp report | Heuristic, Experiments, Planning, References |
 
-> **Mọi thành viên đều phải hiểu toàn bộ hệ thống** (đặc biệt là mô hình trạng thái, bảng chuyển, các thuật toán và heuristic), vì giảng viên có thể vấn đáp bất kỳ ai.
+> **Mọi thành viên đều phải hiểu toàn bộ hệ thống** (mô hình trạng thái, luật, 4 thuật toán, heuristic, hàm chi phí), vì giảng viên có thể vấn đáp bất kỳ ai.
 
 ### 8.2. Tổng quan timeline
 
 ```
 Ngày:        1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20  21
-Sprint 0   [███]
-Sprint 1       [███████████████]
-Sprint 2                       [███████████████]
-Sprint 3                                       [███████████████]
-Sprint 4                                                       [███████████████]
+Sprint 0   [███]                                          (khung repo — phần lớn đã xong)
+Sprint 1       [███████████████]                          4 solver + heuristic cơ bản
+Sprint 2                       [███████████████]          luật nâng cao (v2, permanent, split)
+Sprint 3                                       [███████████████]   GUI nút bấm + đủ 10 màn
+Sprint 4                                                       [███████████████]   thực nghiệm
 Sprint 5                                                                       [███████████]
 Buffer                                                                                 [██]
 ```
 
-### Sprint 0 — Khởi động & thiết kế (Ngày 1–2)
+### Sprint 0 — Khởi động & khung repo (Ngày 1–2)
 
-**Mục tiêu:** cả nhóm hiểu đề giống nhau, chốt các quyết định thiết kế.
+- [x] Tạo repo, import code gốc chaitanya @ `c0ccb55` thành commit mốc, cite đầy đủ.
+- [x] Khung `ai/` (Level, State, BloxorzProblem chép đúng luật C++), CLI `main.py`, test luật (PASS).
+- [x] Game: `autoplay`, `--solve`, `--play`, GLAD 3.3, makefile đa nền tảng; build và chạy được trên WSL.
+- [ ] **Cả 5 người** build và chạy được `./a.out 1 --play` trên máy mình; chạy được `pytest`.
+- [ ] Cả nhóm đọc `README.md`, mục 2.6 và `Docs/implementation_plan.md`; chốt cú pháp `.data` v2.
 
-- [ ] Cả nhóm đọc đề, **chơi thử game gốc** trên Coolmath (vài màn có fragile, switch, split).
-- [ ] Chốt các **quyết định thiết kế** ở mục 9.1 (ghi vào `DESIGN.md`).
-- [ ] Chốt biểu diễn `State`, định dạng JSON màn chơi, giao diện `BloxorzProblem` và `SearchResult`.
-- [ ] Chọn thư viện GUI; tạo repo Git (GitHub/GitLab private), quy ước branch/commit, `requirements.txt`, skeleton thư mục.
-- [ ] Lập bảng phân công & kênh liên lạc; lịch họp ngắn (15 phút, 2–3 lần/tuần).
+**Definition of Done:** ai cũng giải thích lại được mô hình trạng thái (`bridge_mask`) và bảng chuyển theo tọa độ code.
 
-**Sản phẩm:** `DESIGN.md`, skeleton repo, bảng phân công.
-**Definition of Done:** mọi người giải thích lại được mô hình trạng thái và bảng chuyển 12 ô.
+### Sprint 1 — Bốn solver + heuristic cơ bản (Ngày 2–6)
 
-### Sprint 1 — Core mechanics + GUI tối thiểu (Ngày 2–6)
+- [ ] **TV1:** BFS · **TV2:** DFS · **TV3:** UCS (chi phí 1 trước) · **TV4:** A\* (thử với `zero_heuristic`) · **TV5:** `manhattan_heuristic` + bản nháp chứng minh.
+- [ ] Mỗi solver cập nhật đủ bộ đếm (`nodes_expanded`, `nodes_generated`, `max_frontier`).
+- [ ] **TV4:** thiết kế 3–4 màn G1/G2 bản đầu.
 
-**Mục tiêu:** chơi tay được các màn cơ bản trên GUI. *(Hướng tới 10 điểm Core mechanics.)*
+**Definition of Done:** `pytest` không còn SKIP ở `test_solvers.py`; BFS/UCS/A\* cho đúng 10 và 68 bước; `./a.out 2 --solve <algo>` chạy được với cả 4 thuật toán.
 
-- [ ] **TV1:** `State`, bảng chuyển trạng thái, kiểm tra hợp lệ (ngoài bàn, void), goal test; level loader + validate.
-- [ ] **TV1:** unit test **đủ 12 ô** của bảng chuyển + test rơi khỏi bàn + test thắng/không thắng khi nằm trên goal.
-- [ ] **TV3:** GUI vẽ lưới, khối 3 hướng, điều khiển bằng phím mũi tên, Restart, thông báo thắng/thua.
-- [ ] **TV2:** khung `solvers/base.py` (đo thời gian, bộ nhớ, đếm node, timeout) + **BFS** chạy trên màn cơ bản.
-- [ ] **TV4:** thiết kế màn nhóm G1 (bao gồm màn tái hiện Level 1) và G2 bản nháp.
+### Sprint 2 — Luật nâng cao (Ngày 6–10)
 
-**Definition of Done:** chơi tay thắng được màn G1; BFS cho đúng lời giải 7 nước ở màn Level 1; toàn bộ test xanh.
+- [ ] **TV1:** định dạng `.data` v2 (nhiều ô cầu, permanent on/off) ở cả C++ và Python + test.
+- [ ] **TV1 + TV2:** split switch — TV1 làm logic (C++ `Game`, Python `State` mở rộng hai cube, 8 hành động, tự gộp), TV2 làm phần vẽ và phím Space.
+- [ ] **TV3:** chốt hàm chi phí không đồng nhất (mục 5.3) + viết lý giải.
+- [ ] **TV4:** màn G3 (công tắc/cầu) và G4 (split) bản nháp.
+- [ ] **TV5:** heuristic cho màn có split (cổng dịch chuyển, mục 5.4); khung `experiments/run_all.py`.
 
-### Sprint 2 — Advanced tiles + DFS (Ngày 6–10)
+**Definition of Done:** chơi tay được màn có split/permanent; solver giải được các màn đó; test luật mới PASS ở cả hai phía.
 
-**Mục tiêu:** đầy đủ cơ chế nâng cao trong engine và GUI. *(Hướng tới 10 điểm Advanced tiles.)*
+### Sprint 3 — GUI nút bấm + đủ 10 màn (Ngày 10–14)
 
-- [ ] **TV1:** fragile; bridge + `BridgeConfig` bitmask; soft/heavy switch; toggle/permanent; split teleport; chuyển cube; tự gộp; kiểm tra lại sau khi đổi cầu.
-- [ ] **TV1:** unit test cho từng cơ chế (đứng trên fragile → không hợp lệ; nằm trên heavy → không kích hoạt; cube trên heavy → không kích hoạt; gộp đúng H/V...).
-- [ ] **TV3:** vẽ fragile/switch/bridge mở-đóng/cube; phím Space đổi cube; highlight cube đang điều khiển.
-- [ ] **TV2:** **DFS** (stack tường minh + visited); kiểm tra BFS/DFS chạy đúng trên màn có cầu (trạng thái gồm cầu).
-- [ ] **TV4:** hoàn thiện màn G2, G3, G4; bắt đầu viết khung report (LaTeX/Overleaf hoặc Word).
+- [ ] **TV2:** nút New Game/chọn màn, Restart, Solve BFS/DFS/UCS/A\*, panel số liệu; solver chạy không làm treo cửa sổ.
+- [ ] **TV4:** hoàn thiện **≥ 10 màn** (G1–G6), mỗi màn có lời giải tối ưu ghi trong `levels/README` hoặc `code/data/README.md`.
+- [ ] **TV3:** đo bộ nhớ đỉnh tách lượt, kiểm tra chi phí A\* = UCS trên mọi màn.
+- [ ] **TV5:** `run_all.py` xuất CSV (lặp nhiều lần, lấy trung vị).
+- [ ] **TV1:** test so khớp luật C++ ↔ Python trên toàn bộ màn (phát lại lời giải của solver bằng `--play`).
 
-**Definition of Done:** chơi tay được mọi màn G1–G4 trên GUI; BFS/DFS giải được mọi màn đó.
-
-### Sprint 3 — UCS, A\*, tích hợp solver vào GUI (Ngày 10–14)
-
-**Mục tiêu:** hoàn thành đủ 4 solver và nút gọi solver trên GUI. *(Hướng tới 40 điểm solver.)*
-
-- [ ] **TV2:** chốt **hàm chi phí** (mục 5.3) + **UCS** (heap, lazy deletion, goal test khi pop).
-- [ ] **TV2:** **A\*** + heuristic `h₁`, `h₂` (relaxed distance + cổng split), phiên bản cho chi phí không đồng nhất; viết bản nháp chứng minh admissible/consistent.
-- [ ] **TV2:** test chéo: chi phí A\* == chi phí UCS trên mọi màn (nếu khác → heuristic **không admissible** hoặc có bug); độ dài A\*(đơn vị) == BFS.
-- [ ] **TV3:** nút Solve BFS/DFS/UCS/A\*, chạy nền, animate/replay lời giải (Play/Pause/Step), panel hiển thị số liệu.
-- [ ] **TV4:** hoàn thiện G5, G6; viết `experiments/run_all.py` xuất CSV.
-
-**Definition of Done:** từ GUI bấm được cả 4 solver trên mọi màn và xem lại lời giải; test chéo UCS = A\* đạt 100%.
+**Definition of Done:** từ GUI bấm được cả 4 solver trên mọi màn và xem khối tự lăn tới đích.
 
 ### Sprint 4 — Thực nghiệm, đánh bóng & bug bash (Ngày 14–18)
 
-**Mục tiêu:** có số liệu thực nghiệm hoàn chỉnh; sản phẩm ổn định. *(Hướng tới 20 điểm Experiments.)*
+- [ ] **TV5:** chạy thực nghiệm chính thức, vẽ biểu đồ (trục log), tổng hợp bảng.
+- [ ] **Cả nhóm:** bug bash — chơi chéo màn của nhau; sửa bug.
+- [ ] **TV2:** đánh bóng GUI (chú thích loại ô, màu, bố cục) để quay video.
+- [ ] **TV3 + TV4:** phân tích số liệu UCS/A\*, viết nhận xét điểm mạnh/yếu.
 
-- [ ] **TV4:** chạy toàn bộ thực nghiệm (nhiều lần, median), vẽ biểu đồ bằng `plot.py`; tổng hợp bảng.
-- [ ] **TV2:** (tùy chọn) IDS và/hoặc heuristic PDB để so sánh; phân tích các trường hợp bất thường trong số liệu.
-- [ ] **TV3:** đánh bóng GUI (màu, chú thích các loại ô, màn hình chọn màn, tốc độ animation).
-- [ ] **Cả nhóm:** **bug bash** — mỗi người chơi thử màn của người khác, cố tìm lỗi luật chơi; sửa lỗi.
-- [ ] **TV1:** viết `README.md` (cài đặt, chạy GUI, chạy thực nghiệm, định dạng màn).
-
-**Definition of Done:** `results.csv` + bộ biểu đồ cuối cùng; không còn bug đã biết ở mức nghiêm trọng.
+**Definition of Done:** `results.csv` + biểu đồ cuối cùng; code freeze.
 
 ### Sprint 5 — Report, video, đóng gói (Ngày 18–21)
 
-**Mục tiêu:** hoàn thành sản phẩm nộp. *(Hướng tới 30 điểm Report + 10 điểm Video.)*
-
-- [ ] **Cả nhóm:** viết report theo dàn ý ở mục 8.3; đọc chéo, sửa lỗi.
-- [ ] **TV3:** quay video theo kịch bản ở mục 8.4; thêm phụ đề/thuyết minh; upload YouTube (**Public**), dán link vào report.
-- [ ] **TV4:** xuất `Report.pdf`; đóng gói đúng cấu trúc `StudentID1_StudentID2_...`; kiểm tra cài đặt sạch trên một máy khác (venv mới → `pip install -r requirements.txt` → `python main.py`).
-- [ ] **Cả nhóm:** thống nhất **% đóng góp** công bằng; **luyện vấn đáp** (mỗi người giải thích được mọi thuật toán + heuristic + quyết định thiết kế).
-- [ ] **Buffer (Ngày 20–21):** dành cho sự cố; nộp sớm ít nhất vài giờ trước deadline.
+- [ ] **Cả nhóm:** viết report theo dàn ý 8.3 (mỗi người phần của mình, xem 8.1); đọc chéo.
+- [ ] **TV2:** quay video theo 8.4, có phụ đề/thuyết minh, upload YouTube (**Public**).
+- [ ] **TV5:** ráp `Report.pdf`, đóng gói `StudentID1_..._StudentID5` (gốc repo → `Source/`, bỏ `demo/`, file build).
+- [ ] **Cả nhóm:** thống nhất **% đóng góp**; **luyện vấn đáp**.
+- [ ] **Buffer (Ngày 20–21):** dành cho sự cố; nộp sớm.
 
 ### 8.3. Dàn ý Report.pdf đề xuất
 
@@ -658,7 +688,7 @@ Buffer                                                                          
 | Thời điểm | Nội dung | Hạng mục điểm |
 |---|---|---|
 | 0:00–0:30 | Giới thiệu nhóm, đề tài | — |
-| 0:30–1:30 | Tổng quan GUI: bàn chơi, **chú thích từng loại ô** (floor, void, goal, fragile, các switch, cầu mở/đóng), các nút | GUI (5đ) |
+| 0:30–1:30 | Tổng quan GUI 3D: bàn chơi, **chú thích từng loại ô** (floor, void, goal, fragile, các switch, cầu mở/đóng), các chế độ camera, các nút | GUI (5đ) |
 | 1:30–3:00 | Chơi tay: lăn qua 3 hướng, đứng trên fragile → thua, bấm soft/heavy switch (toggle/permanent) → cầu đổi, split → điều khiển 2 cube → gộp, thắng màn | Feature (5đ) |
 | 3:00–5:30 | Chạy BFS / DFS / UCS / A\* trên cùng một màn, hiển thị số liệu, animate lời giải; chỉ ra DFS dài hơn, A\* mở ít node hơn, UCS khác BFS | Feature (5đ) |
 | 5:30–6:30 | Tóm tắt nhanh kết quả thực nghiệm (biểu đồ) | — |
@@ -686,6 +716,8 @@ Có **phụ đề hoặc thuyết minh** xuyên suốt.
 | 11 | Vị trí dịch chuyển của split không hợp lệ? | Bắt lỗi khi **validate màn**, không xử lý lúc chạy |
 | 12 | Khối nằm vắt qua goal? | Hợp lệ (goal chịu lực như sàn), nhưng không thắng |
 
+> **Game nền đã chốt sẵn một số điểm** (mục 2.6), nhóm giữ nguyên để C++ và Python khớp nhau: công tắc kích hoạt ở cuối nước đi và **không** kích hoạt ở nước thắng/thua (#1); khối đè hai công tắc thì kích hoạt cả hai theo thứ tự ô đầu → ô sau → công tắc nặng (#2); cầu biến mất dưới khối → rơi (#3); nằm vắt qua lỗ đích không thắng, không thua (#12). Các điểm #4–#11 sẽ chốt khi cài permanent và split.
+
 ### 9.2. Bẫy kỹ thuật thường gặp
 
 1. **`visited` thiếu BridgeConfig** → bỏ sót lời giải ở màn có công tắc toggle.
@@ -702,7 +734,7 @@ Có **phụ đề hoặc thuyết minh** xuyên suốt.
 12. **Đo cả thời gian nạp màn/vẽ GUI** vào search time → số liệu không công bằng.
 13. **Đếm expanded nodes không thống nhất** giữa các thuật toán (có/không tính node đích, node "stale" trong heap) → so sánh sai. Định nghĩa một lần, ghi trong report.
 14. **Solver chạy trên luồng GUI** → cửa sổ "Not Responding" khi quay video.
-15. **Logic luật bị nhân đôi** (GUI một bản, solver một bản) → hai bên lệch nhau. Chỉ có **một** hàm `step()` duy nhất.
+15. **Logic luật bị nhân đôi** (GUI một bản, solver một bản) → hai bên lệch nhau. Với kiến trúc C++ + Python đã chốt, việc nhân đôi là không tránh được → bắt buộc theo quy trình ở mục 9.6.1 (sửa cả hai + test + phát lại bằng `--play`).
 16. **Số thực trong chi phí** → so sánh `==` sai; dùng số nguyên đã nhân hệ số hoặc `Fraction`, hoặc so sánh có sai số.
 
 ### 9.3. Lưu ý về report & thực nghiệm
@@ -729,6 +761,17 @@ Có **phụ đề hoặc thuyết minh** xuyên suốt.
 - **Không** đưa `venv/`, `__pycache__/`, `.git/`, file video vào bản nén (giữ dưới 20MB).
 - Link video phải mở được khi **không đăng nhập** (kiểm tra bằng cửa sổ ẩn danh).
 - Nộp **sớm**; sau deadline không được sửa gì.
+- Gốc repo chính là thư mục `Source/`; khi nén bỏ `demo/` (~30MB), `.git/`, `*.o`, `a.out`.
+
+### 9.6. Lưu ý kỹ thuật với game nền C++
+
+1. **Luật ở hai nơi** (`code/*.cpp` và `ai/problem.py`): sửa luật thì sửa cả hai + thêm test + chạy `./a.out <n> --play <lời giải>` để so khớp.
+2. **Chạy game trong thư mục `code/`**: game đọc `data/<n>.data` và shader `Sample_GL.*` theo đường dẫn tương đối; solver được gọi bằng `../main.py`.
+3. **Tọa độ dễ nhầm:** `R` tăng `x` = đi **xuống một dòng** trong file `.data`; `U` tăng `y` = sang **phải một cột**.
+4. **WSLg** có thể in cảnh báo `MESA`/`libEGL` khi mở cửa sổ — vô hại (driver chuyển sang render bằng phần mềm).
+5. **Xuống dòng LF:** repo có `.gitattributes` ép LF để `make` và file `.data` chạy được trong WSL; đừng để editor đổi sang CRLF.
+6. **Ô cầu ban đầu phải là 0** trong lưới (C++ bật cầu luôn tạo ô thường type 1); `Level.validate()` sẽ báo lỗi nếu vi phạm.
+7. **Thân các solver/heuristic là phần nhóm tự làm** (yêu cầu học thuật + vấn đáp): không dùng AI sinh nguyên thân thuật toán; nếu có tham khảo thì ghi vào phụ lục.
 
 ---
 
@@ -739,8 +782,11 @@ Có **phụ đề hoặc thuyết minh** xuyên suốt.
 - [ ] Phát hiện rơi khỏi bàn / rơi vào void; phát hiện thắng (chỉ khi đứng trên goal)
 - [ ] Fragile; bridge mở/đóng; soft, heavy, split switch; toggle **và** permanent
 - [ ] Tách thành 2 cube, đổi cube bằng Space, tự gộp khi kề nhau
-- [ ] GUI có New Game, Restart, nút Solve BFS/DFS/UCS/A\*
-- [ ] Màn chơi nạp từ file JSON/text, dùng chung cho mọi solver
+- [ ] GUI **3D** có New Game, Restart, nút Solve BFS/DFS/UCS/A\*
+- [x] Bấm Solve → khối tự lăn tới đích (`--solve` / `--play`; còn thiếu nút bấm trong GUI)
+- [x] Màn chơi nạp từ file `.data`, dùng chung cho C++ và mọi solver Python
+- [ ] **≥ 10 màn** (test case) chia nhóm độ khó
+- [ ] Ghi nguồn repo `chaitanya100100/Bloxorz` @ `c0ccb55` trong README, THIRD_PARTY_NOTICES và References
 
 **Solvers (40đ)**
 - [ ] BFS, DFS (hoặc IDS — đã ghi rõ), UCS, A\* — tự cài đặt
