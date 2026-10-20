@@ -501,7 +501,7 @@ CSAI_Group9_Lab01/
 │   ├── include/             # header GLAD (OpenGL 3.3 core) + KHR
 │   └── makefile             # Linux/WSL, macOS (Homebrew), MSYS2/MinGW
 ├── Docs/                    # đề bài, report0, task, implementation_plan
-├── README.md, CLAUDE.md, THIRD_PARTY_NOTICES.md, requirements.txt, pyproject.toml
+├── README.md, THIRD_PARTY_NOTICES.md, requirements.txt, pyproject.toml
 └── demo/                    # gif/mp4 của repo gốc — không đưa lên git
 ```
 

@@ -55,7 +55,7 @@ Khung được dựng với sự hỗ trợ của Claude Code (ghi vào phụ l�
 | D-04 | `main.py` CLI (`--algo`, `--out`, `--compare`, `--memory`) | Solver chưa cài → báo "chưa cài", mã 2 |
 | D-05 | Game: `autoplay`, `./a.out [level] [--solve algo | --play file]`, giữ màn hình 1.5 s, khóa phím khi phát lại, kiểm tra biên mảng | `./a.out 1 --play` → `WON, Steps : 10`; màn 2 → 68 |
 | D-06 | GLAD (OpenGL 3.3 core) + `makefile` Linux/macOS/MSYS2; build trên WSL Ubuntu | `make` thành công |
-| D-07 | `README.md`, `CLAUDE.md`, `THIRD_PARTY_NOTICES.md`, `Docs/implementation_plan.md`, cập nhật `report0.md`, `task.md` | — |
+| D-07 | `README.md`, `THIRD_PARTY_NOTICES.md`, `Docs/implementation_plan.md`, cập nhật `report0.md`, `task.md` | — |
 
 ---
 

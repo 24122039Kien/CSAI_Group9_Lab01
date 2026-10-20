@@ -31,7 +31,7 @@
 | 4 | Game: `SuperBlock::is_moving`, `autoplay.h/.cpp` (phát lại 0.25 s/nước, `run_solver` qua `system()`, `$BLOXORZ_PYTHON`), `main.cpp` (`[level] [--solve algo \| --play file]`, giữ màn hình 1.5 s, mã thoát), khóa phím khi phát lại, `Floor::has_tile` (kiểm tra biên), `delete` thay `free` | ✅ |
 | 4b | GLAD 0.1.36 cho GL 3.3 core (không extension) vào `code/include/`, thay `glad.c`; xóa `code/glad` (glad.c cũ) và `code/a.out`; `headers.h` thêm `GLM_ENABLE_EXPERIMENTAL`; makefile Linux/macOS/MSYS2 | ✅ build trên WSL Ubuntu 26.04 (GLFW 3.4, GLM 1.0.1) |
 | 4c | Chạy thật: `./a.out 1 --play` → `WON, Steps : 10`; `./a.out 2 --play` → 68; nước thua → `GAME OVER`, mã 1; `--solve` khi chưa cài → báo lỗi gọn; `--solve` với solver tham chiếu (ngoài repo) → `WON` | ✅ |
-| 5 | `README.md`, `CLAUDE.md`, `THIRD_PARTY_NOTICES.md`, cập nhật `report0.md`, `task.md` | ✅ |
+| 5 | `README.md`, `THIRD_PARTY_NOTICES.md`, `CLAUDE.md` (chỉ ở máy, không đưa lên git), cập nhật `report0.md`, `task.md` | ✅ |
 
 ## 4. Phase 2 — Việc của nhóm (theo `Docs/task.md`)
 
