@@ -1,0 +1,5 @@
+# Build artifacts
+*.o
+
+# Demo media from upstream (~30MB) – kept locally, not tracked
+demo/
