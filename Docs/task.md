@@ -7,23 +7,18 @@
 
 ## 1. Hướng dẫn đưa vào Notion
 
-1. Copy **bảng tổng hợp ở mục 5** → dán vào một trang Notion → bấm `⋯` của bảng → **Turn into database**.
-2. Mở từng task, dán phần **mô tả + tiêu chí hoàn thành** ở mục 6 (dòng `- [ ]` thành to-do).
+1. Copy **bảng task ở mục 5** → dán vào một trang Notion → bấm `⋯` của bảng → **Turn into database**.
+2. Nếu cần chia nhỏ, mở task và dán các bước tương ứng ở mục 6 (dòng `- [ ]` thành to-do).
 
 | Property | Kiểu | Giá trị |
 |---|---|---|
-| `ID` | Text | `S1-01`, … |
 | `Task` | Title | Tên task |
-| `Sprint` | Select | Sprint 0 … Sprint 5 |
 | `Người phụ trách` | Person | TV1 … TV5 hoặc "Tất cả" |
-| `Ưu tiên` | Select | **P0** bắt buộc · **P1** cần có · **P2** mở rộng |
-| `Ước lượng (h)` | Number | Giờ ước tính |
 | `Hạn` | Date | Ngày N → ngày thật |
-| `Phụ thuộc` | Relation (chính database) | Task phải xong trước |
-| `Hạng mục điểm` | Multi-select | Game-Core · Game-Adv · BFS · DFS · UCS · A* · Report-Algo · Report-Exp · Report-Plan · Video · Nộp bài · Quản lý |
+| `Hạng mục điểm` | Multi-select | Game · BFS · DFS · UCS · A* · Report · Video · Nộp bài · Quản lý |
 | `Trạng thái` | Status | Not started · In progress · In review · Done |
 
-View gợi ý: Board theo `Trạng thái`, Board theo `Người phụ trách`, Timeline theo `Hạn`, Filter `Ưu tiên = P0`.
+View gợi ý: Board theo `Trạng thái`, Board theo `Người phụ trách`, Timeline theo `Hạn`.
 
 ---
 
@@ -74,74 +69,27 @@ Task "Tất cả" (14 h/người): đọc đề & tài liệu (2), cài môi tr�
 
 ---
 
-## 5. Bảng tổng hợp task (copy vào Notion)
+## 5. Bảng task (copy vào Notion)
 
-| ID | Task | Sprint | Người phụ trách | Ưu tiên | Ước lượng (h) | Hạn | Phụ thuộc | Hạng mục điểm |
-|---|---|---|---|---|---:|---|---|---|
-| S0-01 | Đọc đề, report0 (1.1, 2.6, 3.7, 6), README; chơi thử game Coolmath và game của nhóm | Sprint 0 | Tất cả | P0 | 2 | Ngày 1 | — | Quản lý |
-| S0-02 | Cài môi trường, build game, chạy `./a.out 1 --play` và `pytest` trên máy mình | Sprint 0 | Tất cả | P0 | 2 | Ngày 2 | S0-01 | Game-Core |
-| S0-03 | Đọc chéo `ai/problem.py` với `code/game.cpp`, `superblock.cpp` (xác nhận luật) | Sprint 0 | TV1 | P0 | 2 | Ngày 2 | S0-01 | Game-Core, Report-Algo |
-| S0-04 | Chốt cú pháp `.data` v2 (nhiều ô cầu, permanent, split) vào implementation_plan | Sprint 0 | TV1 | P0 | 3 | Ngày 2 | S0-03 | Game-Adv |
-| S0-05 | Dựng Notion board, lịch họp, kênh liên lạc | Sprint 0 | TV5 | P1 | 1 | Ngày 1 | — | Quản lý |
-| S0-06 | Ôn UCS/A*/admissible/consistent, phác thảo hàm chi phí | Sprint 0 | TV3 | P1 | 2 | Ngày 2 | — | UCS, A* |
-| S1-01 | Cài `BFSSolver` | Sprint 1 | TV1 | P0 | 3 | Ngày 4 | S0-02 | BFS |
-| S1-02 | Cài `DFSSolver` (stack, visited, thứ tự cố định) | Sprint 1 | TV2 | P0 | 3 | Ngày 4 | S0-02 | DFS |
-| S1-03 | Cài `UCSSolver` (heap + counter, lazy deletion, goal khi pop) | Sprint 1 | TV3 | P0 | 4 | Ngày 5 | S0-02 | UCS |
-| S1-04 | Cài `AStarSolver` (thử trước với `zero_heuristic`) | Sprint 1 | TV4 | P0 | 4 | Ngày 5 | S0-02 | A* |
-| S1-05 | Cài `manhattan_heuristic` + bản nháp chứng minh admissible | Sprint 1 | TV5 | P0 | 3 | Ngày 4 | S0-02 | A* |
-| S1-06 | Hàm chi phí không đồng nhất (bản nháp), cắm qua `cost_fn` | Sprint 1 | TV3 | P0 | 3 | Ngày 6 | S0-06 | UCS |
-| S1-07 | Prototype Dear ImGui trong game: build được + nút Restart | Sprint 1 | TV2 | P0 | 5 | Ngày 6 | S0-02 | Game-Core, Video |
-| S1-08 | Màn G1/G2 (3–4 màn) dạng `.data`, kiểm tra bằng `validate` + BFS | Sprint 1 | TV4 | P0 | 4 | Ngày 6 | S1-01 | Report-Exp |
-| S1-09 | Khung `experiments/run_all.py` (mọi solver × màn → CSV) | Sprint 1 | TV5 | P1 | 3 | Ngày 6 | S1-01 | Report-Exp |
-| S1-10 | Python `Level` đọc `.data` v2 + test | Sprint 1 | TV1 | P0 | 5 | Ngày 6 | S0-04 | Game-Adv |
-| S1-11 | Sprint 1 review: `./a.out 2 --solve` với 4 thuật toán, `pytest` hết SKIP | Sprint 1 | Tất cả | P0 | 1 | Ngày 6 | S1-01…S1-05 | Quản lý |
-| S2-01 | C++ đọc `.data` v2: nhiều ô cầu/công tắc, permanent on/off | Sprint 2 | TV1 | P0 | 5 | Ngày 8 | S1-10 | Game-Adv |
-| S2-02 | Python: permanent + nhiều ô cầu trong `problem.py` + test | Sprint 2 | TV1 | P0 | 3 | Ngày 8 | S1-10 | Game-Adv |
-| S2-03 | Python: split (State 2 cube, 8 hành động, gộp, luật cube) + test | Sprint 2 | TV1 | P0 | 6 | Ngày 10 | S2-02 | Game-Adv |
-| S2-04 | C++: split (tách, vẽ 2 cube, phím Space, gộp) khớp Python | Sprint 2 | TV2 | P0 | 8 | Ngày 10 | S2-01 | Game-Adv, Video |
-| S2-05 | (Mở rộng) Cài IDS để so sánh với DFS | Sprint 2 | TV2 | P2 | 3 | Ngày 10 | S1-02 | DFS |
-| S2-06 | Chốt hàm chi phí cuối + lý giải | Sprint 2 | TV3 | P0 | 3 | Ngày 8 | S1-06 | UCS, Report-Algo |
-| S2-07 | Test chéo: cost A* = UCS, độ dài A*(unit) = BFS trên mọi màn | Sprint 2 | TV3 | P0 | 3 | Ngày 10 | S1-03, S1-04, S1-05 | A*, UCS |
-| S2-08 | Heuristic có tính split (cổng dịch chuyển) + bản cho chi phí không đồng nhất | Sprint 2 | TV5 | P0 | 5 | Ngày 10 | S2-03 | A* |
-| S2-09 | Màn G3 (công tắc/cầu, có permanent) | Sprint 2 | TV4 | P0 | 4 | Ngày 10 | S2-01 | Report-Exp |
-| S2-10 | Dựng khung report (Overleaf/Word) theo dàn ý 8.3 | Sprint 2 | TV5 | P1 | 2 | Ngày 9 | — | Report-Plan |
-| S2-11 | Sprint 2 review: chơi tay + giải màn có split/permanent | Sprint 2 | Tất cả | P0 | 1 | Ngày 10 | S2-01…S2-10 | Quản lý |
-| S3-01 | GUI: nút Restart, Solve BFS/DFS/UCS/A*, panel số liệu | Sprint 3 | TV2 | P0 | 6 | Ngày 13 | S1-07 | Game-Core, Video |
-| S3-02 | `main.py --stats-out`: ghi số liệu (JSON) cho panel GUI | Sprint 3 | TV3 | P1 | 2 | Ngày 12 | — | Video |
-| S3-03 | Chạy solver ở luồng nền, cửa sổ không treo | Sprint 3 | TV2 | P0 | 3 | Ngày 14 | S3-01 | Video |
-| S3-04 | Màn G4 (split), G5 (lớn/khó), G6 (vô nghiệm, open field) → tổng ≥ 10 | Sprint 3 | TV4 | P0 | 6 | Ngày 13 | S2-04, S2-09 | Report-Exp |
-| S3-05 | Test so khớp luật C++ ↔ Python trên mọi màn (phát lại bằng `--play`) | Sprint 3 | TV3 | P0 | 4 | Ngày 14 | S3-04 | Game-Core, Game-Adv |
-| S3-06 | `run_all.py` hoàn chỉnh: lặp, median, memory tách lượt, timeout | Sprint 3 | TV5 | P0 | 5 | Ngày 14 | S1-09 | Report-Exp |
-| S3-07 | Chứng minh admissible & consistent hoàn chỉnh | Sprint 3 | TV5 | P0 | 3 | Ngày 14 | S2-08 | A*, Report-Algo |
-| S3-08 | (Mở rộng) Suy trọng số chi phí bằng ML (Q&A câu 10) | Sprint 3 | TV3 | P2 | 5 | Ngày 14 | S2-06 | UCS |
-| S3-09 | GUI: New Game / chọn màn từ `data/` | Sprint 3 | TV4 | P0 | 4 | Ngày 13 | S1-07 | Game-Core |
-| S3-10 | Thêm timeout / giới hạn node vào `BaseSolver.run` | Sprint 3 | TV3 | P1 | 3 | Ngày 12 | S1-03 | Report-Exp |
-| S3-11 | Ghi lời giải tối ưu + ảnh minh họa từng màn (`code/data/README.md`) | Sprint 3 | TV4 | P1 | 3 | Ngày 14 | S3-04 | Report-Exp |
-| S3-12 | Sprint 3 review: bấm 4 nút Solve trên mọi màn | Sprint 3 | Tất cả | P0 | 1 | Ngày 14 | S3-01…S3-11 | Quản lý |
-| S4-01 | Bug bash: chơi chéo màn, ghi bug lên Notion | Sprint 4 | Tất cả | P0 | 2 | Ngày 15 | S3-12 | Game-Core, Game-Adv |
-| S4-02 | Sửa bug luật (C++ và Python) + test hồi quy | Sprint 4 | TV1 | P0 | 4 | Ngày 16 | S4-01 | Game-Core, Game-Adv |
-| S4-03 | Sửa bug GUI + đánh bóng (chú thích loại ô, màu, HUD) | Sprint 4 | TV2 | P1 | 4 | Ngày 17 | S4-01 | Video |
-| S4-04 | Chạy thực nghiệm chính thức, ghi cấu hình máy | Sprint 4 | TV5 | P0 | 3 | Ngày 17 | S4-02, S3-06 | Report-Exp |
-| S4-05 | `plot.py`: biểu đồ (trục log) + bảng | Sprint 4 | TV5 | P0 | 4 | Ngày 18 | S4-04 | Report-Exp |
-| S4-06 | Phân tích UCS vs BFS (độ dài vs chi phí) | Sprint 4 | TV3 | P0 | 3 | Ngày 18 | S4-04 | Report-Exp |
-| S4-07 | Phân tích A* với các heuristic (h = 0, Manhattan, nâng cao) | Sprint 4 | TV4 | P0 | 3 | Ngày 18 | S4-04 | Report-Exp |
-| S4-08 | Kịch bản video + chuẩn bị màn demo | Sprint 4 | TV4 | P0 | 2 | Ngày 18 | S4-03 | Video |
-| S4-09 | Cập nhật README (định dạng v2, nút GUI, thực nghiệm) | Sprint 4 | TV1 | P0 | 2 | Ngày 17 | S4-02 | Nộp bài |
-| S4-10 | Sprint 4 review + code freeze | Sprint 4 | Tất cả | P0 | 1 | Ngày 18 | S4-01…S4-09 | Quản lý |
-| S5-01 | Họp chốt % đóng góp | Sprint 5 | Tất cả | P0 | 1 | Ngày 19 | S4-10 | Report-Plan |
-| S5-02 | Report: luật chơi + hình thức hóa bài toán | Sprint 5 | TV1 | P0 | 5 | Ngày 19 | S4-10 | Report-Algo |
-| S5-03 | Report: BFS | Sprint 5 | TV1 | P0 | 2 | Ngày 19 | S1-01 | Report-Algo |
-| S5-04 | Report: DFS (/IDS) + Cài đặt & GUI | Sprint 5 | TV2 | P0 | 4 | Ngày 19 | S4-03 | Report-Algo |
-| S5-05 | Report: UCS + hàm chi phí | Sprint 5 | TV3 | P0 | 4 | Ngày 19 | S2-06 | Report-Algo |
-| S5-06 | Report: A* + mô tả bộ test | Sprint 5 | TV4 | P0 | 4 | Ngày 19 | S3-04 | Report-Algo, Report-Exp |
-| S5-07 | Report: heuristic + chương Experiments | Sprint 5 | TV5 | P0 | 5 | Ngày 19 | S4-05 | Report-Exp |
-| S5-08 | Report: Planning, References (cite chaitanya), Phụ lục dùng AI | Sprint 5 | TV5 | P0 | 3 | Ngày 19 | S5-01 | Report-Plan |
-| S5-09 | Quay + dựng video, phụ đề, upload YouTube (Public) | Sprint 5 | TV2 | P0 | 6 | Ngày 20 | S4-08 | Video |
-| S5-10 | Ráp report, xuất `Report.pdf` (chèn link video) | Sprint 5 | TV5 | P0 | 4 | Ngày 20 | S5-02…S5-08 | Report-Plan |
-| S5-11 | Đọc chéo report | Sprint 5 | Tất cả | P0 | 1 | Ngày 20 | S5-10 | Report-Plan |
-| S5-12 | Kiểm tra cài đặt sạch trên máy khác (clone → apt → make → pytest) | Sprint 5 | TV3 | P0 | 1 | Ngày 20 | S4-09 | Nộp bài |
-| S5-13 | Luyện vấn đáp | Sprint 5 | Tất cả | P0 | 2 | Ngày 21 | S5-10 | Quản lý |
-| S5-14 | Đóng gói (`Source/` = gốc repo, bỏ `demo/`) và nộp | Sprint 5 | TV5 | P0 | 1 | Ngày 21 | S5-09, S5-11, S5-12 | Nộp bài |
+| Task | Người phụ trách | Hạn | Hạng mục điểm |
+|---|---|---|---|
+| Cài môi trường, build game, chạy được `./a.out 1 --play` và `pytest` | Tất cả | Ngày 2 | Quản lý |
+| Chốt định dạng màn chơi `.data` v2 (nhiều ô cầu, permanent, split) | TV1 | Ngày 2 | Game |
+| Cài BFS | TV1 | Ngày 4 | BFS |
+| Cài DFS (IDS tùy chọn) | TV2 | Ngày 4 | DFS |
+| Cài A\* | TV4 | Ngày 5 | A* |
+| Cài UCS + thiết kế hàm chi phí không đồng nhất | TV3 | Ngày 8 | UCS, Report |
+| Luật nâng cao ở cả C++ và Python: nhiều ô cầu, permanent, split | TV1 (TV2 làm phần vẽ split) | Ngày 10 | Game |
+| Heuristic + chứng minh admissible / consistent | TV5 | Ngày 14 | A*, Report |
+| GUI: nút Restart, Solve BFS/DFS/UCS/A\*, panel số liệu, solver chạy nền | TV2 | Ngày 14 | Game, Video |
+| Thiết kế ≥ 10 màn chơi + chọn màn trong GUI | TV4 | Ngày 14 | Game, Report |
+| Công cụ kiểm thử: test chéo thuật toán, so khớp luật C++ ↔ Python, timeout | TV3 | Ngày 14 | Game, Report |
+| Thực nghiệm: chạy đo, bảng, biểu đồ, phân tích | TV5 (TV3, TV4 phân tích UCS/A\*) | Ngày 18 | Report |
+| Bug bash + sửa lỗi + code freeze | Tất cả | Ngày 18 | Game |
+| Viết báo cáo (mỗi người phần của mình) + ráp `Report.pdf` | Tất cả (TV5 ráp) | Ngày 20 | Report |
+| Video demo (TV4 viết kịch bản, TV2 quay và dựng) | TV2, TV4 | Ngày 20 | Video |
+| Chốt % đóng góp, luyện vấn đáp, đóng gói và nộp bài | Tất cả (TV5 nộp) | Ngày 21 | Nộp bài |
+| Quản lý tiến độ trên Notion | TV5 | Suốt dự án | Quản lý |
 
 ---
 
