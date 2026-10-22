@@ -13,3 +13,4 @@ void mouseButton (GLFWwindow* window, int button, int action, int mods);
 void reshapeWindow (GLFWwindow* window, int width, int height);
 void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll(GLFWwindow* window, double x, double y);
+glm::mat4 ortho_fit(float aspect);   // phép chiếu song song vừa khít màn chơi

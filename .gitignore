@@ -5,6 +5,13 @@ code/a.exe
 *.exe
 code/solution.txt
 solution.txt
+code/bloxorz
+code/build/
+code/solver_log.txt
+code/screenshot_*.png
+
+# Bản đóng gói (make dist)
+dist/
 
 # Python
 __pycache__/
