@@ -15,6 +15,13 @@
 - File: `code/glad.c`, `code/include/glad/glad.h`, `code/include/KHR/khrplatform.h`
 - Bộ sinh glad: MIT License. Mã sinh ra dựa trên OpenGL Registry của Khronos (Apache 2.0 / MIT); `khrplatform.h`: Khronos license (đi kèm trong file).
 
+## Dear ImGui (giao diện menu/HUD)
+
+- Nguồn: https://github.com/ocornut/imgui — bản phát hành `v1.91.9` (commit `97428e8`)
+- File: `code/third_party/imgui/` (core + backend `imgui_impl_glfw`, `imgui_impl_opengl3`), nguyên vẹn, chỉ đổi xuống dòng sang LF
+- License: MIT — `code/third_party/imgui/LICENSE.txt` (bản đóng gói chép vào `licenses/imgui_LICENSE.txt`)
+- Font giao diện: game đọc font có sẵn của hệ điều hành lúc chạy (Segoe UI trên Windows, DejaVu Sans trên Linux), không đóng gói file font.
+
 ## Thư viện liên kết khi build (không đi kèm trong repo)
 
 - GLFW — zlib/libpng License — https://www.glfw.org/
