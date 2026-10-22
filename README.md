@@ -2,10 +2,10 @@
 
 Đồ án Project 1 môn **CSC14003 – Cơ sở Trí tuệ Nhân tạo** (Khoa CNTT, ĐH KHTN – ĐHQG-HCM), nhóm 9.
 
-- **Game 3D (C++/OpenGL 3.3)** trong `code/`, dựa trên [chaitanya100100/Bloxorz](https://github.com/chaitanya100100/Bloxorz) @ `c0ccb55` (tác giả Chaitanya Patel; dùng theo sự cho phép của giảng viên — xem [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)). Nhóm đã bổ sung: tự phát lại lời giải, gọi solver Python, kiểm tra biên, build đa nền tảng.
+- **Game 3D (C++/OpenGL 3.3)** trong `code/`, dựa trên [chaitanya100100/Bloxorz](https://github.com/chaitanya100100/Bloxorz) @ `c0ccb55` (tác giả Chaitanya Patel; dùng theo sự cho phép của giảng viên — xem [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)). Nhóm đã bổ sung: tự phát lại lời giải, gọi solver Python, kiểm tra biên, build đa nền tảng, **giao diện mới** (nền tối, ánh sáng, hiệu ứng, menu/HUD bằng Dear ImGui), **build Windows native** và **đóng gói `Bloxorz.exe`** — xem [Docs/report2.md](Docs/report2.md).
 - **Phần AI (Python)** trong `ai/`: mô phỏng chính xác luật của game và khung cho các thuật toán **BFS, DFS, UCS, A\***.
 
-Tài liệu nội bộ: **[Docs/report1.md](Docs/report1.md) (bắt đầu từ đây — việc còn lại của từng thành viên)**, [Docs/report0.md](Docs/report0.md) (phân tích đề), [Docs/task.md](Docs/task.md) (phân công), [Docs/implementation_plan.md](Docs/implementation_plan.md) (kế hoạch kỹ thuật).
+Tài liệu nội bộ: **[Docs/report1.md](Docs/report1.md) (bắt đầu từ đây — việc còn lại của từng thành viên)**, [Docs/play.md](Docs/play.md) (cách chạy game trong VS Code trên Windows), [Docs/report2.md](Docs/report2.md) (nâng cấp GUI + đóng gói), [Docs/report0.md](Docs/report0.md) (phân tích đề), [Docs/task.md](Docs/task.md) (phân công), [Docs/implementation_plan.md](Docs/implementation_plan.md) (kế hoạch kỹ thuật).
 
 ## Trạng thái hiện tại
 
@@ -15,7 +15,8 @@ Tài liệu nội bộ: **[Docs/report1.md](Docs/report1.md) (bắt đầu từ 
 | Game phát lại lời giải (`--play`, `--solve`) | ✅ Đã kiểm chứng: màn 1 thắng sau 10 bước, màn 2 sau 68 bước |
 | `BFSSolver`, `DFSSolver`, `UCSSolver`, `AStarSolver` | ⏳ **TODO** — mỗi thành viên tự cài |
 | `manhattan_heuristic` | ⏳ **TODO** |
-| Nút GUI (New Game / Restart / Solve), split switch, permanent, ≥ 10 màn | ⏳ Kế hoạch — xem `Docs/task.md` |
+| Giao diện mới, menu chọn màn, Restart, nút Solve chạy nền, `Bloxorz.exe` đóng gói | ✅ Xong — xem `Docs/report2.md` |
+| Split switch, permanent, ≥ 10 màn | ⏳ Kế hoạch — xem `Docs/task.md` |
 
 ## Cấu trúc thư mục
 
@@ -29,7 +30,7 @@ Tài liệu nội bộ: **[Docs/report1.md](Docs/report1.md) (bắt đầu từ 
 │   ├── heuristics.py       # heuristic cho A*
 │   └── solvers/            # base_solver.py + bfs/dfs/ucs/astar_solver.py
 ├── tests/                  # pytest
-├── code/                   # game C++/OpenGL (makefile, data/*.data, include/ GLAD)
+├── code/                   # game C++/OpenGL (makefile, data/*.data, include/ GLAD, third_party/imgui)
 └── Docs/                   # đề bài và tài liệu nhóm
 ```
 
@@ -40,25 +41,39 @@ sudo apt update
 sudo apt install -y g++ make libglfw3-dev libglm-dev libgl-dev python3 python3-pytest
 ```
 
-- Windows: dùng **WSL 2** (Windows 11 có sẵn WSLg để mở cửa sổ OpenGL). Phần Python và test chạy được cả trên Python của Windows (`pip install -r requirements.txt`).
-- macOS: `brew install glfw glm`. Windows thuần: MSYS2 MinGW64 (`pacman -S make mingw-w64-x86_64-{gcc,glfw,glm}`).
+- Windows (**khuyên dùng để chơi**): MSYS2 MinGW64 — `pacman -S make zip mingw-w64-x86_64-{gcc,glfw,glm}`, build trong shell *MSYS2 MinGW x64*. Game chạy bằng GPU thật (WSLg vẽ bằng CPU — `llvmpipe` — nên chậm).
+- Windows qua **WSL 2** vẫn dùng được cho phát triển/kiểm chứng. Phần Python và test chạy được cả trên Python của Windows (`pip install -r requirements.txt`).
+- macOS: `brew install glfw glm`.
 - Python **≥ 3.10**, phần AI chỉ dùng thư viện chuẩn.
 
 ## Build và chạy game
 
 ```bash
 cd code            # BẮT BUỘC chạy trong code/ (game đọc data/ và shader theo đường dẫn tương đối)
-make               # tạo ./a.out (Windows/MSYS2: a.exe)
+make               # tạo ./a.out (Windows/MSYS2: a.exe) — object nằm trong build/<linux|win64>/
 
-./a.out 1                          # chơi màn 1 bằng tay (mặc định: màn 2)
+./a.out                            # chế độ game: menu chọn màn, Restart, nút Solve BFS/DFS/UCS/A*
+./a.out 1                          # vào thẳng màn 1 (vẫn có menu khi bấm Esc)
 ./a.out 1 --play solution.txt      # tự phát lại file lời giải (các nước U/D/L/R cách nhau bởi khoảng trắng)
 ./a.out 2 --solve astar            # gọi solver Python rồi tự phát lại: bfs | dfs | ucs | astar
+./a.out --help                     # thêm các tùy chọn cho dev: --no-vsync, --camera, --shot, --quit-after
 ```
 
-- Khi thắng/thua, game in `WON` hoặc `GAME OVER` kèm số bước, giữ màn hình 1.5 giây rồi thoát (mã thoát 0 = thắng, 1 = thua).
-- `--solve` chạy `python3 ../main.py data/<level>.data --algo <algo> --out solution.txt`. Đổi trình thông dịch bằng biến môi trường `BLOXORZ_PYTHON` (mặc định `python3`, trên Windows là `python`).
-- Điều khiển: **phím mũi tên** để lăn (bị khóa khi đang tự phát lại); camera **X/C/V/B/N/M**; **Space** đổi phép chiếu; **Q/Esc** thoát.
+- Với `--play`/`--solve` (chế độ kiểm chứng): game in `WON` hoặc `GAME OVER` kèm số bước, giữ màn hình 2 giây rồi thoát (mã thoát 0 = thắng, 1 = thua). Không có hai tham số này thì chạy như một game bình thường, không tự thoát.
+- Solver chạy `python3 ../main.py data/<level>.data --algo <algo> --out solution.txt` (bản đóng gói dùng `solver/main.py`). Đổi trình thông dịch bằng biến môi trường `BLOXORZ_PYTHON` (mặc định `python3`; Windows: `python`, rồi `py -3`). Trong menu, solver chạy ở luồng nền và ghi output vào `solver_log.txt`.
+- Điều khiển: **mũi tên** lăn khối (bị khóa khi đang phát lại); **R** chơi lại, **Enter** sang màn tiếp; **Esc** menu; camera **C/V/B/X/N/M**; **Space** đổi phép chiếu; **Tab** bản đồ nhỏ; **F1** ẩn/hiện bảng phím; **F12** chụp màn hình; **Q** thoát.
 - Trên WSLg có thể thấy cảnh báo `MESA`/`libEGL` — vô hại.
+
+### Đóng gói thành game app (Windows)
+
+Trong shell *MSYS2 MinGW x64*, thư mục `code/`:
+
+```bash
+make release       # Bloxorz.exe: link tĩnh (không cần DLL), không mở console, có icon
+make dist          # ../dist/win64/Bloxorz/ (exe + data/ + solver/ + licenses/) và ../dist/Bloxorz-win64.zip
+```
+
+Giải nén zip ở đâu cũng chạy được (kể cả đường dẫn có dấu). Chơi không cần cài gì; nút Solve cần Python ≥ 3.10. Linux: `make dist` tạo `bloxorz` + `Bloxorz-linux.zip` (hoặc `.tar.gz`).
 
 Thử nhanh với lời giải đã biết của màn 1:
 
