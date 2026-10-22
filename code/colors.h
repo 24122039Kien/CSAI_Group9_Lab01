@@ -23,3 +23,9 @@ extern int WHITE;
 extern int GREY;
 extern int ORANGE;
 extern int DARKGREEN;
+extern int FLOOR_COLOR, BRIDGE_COLOR, FRAGILE_COLOR, SWITCH_ACCENT, HEAVY_ACCENT, BLOCK_COLOR, GOAL_COLOR, DUST_COLOR;
+
+#ifndef COLORVEC
+#define COLORVEC
+inline glm::vec3 col(int id) { return glm::vec3(colors[id].r, colors[id].g, colors[id].b); }
+#endif
