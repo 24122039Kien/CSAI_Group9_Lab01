@@ -21,6 +21,7 @@
 - File: `code/third_party/imgui/` (core + backend `imgui_impl_glfw`, `imgui_impl_opengl3`), nguyên vẹn, chỉ đổi xuống dòng sang LF
 - License: MIT — `code/third_party/imgui/LICENSE.txt` (bản đóng gói chép vào `licenses/imgui_LICENSE.txt`)
 - Font giao diện: game đọc font có sẵn của hệ điều hành lúc chạy (Segoe UI trên Windows, DejaVu Sans trên Linux), không đóng gói file font.
+- Icon `code/assets/bloxorz.ico` do nhóm tự sinh bằng `code/assets/make_icon.py`.
 
 ## Thư viện liên kết khi build (không đi kèm trong repo)
 

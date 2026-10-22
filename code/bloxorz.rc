@@ -1,0 +1,30 @@
+// Tài nguyên Windows cho Bloxorz.exe: icon (GLFW tự dùng icon tên GLFW_ICON cho cửa sổ) + thông tin phiên bản.
+#include <winver.h>
+
+GLFW_ICON ICON "assets/bloxorz.ico"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION 1,1,0,0
+PRODUCTVERSION 1,1,0,0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "CSC14003 Group 9"
+            VALUE "FileDescription", "Bloxorz 3D with AI solver"
+            VALUE "FileVersion", "1.1.0"
+            VALUE "InternalName", "Bloxorz"
+            VALUE "OriginalFilename", "Bloxorz.exe"
+            VALUE "ProductName", "Bloxorz"
+            VALUE "ProductVersion", "1.1.0"
+            VALUE "LegalCopyright", "Based on chaitanya100100/Bloxorz (Chaitanya Patel)"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
