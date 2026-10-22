@@ -201,7 +201,7 @@ int main (int argc, char** argv)
 
     if(!solve_algo.empty())
     {
-        if(!run_solver(level, solve_algo, "solution.txt"))
+        if(run_solver(level, solve_algo, "solution.txt") != SOLVER_OK)
             return 1;
         play_file = "solution.txt";
     }
