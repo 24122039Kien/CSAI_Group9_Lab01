@@ -1,12 +1,16 @@
 #include "headers.h"
-#include "noedit.h"
 #include "superblock.h"
 #include "tile.h"
 #include "game.h"
+#include "render.h"
+#include "effects.h"
 
 int X=0, Y=1, Z=2;
 int U=1, D=2, R=3, L=4, NO=0;
-float rotation_unit = 5.0f;
+// Tốc độ lăn theo thời gian thật (độ/giây). Bản gốc cộng 5 độ mỗi frame nên FPS thấp thì lăn chậm.
+float roll_speed = 450.0f;
+
+enum { END_NONE = 0, END_SINK = 1, END_FALL = 2 };
 
 SuperBlock::SuperBlock(){}
 
@@ -15,14 +19,6 @@ SuperBlock::SuperBlock(glm::vec3 pos, glm::vec3 dim, Color c, int a)
     this->initialize(pos, dim, c, a);
 }
 
-glm::vec2 SuperBlock::get_current_pos()
-{
-    return glm::vec2(ix, iy);
-}
-glm::vec3 SuperBlock::get_pos()
-{
-    return pos;
-}
 glm::vec3 SuperBlock::get_real_pos()
 {
     return real_pos;
@@ -36,68 +32,24 @@ void SuperBlock::initialize(glm::vec3 pos, glm::vec3 dim, Color c, int a)
     real_pos = pos;
     along = a;
     rot_dir = 0;
+    last_dir = R;
     rem_rotation = 0.0f;
     done_rotation = 0.0f;
+    end_anim = END_NONE;
+    end_start = 0.0;
+    fall_dir = glm::vec2(1, 0);
     pair<int, int> pp = stage.get_initial_index();
     ix=pp.first;
     iy=pp.second;
-
-    float x = dim.x/2;
-    float y = dim.y/2;
-    float z = dim.z/2;
-
-    GLfloat vertex_buffer_data[] = {
-        -x,-y,-z, x,-y,-z, x,-y,z,
-        -x,-y,-z, -x,-y,z, x,-y,z,
-
-        -x,y,-z, x,y,-z, x,y,z,
-        -x,y,-z, -x,y,z, x,y,z,
-
-        -x,-y,-z, -x,y,-z, -x,y,z,
-        -x,-y,-z, -x,-y,z, -x,y,z,
-
-        x,-y,-z, x,y,-z, x,y,z,
-        x,-y,-z, x,-y,z, x,y,z,
-
-        -x,-y,-z, x,-y,-z, x,y,-z,
-        -x,-y,-z, -x,y,-z, x,y,-z,
-
-        -x,-y,z, x,-y,z, x,y,z,
-        -x,-y,z, -x,y,z, x,y,z
-    };
-    float r = c.r;
-    float g = c.g;
-    float b = c.b;
-
-    GLfloat color_buffer_data[] = {
-        r,g,b, 0,0,0, r,g,b,
-        r,g,b, r,g,b, 0,0,0,
-
-        r,g,b, 0,0,0, r,g,b,
-        r,g,b, r,g,b, 0,0,0,
-
-        r,g,b, 0,0,0, r,g,b,
-        r,g,b, r,g,b, 0,0,0,
-
-        r,g,b, 0,0,0, r,g,b,
-        r,g,b, r,g,b, 0,0,0,
-
-        r,g,b, 0,0,0, r,g,b,
-        r,g,b, r,g,b, 0,0,0,
-
-        r,g,b, 0,0,0, r,g,b,
-        r,g,b, r,g,b, 0,0,0
-    };
-
-    vao = create3DObject(GL_TRIANGLES, 6*2*3, vertex_buffer_data, color_buffer_data, GL_FILL);
+    model = glm::mat4(1.0f);
 }
 
-void SuperBlock::update()
+void SuperBlock::update(float dt)
 {
     if(rot_dir!=NO)
     {
-        done_rotation += rotation_unit;
-        rem_rotation -= rotation_unit;
+        done_rotation = min(90.0f, done_rotation + roll_speed*dt);
+        rem_rotation = 90.0f - done_rotation;
     }
     if(rot_dir!=NO && rem_rotation<=0.0f)
     {
@@ -185,13 +137,23 @@ void SuperBlock::update()
         }
         rot_dir = NO;
         game.check_after_step();
+        land_dust();
     }
+}
+
+// Bụi bay ra quanh chân khối mỗi lần lăn xong (chỉ hình ảnh).
+void SuperBlock::land_dust()
+{
+    float l = tile_side_length;
+    glm::vec3 c(ix*l + l/2, iy*l + l/2, 0.0f);
+    glm::vec2 half(l/2, l/2);
+    if(along==X) { c.x += l/2; half.x = l; }
+    else if(along==Y) { c.y += l/2; half.y = l; }
+    effects.dust(c, half);
 }
 
 void SuperBlock::draw(glm::mat4 M)
 {
-    glm::mat4 VP = (proj_type?Matrices.projectionP:Matrices.projectionO) * Matrices.view;
-
     glm::mat4 translate = glm::translate (pos);
     glm::mat4 rev;
     M = M * translate;
@@ -204,6 +166,8 @@ void SuperBlock::draw(glm::mat4 M)
 
     M = M * rotate;
 
+    // Góc hiển thị có easing (tăng tốc rồi giảm tốc); luật chỉ dùng done_rotation.
+    float dr = 90.0f * ease_in_out(done_rotation / 90.0f);
     float x = tile_side_length;
     real_pos = pos;
     real_pos.z = 0;
@@ -213,34 +177,34 @@ void SuperBlock::draw(glm::mat4 M)
         if(rot_dir==R)
         {
             translate = glm::translate(glm::vec3(x, 0, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*done_rotation/180.0f), glm::vec3(0,1,0));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,1,0));
             rev = glm::translate(glm::vec3(-x, 0, x/2));
             M = M * translate * rotate * rev;
-            real_pos.x += tile_side_length * (1-cos(done_rotation*M_PI/180) + 0.5*sin(done_rotation*M_PI/180));
+            real_pos.x += tile_side_length * (1-cos(dr*M_PI/180) + 0.5*sin(dr*M_PI/180));
         }
         else if(rot_dir==L)
         {
             translate = glm::translate(glm::vec3(-x, 0, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(-M_PI*done_rotation/180.0f), glm::vec3(0,1,0));
+            rotate = glm::rotate(glm::mat4(1.0f), float(-M_PI*dr/180.0f), glm::vec3(0,1,0));
             rev = glm::translate(glm::vec3(x, 0, x/2));
             M = M * translate * rotate * rev;
-            real_pos.x -= tile_side_length * (1-cos(done_rotation*M_PI/180)+ 0.5*sin(done_rotation*M_PI/180));
+            real_pos.x -= tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
         }
         else if(rot_dir==U)
         {
             translate = glm::translate(glm::vec3(0, x/2, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*done_rotation/180.0f), glm::vec3(-1,0,0));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(-1,0,0));
             rev = glm::translate(glm::vec3(0, -x/2, x/2));
             M = M * translate * rotate * rev;
-            real_pos.y += 0.5*tile_side_length * (1-cos(done_rotation*M_PI/180)+ sin(done_rotation*M_PI/180));
+            real_pos.y += 0.5*tile_side_length * (1-cos(dr*M_PI/180)+ sin(dr*M_PI/180));
         }
         else if(rot_dir==D)
         {
             translate = glm::translate(glm::vec3(0, -x/2, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(-M_PI*done_rotation/180.0f), glm::vec3(-1,0,0));
+            rotate = glm::rotate(glm::mat4(1.0f), float(-M_PI*dr/180.0f), glm::vec3(-1,0,0));
             rev = glm::translate(glm::vec3(0, x/2, x/2));
             M = M * translate * rotate * rev;
-            real_pos.y -= 0.5*tile_side_length * (1-cos(done_rotation*M_PI/180)+ sin(done_rotation*M_PI/180));
+            real_pos.y -= 0.5*tile_side_length * (1-cos(dr*M_PI/180)+ sin(dr*M_PI/180));
         }
     }
     else if(along==Y)
@@ -248,34 +212,34 @@ void SuperBlock::draw(glm::mat4 M)
         if(rot_dir==R)
         {
             translate = glm::translate(glm::vec3(0, x/2, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*done_rotation/180.0f), glm::vec3(-1,0,0));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(-1,0,0));
             rev = glm::translate(glm::vec3(0, -x/2, x/2));
             M = M * translate * rotate * rev;
-            real_pos.x += 0.5*tile_side_length * (1-cos(done_rotation*M_PI/180)+ sin(done_rotation*M_PI/180));
+            real_pos.x += 0.5*tile_side_length * (1-cos(dr*M_PI/180)+ sin(dr*M_PI/180));
         }
         else if(rot_dir==L)
         {
             translate = glm::translate(glm::vec3(0, -x/2, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*done_rotation/180.0f), glm::vec3(1,0,0));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(1,0,0));
             rev = glm::translate(glm::vec3(0, x/2, x/2));
             M = M * translate * rotate * rev;
-            real_pos.x -= 0.5*tile_side_length * (1-cos(done_rotation*M_PI/180)+ sin(done_rotation*M_PI/180));
+            real_pos.x -= 0.5*tile_side_length * (1-cos(dr*M_PI/180)+ sin(dr*M_PI/180));
         }
         else if(rot_dir==U)
         {
             translate = glm::translate(glm::vec3(-x, 0, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*done_rotation/180.0f), glm::vec3(0,-1,0));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,-1,0));
             rev = glm::translate(glm::vec3(x, 0, x/2));
             M = M * translate * rotate * rev;
-            real_pos.y += tile_side_length * (1-cos(done_rotation*M_PI/180)+ 0.5*sin(done_rotation*M_PI/180));
+            real_pos.y += tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
         }
         else if(rot_dir==D)
         {
             translate = glm::translate(glm::vec3(x, 0, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*done_rotation/180.0f), glm::vec3(0,1,0));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,1,0));
             rev = glm::translate(glm::vec3(-x, 0, x/2));
             M = M * translate * rotate * rev;
-            real_pos.y -= tile_side_length * (1-cos(done_rotation*M_PI/180)+ 0.5*sin(done_rotation*M_PI/180));
+            real_pos.y -= tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
         }
     }
     else if(along==Z)
@@ -284,41 +248,116 @@ void SuperBlock::draw(glm::mat4 M)
         {
             //cout << pos.x << " " << pos.y << " " << pos.z << endl;
             translate = glm::translate(glm::vec3(-x, 0, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*done_rotation/180.0f), glm::vec3(0,1,0));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,1,0));
             rev = glm::translate(glm::vec3(x, 0, x/2));
             M = M * translate * rotate * rev;
-            real_pos.x += tile_side_length * (1-cos(done_rotation*M_PI/180)+ 0.5*sin(done_rotation*M_PI/180));
+            real_pos.x += tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
         }
         else if(rot_dir==L)
         {
             translate = glm::translate(glm::vec3(-x, 0, x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(-M_PI*done_rotation/180.0f), glm::vec3(0,1,0));
+            rotate = glm::rotate(glm::mat4(1.0f), float(-M_PI*dr/180.0f), glm::vec3(0,1,0));
             rev = glm::translate(glm::vec3(x, 0, -x/2));
             M = M * translate * rotate * rev;
-            real_pos.x -= tile_side_length * (1-cos(done_rotation*M_PI/180)+ 0.5*sin(done_rotation*M_PI/180));
+            real_pos.x -= tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
         }
         else if(rot_dir==U)
         {
             translate = glm::translate(glm::vec3(-x, x/2, 0));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*done_rotation/180.0f), glm::vec3(0,0,1));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,0,1));
             rev = glm::translate(glm::vec3(x, -x/2, 0));
             M = M * translate * rotate * rev;
-            real_pos.y += tile_side_length * (1-cos(done_rotation*M_PI/180)+ 0.5*sin(done_rotation*M_PI/180));
+            real_pos.y += tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
         }
         else if(rot_dir==D)
         {
             translate = glm::translate(glm::vec3(-x, -x/2, 0));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*done_rotation/180.0f), glm::vec3(0,0,-1));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,0,-1));
             rev = glm::translate(glm::vec3(x, x/2, 0));
             M = M * translate * rotate * rev;
-            real_pos.y -= tile_side_length * (1-cos(done_rotation*M_PI/180)+ 0.5*sin(done_rotation*M_PI/180));
+            real_pos.y -= tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
         }
     }
 
-    Matrices.model = M;
-    glm::mat4 MVP = VP * Matrices.model;
-    glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
-    draw3DObject(vao);
+
+    // Hộp đơn vị [0,1]^3 -> hộp tâm tại gốc, kích thước dim.
+    glm::mat4 box = M * glm::translate(-dim/2.0f) * glm::scale(dim);
+
+    // Hiệu ứng: rơi xuống khi mở màn, chìm vào lỗ khi thắng, lật và rơi khi thua.
+    double now = glfwGetTime();
+    float dz = effects.block_drop(now);
+    glm::mat4 fx(1.0f);
+    float t = float(now - end_start);
+    if(end_anim == END_SINK)
+        dz -= 2.6f * ease_in_out(t / 1.1f);
+    else if(end_anim == END_FALL)
+    {
+        glm::vec3 c = glm::vec3(box * glm::vec4(0.5f, 0.5f, 0.5f, 1.0f));
+        glm::vec3 drift = glm::vec3(fall_dir * min(t, 1.5f) * 0.9f, 0.0f);
+        glm::vec3 axis = glm::cross(glm::vec3(0, 0, 1), glm::vec3(fall_dir, 0.0f));
+        float angle = min(t * 3.0f, 1.8f);
+        fx = glm::translate(c + drift) * glm::rotate(angle, axis) * glm::translate(-c);
+        dz -= 7.0f * t * t;
+    }
+    model = glm::translate(glm::vec3(0, 0, dz)) * fx * box;
+
+    BoxStyle s(glm::vec3(color.r, color.g, color.b), PAT_PLAIN, 0.04f);
+    renderer.draw_box(model, dim, s);
+}
+
+// Bóng mềm dưới khối (vẽ trong lượt trong suốt, sau khi đã vẽ sàn).
+void SuperBlock::draw_shadow()
+{
+    if(end_anim == END_FALL)
+        return;
+    glm::vec3 lo(1e9f), hi(-1e9f);
+    for(int k=0; k<8; k++)
+    {
+        glm::vec4 p = model * glm::vec4(float(k&1), float((k>>1)&1), float((k>>2)&1), 1.0f);
+        lo = glm::min(lo, glm::vec3(p));
+        hi = glm::max(hi, glm::vec3(p));
+    }
+    float height = max(0.0f, lo.z);
+    float alpha = 0.6f * clamp01(1.0f - height / 6.0f);
+    if(end_anim == END_SINK)
+        alpha *= clamp01(1.0f - float(glfwGetTime() - end_start) / 0.6f);
+    if(alpha <= 0.01f)
+        return;
+    float pad = 0.15f + 0.05f * height;
+    BoxStyle s(glm::vec3(0.0f), PAT_SHADOW, 0.0f, alpha);
+    renderer.draw_aabb(glm::vec3(lo.x - pad, lo.y - pad, 0.004f),
+                       glm::vec3(hi.x - lo.x + 2*pad, hi.y - lo.y + 2*pad, 0.001f), s);
+}
+
+void SuperBlock::start_sink(double now)
+{
+    end_anim = END_SINK;
+    end_start = now;
+}
+
+void SuperBlock::start_fall(double now)
+{
+    // Lật về phía không có sàn (nếu một nửa khối còn trên sàn), ngược lại theo hướng vừa lăn.
+    glm::vec2 d(0.0f);
+    if(last_dir==R) d = glm::vec2(1, 0);
+    else if(last_dir==L) d = glm::vec2(-1, 0);
+    else if(last_dir==U) d = glm::vec2(0, 1);
+    else if(last_dir==D) d = glm::vec2(0, -1);
+    if(along==X)
+    {
+        bool a = stage.has_tile(ix, iy), b = stage.has_tile(ix+1, iy);
+        if(a && !b) d = glm::vec2(1, 0);
+        else if(!a && b) d = glm::vec2(-1, 0);
+    }
+    else if(along==Y)
+    {
+        bool a = stage.has_tile(ix, iy), b = stage.has_tile(ix, iy+1);
+        if(a && !b) d = glm::vec2(0, 1);
+        else if(!a && b) d = glm::vec2(0, -1);
+    }
+    fall_dir = d;
+    end_anim = END_FALL;
+    end_start = now;
 }
 
 bool SuperBlock::is_moving()
@@ -354,137 +393,10 @@ void SuperBlock::move(int m)
         rem_rotation = 90.0f;
         done_rotation = 0.0f;
     }
+    if(rot_dir!=NO)
+        last_dir = rot_dir;
 }
 
 SuperBlock::~SuperBlock()
 {
-    delete vao;
 }
-/*
-SuperBlock::SuperBlock(){}
-SuperBlock::SuperBlock(glm::vec3 pos, glm::vec3 dim, glm::vec3 rot, Color c)
-{
-    initialize(pos, dim, rot, c);
-}
-void SuperBlock::initialize(glm::vec3 pos, glm::vec3 dim, glm::vec3 rot, Color c)
-{
-    Sprite::initialize(pos, rot);
-    rot_mat = glm::mat4(1.0f);
-}
-void SuperBlock::draw(glm::mat4 M){}
-void SuperBlock::move(int m){}
-SuperBlock::SuperBlock(glm::vec3 pos, glm::vec3 dim, glm::vec3 rot, Color c, glm::vec3 axis, glm::vec3 up)
-{
-    initialize(pos, dim, rot, c, axis, up);
-}
-
-SuperBlock::SuperBlock(){}
-
-SuperBlock::SuperBlock(glm::vec3 pos, glm::vec3 dim, glm::vec3 rot, Color c, glm::vec3 axis, glm::vec3 up)
-{
-    initialize(pos, dim, rot, c, axis, up);
-}
-
-void SuperBlock::initialize(glm::vec3 pos, glm::vec3 dim, glm::vec3 rot, Color c, glm::vec3 axis, glm::vec3 up)
-{
-    Sprite::initialize(pos, rot);
-    this->axis = axis;
-    this->up = up;
-    this->rot_mat = glm::mat4(1.0f);
-    add_block(new Block(glm::vec3(0,0,0), dim, glm::vec3(0,0,0), c));
-}
-*/
-/*
-
-void SuperBlock::initialize(glm::vec3 pos, glm::vec3 dim, glm::vec3 rot, Color c, glm::vec3 axis, glm::vec3 up)
-{
-    Sprite::initialize(pos, rot);
-    this->axis = axis;
-    this->up = up;
-    this->rot_mat = glm::mat4(1.0f);
-    add_block(new Block(glm::vec3(0,0,0), dim, glm::vec3(0,0,0), c));
-}
-
-void SuperBlock::approx(glm::vec3 & v)
-{
-    v.x = float(int(v.x*(10000+10))/10000);
-    v.y = float(int(v.y*(10000+10))/10000);
-    v.z = float(int(v.z*(10000+10))/10000);
-}
-
-void SuperBlock::draw(glm::mat4 M)
-{
-    glm::mat4 translate = glm::translate (pos);
-
-    glm::mat4 yaw = glm::rotate(rot.z, glm::vec3(0,0,1));
-    glm::mat4 pitch = glm::rotate(rot.x, glm::vec3(1,0,0));
-    glm::mat4 roll = glm::rotate(rot.y, glm::vec3(0,1,0));
-
-    M = M * translate * rot_mat;
-
-    for(vector<Block*>::iterator it = blocks.begin(); it!=blocks.end(); it++)
-        (*it)->draw(M);
-}
-
-bool compare_vec3(const glm::vec3 &vecA, const glm::vec3 &vecB)
-{
- return (vecA[0] == vecB[0])
-        && (vecA[1] == vecB[1])
-        && (vecA[2] == vecB[2]);
-}
-//vec = glm::vec3(rotationMat * glm::vec4(vec, 1.0));
-void SuperBlock::move(int m)
-{
-    glm::vec3 r;
-    if(m==GLFW_KEY_UP)
-    {
-        r = glm::vec3(0,1,0);
-    }
-    else if(m==GLFW_KEY_DOWN)
-    {
-        r = glm::vec3(0,-1,0);
-    }
-    else if(m==GLFW_KEY_LEFT)
-    {
-        r = glm::vec3(-1,0,0);
-    }
-    else if(m==GLFW_KEY_RIGHT)
-    {
-        r = glm::vec3(1,0,0);
-    }
-    r = glm::cross(glm::vec3(0,0,1), r);
-
-
-
-    up = glm::vec3(glm::rotate(glm::mat4(1.0f), float(1.0*M_PI/2.0),r) * glm::vec4(up, 1.0f));
-    axis = glm::vec3(glm::rotate(glm::mat4(1.0f), float(1.0*M_PI/2.0),r) * glm::vec4(axis, 1.0f));
-    approx(up);
-    approx(axis);
-
-    //cout << r.x << " " << r.y << " " << r.z << endl;
-    //cout << up.x << " " << up.y << " " << up.z << endl;
-    //glm::vec4 up4 = glm::vec4(up, 1.0f);
-    //cout << up4.x << " " << up4.y << " " << up4.z << " " << up4.w << endl;
-
-    glm::mat4 ro = glm::rotate(glm::mat4(1.0f), float(-1.0f*M_PI/2.0f),r);
-    for(int i=0; i<4; i++)
-    {
-        for(int j=0; j<4; j++)
-        {
-            printf("%.6f ", ro[i][j]);
-        }
-        cout << endl;
-    }
-
-
-    //cout << up.x << " " << up.y << " " << up.z << endl;
-    //cout << up.x << " " << up.y << " " << up.z << endl;
-    //cout << endl;
-
-    upn = glm::cross(r, up);
-    axisn = glm::cross(r, axis);
-    if(!((up==upn) || ((-1.0f*up)==upn)))
-        up = upn;
-
-}
-*/

@@ -5,6 +5,9 @@ code/a.exe
 *.exe
 code/solution.txt
 solution.txt
+code/build/
+code/solver_log.txt
+code/screenshot_*.png
 
 # Python
 __pycache__/
