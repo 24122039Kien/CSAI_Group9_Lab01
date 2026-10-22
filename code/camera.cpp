@@ -11,6 +11,7 @@ int helicopter=GLFW_KEY_X, vertical=GLFW_KEY_V, tower=GLFW_KEY_B, follow=GLFW_KE
 
 void Camera::initialize_camera()
 {
+    frame_scale = 1.0f;
     eye = glm::vec3(0, 0, 5);
     dir = glm::vec3(0, 0, -1);
     up = glm::vec3(0, 1, 0);
@@ -27,6 +28,10 @@ glm::mat4 Camera::get_view()
         return glm::lookAt(eye, eye + dir, up);
     else
         return glm::lookAt(glm::vec3(0,0,5), glm::vec3(0,0,5) + glm::vec3(0,0,-1), glm::vec3(0,1,0));
+}
+glm::vec3 Camera::get_eye()
+{
+    return eye;
 }
 int Camera::get_view_type()
 {
@@ -53,7 +58,7 @@ void Camera::set_mouse_view()
     glm::vec3 cr = glm::normalize(glm::cross(dir, up));
     up = glm::normalize(glm::cross(cr, dir));
     cr = glm::normalize(float(x)*cr + float(y)*up);
-    dir += 0.005f*(cr-dir);
+    dir += frame_scale*0.005f*(cr-dir);
     dir = glm::normalize(dir);
     //up = glm::cross(new_dir, dir);
     //dir = glm::normalize(new_dir);
@@ -128,8 +133,11 @@ void Camera::set_drag_view()
 
 }
 
-void Camera::update()
+void Camera::update(float dt)
 {
+    // Bản gốc dùng bước cố định mỗi frame (thiết kế cho 60 FPS); nhân f để tốc độ không phụ thuộc FPS.
+    float f = dt * 60.0f;
+    frame_scale = f;
     if(view == helicopter || view==mouse_view || view==drag_view)
     {
         up = glm::vec3(0,0,1);
@@ -137,30 +145,30 @@ void Camera::update()
         {
             glm::vec3 hor = glm::cross(dir, up);
             hor = glm::normalize(hor);
-            eye -= camera_move_unit*hor;
+            eye -= f*camera_move_unit*hor;
         }
         else if(cam_move_dir == 'D')
         {
             glm::vec3 hor = glm::cross(dir, up);
             hor = glm::normalize(hor);
-            eye += camera_move_unit*hor;
+            eye += f*camera_move_unit*hor;
         }
         else if(cam_move_dir == 'W')
         {
             glm::vec3 hor = glm::cross(dir, up);
             glm::vec3 front = glm::normalize(glm::cross(hor, dir));
-            eye += camera_move_unit*front;
+            eye += f*camera_move_unit*front;
         }
         else if(cam_move_dir == 'S')
         {
             glm::vec3 hor = glm::cross(dir, up);
             glm::vec3 back = glm::normalize(glm::cross(hor, dir));
-            eye -= camera_move_unit*back;
+            eye -= f*camera_move_unit*back;
         }
         else if(cam_move_dir == 'T')
-            eye += camera_move_unit*dir;
+            eye += f*camera_move_unit*dir;
         else if(cam_move_dir == 'G')
-            eye -= camera_move_unit*dir;
+            eye -= f*camera_move_unit*dir;
     }
     if(view==helicopter)
     {
@@ -168,21 +176,21 @@ void Camera::update()
         {
             glm::vec3 hor = glm::cross(dir, up);
             hor = glm::normalize(hor);
-            dir -= camera_dir_change_unit*hor;
+            dir -= f*camera_dir_change_unit*hor;
             dir = glm::normalize(dir);
         }
         else if(ori_move_dir == 'L')
         {
             glm::vec3 hor = glm::cross(dir, up);
             hor = glm::normalize(hor);
-            dir += camera_dir_change_unit*hor;
+            dir += f*camera_dir_change_unit*hor;
             dir = glm::normalize(dir);
         }
         else if(ori_move_dir == 'I')
         {
             glm::vec3 hor = glm::cross(dir, up);
             hor = glm::normalize(hor);
-            dir += camera_dir_change_unit*glm::cross(hor, dir);
+            dir += f*camera_dir_change_unit*glm::cross(hor, dir);
             dir = glm::normalize(dir);
             up = glm::cross(hor, dir);
             up = glm::normalize(up);
@@ -191,7 +199,7 @@ void Camera::update()
         {
             glm::vec3 hor = glm::cross(dir, up);
             hor = glm::normalize(hor);
-            dir -= camera_dir_change_unit*glm::cross(hor, dir);
+            dir -= f*camera_dir_change_unit*glm::cross(hor, dir);
             dir = glm::normalize(dir);
             up = glm::cross(hor, dir);
             up = glm::normalize(up);
@@ -205,7 +213,8 @@ void Camera::update()
         r.x += 1.0f;
         r.y -= 1.5f;
         //eye = r;
-        eye = eye + 0.05f*(r-eye);
+        // Bám theo mượt, độc lập FPS (bản gốc: eye += 0.05*(r-eye) mỗi frame).
+        eye = eye + (1.0f - exp(-3.2f*dt))*(r-eye);
         dir = glm::normalize(p - eye);
         glm::vec3 q = glm::cross( dir, glm::vec3(0,0,1));
         up = glm::normalize(glm::cross(q, dir));

@@ -78,7 +78,11 @@ bool Game::is_won()
 
 void Game::initialize(int level)
 {
+    // Gọi lại được để chơi lại / đổi màn: đặt lại trạng thái ván rồi nạp màn.
     this->level = level;
+    number_of_steps = 0;
+    gameover = false;
+    won = false;
     string name;
 
     name = string("data/") + to_string(level) + string(".data");
@@ -86,7 +90,7 @@ void Game::initialize(int level)
     superblock.initialize(
                     stage.get_initial_pos(),
                     glm::vec3(2*tile_side_length, tile_side_length, tile_side_length),
-                    colors[RED],
+                    colors[BLOCK_COLOR],
                     stage.get_along()
                 );
 }
@@ -112,15 +116,7 @@ int Game::get_level()
 {
     return level;
 }
-void Game::increase_level()
+int Game::get_steps()
 {
-    if(level!=1)
-        level++;
-}
-
-
-void Game::done()
-{
-    stage.~Floor();
-    superblock.~SuperBlock();
+    return number_of_steps;
 }

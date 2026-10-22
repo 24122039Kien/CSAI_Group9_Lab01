@@ -12,12 +12,14 @@ class Camera
         pair<double, double> prev;
         int view;
         int flag;
+        float frame_scale;   // dt*60 của frame hiện tại
     public:
         void initialize_camera();
         glm::mat4 get_view();
         void cam_move(int to);
         void ori_move(int to);
-        void update();
+        void update(float dt);
+        glm::vec3 get_eye();
         void dir_change(double x, double y);
         void change_view(int v);
         void change_view_small(int v);

@@ -18,8 +18,7 @@ class Game
         void gameover_fun();
         void won_fun();
         int get_level();
-        void done();
-        void increase_level();
+        int get_steps();
 };
 
 #endif
