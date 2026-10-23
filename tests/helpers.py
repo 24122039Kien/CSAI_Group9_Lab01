@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from ai import BloxorzProblem, Level
@@ -18,6 +19,12 @@ SOLUTIONS = {
     ),
 }
 OPTIMAL_LENGTH = {1: 10, 2: 68}
+
+# Màn mới của TV4: catalog và file phát lại là nguồn dữ liệu dùng chung.
+for entry in json.loads((DATA / "catalog.json").read_text(encoding="utf-8"))["levels"]:
+    if entry["id"] > 2 and entry["status"] == "solvable":
+        OPTIMAL_LENGTH[entry["id"]] = entry["optimal_length"]
+        SOLUTIONS[entry["id"]] = (DATA / entry["solution_file"]).read_text(encoding="utf-8").strip()
 
 
 def level_path(n: int) -> Path:
