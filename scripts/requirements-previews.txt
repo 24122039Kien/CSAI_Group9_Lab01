@@ -1,0 +1,2 @@
+# Chỉ cần khi dựng lại ảnh minh họa; solver và test không cần Pillow.
+Pillow>=10.1
