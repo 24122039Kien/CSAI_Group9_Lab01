@@ -1,918 +1,985 @@
-# System — Giải thích toàn bộ hệ thống Bloxorz Solver (nhóm 9)
+# System — Hiểu toàn bộ đồ án Bloxorz Solver từ con số 0 (nhóm 9)
 
-> **Đọc cho ai:** cả 5 thành viên. Đề có ghi giảng viên được quyền **vấn đáp ngẫu nhiên** (mục 5 của `AI - Project 1.pdf`), nên ai cũng phải giải thích được mọi phần của hệ thống, kể cả phần mình không code.
-> **Nguồn:** đề `Docs/AI - Project 1.pdf` (mục 2 luật chơi, mục 3 yêu cầu) và mã nguồn ở commit `6d54dad` (nhánh `main`).
-> **Cách đọc:** mục 1–2 cho bức tranh chung và luật chơi. Mục 3–5 đi qua **từng file** trong `ai/` và `code/`. Mục 6–7 giải thích bài toán tìm kiếm và **cách từng thuật toán chạy**, có ví dụ dò tay. Mục 8–10 là đo đạc, việc còn thiếu và câu hỏi vấn đáp.
+> **Tài liệu này dành cho ai?** Cho cả 5 thành viên, kể cả người chưa từng học thuật toán tìm kiếm. Đề có ghi giảng viên được **vấn đáp ngẫu nhiên** bất kỳ ai (mục 5 của `AI - Project 1.pdf`), nên ai cũng cần hiểu cả hệ thống, không chỉ phần mình code.
 >
-> Tài liệu này chỉ giải thích và dùng mã giả. Thân các hàm `solve()` và `manhattan_heuristic` vẫn là phần nhóm tự cài (quy tắc của repo). Các con số "tham chiếu" bên dưới được tính bằng một bản cài thử nằm ngoài repo, chỉ để minh họa độ lớn. Số liệu chính thức phải lấy từ solver của nhóm.
+> **Đọc thế nào?** Đọc **theo thứ tự**. Mỗi phần chỉ dùng những gì đã giải thích ở phần trước. Phần 1–4 không cần biết code. Phần 5 đi qua code. Phần 6–10 giải thích 4 thuật toán bằng cách **chạy tay trên cùng một màn chơi nhỏ**, nhờ vậy bạn thấy rõ chúng khác nhau ở đâu.
+>
+> **Nguồn:** đề `Docs/AI - Project 1.pdf` và code trên nhánh `main` (sau khi đã merge bộ màn v1 và A\*). Các bảng "chạy tay" được lấy từ mô phỏng thật bằng `ai/problem.py`, không phải tự nghĩ ra.
+>
+> **Lưu ý:** BFS, DFS, UCS và `manhattan_heuristic` vẫn là phần các thành viên **tự cài** (sẽ bị vấn đáp), nên tài liệu chỉ mô tả cách chúng chạy bằng lời và mã giả, không có code Python để chép.
 
 ---
 
 ## Mục lục
 
-1. [Bức tranh tổng thể](#1-bức-tranh-tổng-thể)
-2. [Luật chơi và quy ước tọa độ](#2-luật-chơi-và-quy-ước-tọa-độ)
-3. [Thư mục `ai/` — từng file](#3-thư-mục-ai--từng-file)
-4. [Các file Python xung quanh: `main.py`, `tests/`](#4-các-file-python-xung-quanh-mainpy-tests)
-5. [Thư mục `code/` — từng file](#5-thư-mục-code--từng-file)
-6. [Hình thức hóa bài toán tìm kiếm](#6-hình-thức-hóa-bài-toán-tìm-kiếm)
-7. [Các thuật toán tìm kiếm chạy như thế nào](#7-các-thuật-toán-tìm-kiếm-chạy-như-thế-nào)
-8. [Đo đạc và thực nghiệm](#8-đo-đạc-và-thực-nghiệm)
-9. [Khoảng cách so với đề — việc còn lại](#9-khoảng-cách-so-với-đề--việc-còn-lại)
-10. [Câu hỏi vấn đáp thường gặp](#10-câu-hỏi-vấn-đáp-thường-gặp)
+- [Phần 0. Tóm tắt 1 phút + bảng thuật ngữ](#phần-0-tóm-tắt-1-phút--bảng-thuật-ngữ)
+- [Phần 1. Đề bài yêu cầu gì?](#phần-1-đề-bài-yêu-cầu-gì)
+- [Phần 2. Hệ thống gồm những gì? (bức tranh lớn)](#phần-2-hệ-thống-gồm-những-gì-bức-tranh-lớn)
+- [Phần 3. Hiểu game qua hình vẽ](#phần-3-hiểu-game-qua-hình-vẽ)
+- [Phần 4. Biến game thành "bài toán tìm đường"](#phần-4-biến-game-thành-bài-toán-tìm-đường)
+- [Phần 5. Đi dạo qua code](#phần-5-đi-dạo-qua-code)
+- [Phần 6. Khung chung của mọi thuật toán tìm kiếm](#phần-6-khung-chung-của-mọi-thuật-toán-tìm-kiếm)
+- [Phần 7. BFS — loang theo từng lớp](#phần-7-bfs--loang-theo-từng-lớp)
+- [Phần 8. DFS — đi sâu tới cùng rồi quay lui](#phần-8-dfs--đi-sâu-tới-cùng-rồi-quay-lui)
+- [Phần 9. UCS — luôn đi tiếp từ chỗ "rẻ nhất"](#phần-9-ucs--luôn-đi-tiếp-từ-chỗ-rẻ-nhất)
+- [Phần 10. A\* — rẻ nhất + biết hướng về đích](#phần-10-a--rẻ-nhất--biết-hướng-về-đích)
+- [Phần 11. So sánh 4 thuật toán](#phần-11-so-sánh-4-thuật-toán)
+- [Phần 12. Đo đạc cho phần thực nghiệm](#phần-12-đo-đạc-cho-phần-thực-nghiệm)
+- [Phần 13. Còn thiếu gì so với đề?](#phần-13-còn-thiếu-gì-so-với-đề)
+- [Phần 14. Câu hỏi vấn đáp thường gặp](#phần-14-câu-hỏi-vấn-đáp-thường-gặp)
 
 ---
 
-## 1. Bức tranh tổng thể
+## Phần 0. Tóm tắt 1 phút + bảng thuật ngữ
 
-### 1.1. Đề bài yêu cầu gì
+**Tóm tắt 1 phút:**
 
-Đề `AI - Project 1.pdf` yêu cầu viết lại game **Bloxorz**: lăn khối hộp 1×1×2 trên lưới ô vuông sao cho khối **đứng thẳng** rơi vào lỗ đích. Sau đó viết 4 solver **BFS, DFS (hoặc IDS), UCS, A\*** tự cài bằng Python, đo hiệu năng và viết báo cáo. Thang điểm (mục 3):
+1. Game **Bloxorz**: lăn một khối hộp dài 2 ô trên mặt sàn, mục tiêu là cho khối **đứng thẳng** lọt xuống **lỗ đích**.
+2. Nhóm có hai phần chương trình:
+   - Game 3D viết bằng **C++** (thư mục `code/`): để chơi và nhìn.
+   - "Bộ não" viết bằng **Python** (thư mục `ai/`): để máy tự tìm cách thắng.
+3. Bấm nút "BFS / DFS / UCS / A\*" trong game → game gọi Python → Python tìm ra chuỗi nước đi như `R U U R` → game tự lăn khối theo chuỗi đó.
+4. Bốn thuật toán khác nhau ở **cách chọn chỗ nào để thử tiếp**. Đó là toàn bộ bí mật của chúng.
 
-| Mục đề | Điểm | Nội dung |
+**Bảng thuật ngữ** (quay lại tra khi gặp từ lạ):
+
+| Thuật ngữ | Nghĩa dễ hiểu |
+|---|---|
+| **Trạng thái** (state) | Một "ảnh chụp" đầy đủ của ván chơi tại một thời điểm: khối ở đâu, đang đứng hay nằm, cây cầu nào đang mở |
+| **Hành động** (action) | Một nước đi: `U`, `D`, `L` hoặc `R` |
+| **Nước đi hợp lệ** | Nước đi không làm khối rơi |
+| **Lời giải** (solution) | Chuỗi nước đi từ lúc bắt đầu tới lúc thắng, ví dụ `R U U R U R U R D L` |
+| **Node** | Trong tài liệu này, hiểu đơn giản là "một trạng thái mà thuật toán đang xét" |
+| **Sinh** (generate) | Từ một trạng thái, thử cả 4 hướng để biết đi được tới những trạng thái nào |
+| **Mở rộng** (expand) | Lấy một trạng thái ra để **sinh** các trạng thái con của nó. Đề yêu cầu đếm số lần này ("Expanded Nodes") |
+| **Frontier** | "Danh sách chờ": các trạng thái đã biết tới nhưng chưa mở rộng |
+| **Visited / parent** | "Sổ ghi chép": các trạng thái đã gặp, kèm ghi chú "tới đây từ đâu, bằng nước nào" để truy ngược lời giải |
+| **Chi phí** (cost) | "Giá" của một nước đi. Mặc định mỗi nước tốn 1 |
+| **g** | Tổng chi phí đã bỏ ra để đi từ đầu tới trạng thái hiện tại |
+| **h** (heuristic) | **Ước đoán** chi phí còn lại để tới đích |
+| **f = g + h** | Ước đoán tổng chi phí của cả hành trình nếu đi qua trạng thái này (A\* dùng) |
+| **Tối ưu** (optimal) | Tìm ra lời giải tốt nhất: ngắn nhất, hoặc rẻ nhất |
+| **Đầy đủ** (complete) | Nếu có lời giải thì chắc chắn sẽ tìm ra |
+| **Admissible** | Heuristic "không bao giờ nói quá": luôn ước đoán **nhỏ hơn hoặc bằng** chi phí thật |
+| **Consistent** | Heuristic "không tụt đột ngột": đi một nước thì ước đoán giảm không quá giá của nước đó |
+| **Heap / hàng đợi ưu tiên** | Cấu trúc dữ liệu luôn lấy ra được phần tử **nhỏ nhất** thật nhanh |
+| **Bộ nhớ đỉnh** (peak memory) | Lúc thuật toán chiếm nhiều bộ nhớ nhất là bao nhiêu |
+
+---
+
+## Phần 1. Đề bài yêu cầu gì?
+
+Đề `AI - Project 1.pdf` có 5 việc chính:
+
+| Việc | Điểm | Nói đơn giản |
 |---|---:|---|
-| 3.1 Reimplement the Game | 20 | 10đ core (sàn, ô trống, lỗ đích, 3 tư thế, 4 hướng lăn, phát hiện rơi, phát hiện thắng) + 10đ advanced tiles (ô dễ vỡ, cầu, 3 loại công tắc soft/heavy/split, tách/gộp khối, cầu toggle và permanent). Có GUI, có nút New Game, Restart và nút gọi từng solver |
-| 3.2 BFS | 10 | Ghi **Search Time, Memory Usage, Expanded Nodes, Solution Length** (áp dụng cho mọi solver) |
-| 3.3 DFS | 10 | Chống lặp trạng thái (visited/hashing). Được thay bằng IDS nếu ghi rõ |
-| 3.4 UCS | 10 | **Định nghĩa và lý giải hàm chi phí.** Chi phí đều bằng 1 thì UCS ≡ BFS, nên cần chi phí **không đồng nhất** |
-| 3.5 A\* | 10 | Heuristic phù hợp + chứng minh **admissible / consistent theo đúng hàm chi phí đã chọn** |
-| 3.6 Report | 30 | Mô tả thuật toán (10) + thực nghiệm có bảng, biểu đồ, nhận xét (20) + phân công + tài liệu tham khảo |
-| 3.7 Video | 10 | Demo GUI + chơi tay + chạy solver |
-
-### 1.2. Kiến trúc: hai nửa nói chuyện qua dòng lệnh
-
-Theo buổi Q&A với giảng viên (ghi trong `Docs/report0.md` mục 1.1): GUI phải là **3D**, được viết bằng ngôn ngữ khác, nhưng **thuật toán phải bằng Python**. Vì vậy hệ thống gồm hai nửa độc lập:
-
-```
-┌──────────────────────── code/  (C++ / OpenGL 3.3) ────────────────────────┐
-│  Game 3D: vẽ, nhận phím, luật chơi bản C++, menu ImGui, phát lại lời giải  │
-│                                                                            │
-│  Bấm nút "A*" ──► run_solver() ──► chạy lệnh:                              │
-│        python ../main.py data/1.data --algo astar --out solution.txt       │
-└──────────────────────────────────┬─────────────────────────────────────────┘
-                                   │ (tiến trình con, mã thoát 0..4)
-┌──────────────────────────────────▼──────── Python ────────────────────────┐
-│  main.py  ──► ai/level.py   (đọc file .data)                               │
-│           ──► ai/problem.py (luật game bản Python = mô hình bài toán)      │
-│           ──► ai/solvers/*  (BFS / DFS / UCS / A*)                         │
-│           ──► kiểm tra lời giải bằng cách phát lại theo luật               │
-│           ──► ghi "R U U R ..." vào solution.txt                           │
-└──────────────────────────────────┬─────────────────────────────────────────┘
-                                   │
-   code/ đọc solution.txt ──► AutoPlayer gửi từng phím ──► khối tự lăn tới đích
-```
-
-**Hệ quả quan trọng nhất: luật game nằm ở HAI nơi.** Bản C++ (`code/game.cpp`, `tile.cpp`, `superblock.cpp`) dùng để chơi và vẽ. Bản Python (`ai/problem.py`, `ai/level.py`) dùng để tìm kiếm. Nếu hai bản lệch nhau, solver tìm ra lời giải "đúng trong Python" nhưng khối rơi trong game. Quy tắc nhóm: sửa luật thì sửa **cả hai**, thêm test vào `tests/test_problem.py`, rồi phát lại bằng `./a.out <n> --play <file>`.
-
-### 1.3. Đối chiếu yêu cầu đề ↔ file ↔ trạng thái
-
-| Yêu cầu (mục đề) | File đáp ứng | Trạng thái |
-|---|---|---|
-| GUI 3D, chơi được (3.1) | `code/*` | ✅ |
-| Core: sàn/ô trống/lỗ đích, 3 tư thế, 4 hướng, rơi, thắng (3.1) | C++: `superblock.cpp`, `game.cpp`, `tile.cpp` · Python: `ai/problem.py` | ✅ (test: `tests/test_problem.py`) |
-| Fragile (2.5) | `Game::check` · `BloxorzProblem.check` | ✅ |
-| Soft switch (2.5) | "công tắc thường", ô loại 3 | ✅ |
-| Heavy switch (2.5) | ô loại 4, chỉ kích hoạt khi đứng | ✅ |
-| Cầu **toggle** (2.5) | `Floor::toggle` · `bridge_mask` | ✅ |
-| Cầu **permanent**, một công tắc → **nhiều** ô cầu (2.5) | — | ⏳ chưa có (game nền chỉ có toggle, 1 công tắc ↔ 1 ô) |
-| **Split switch**, tách/gộp 2 khối lập phương (2.5) | — | ⏳ chưa có |
-| Định dạng màn text/JSON dùng chung cho mọi solver (3.1 F.Y.I) | `code/data/*.data`, đọc bởi `Floor::initialize` và `Level.from_text` | ✅ (mới có 2 màn, Q&A yêu cầu ≥ 10) |
-| Trạng thái chứa cấu hình cầu (3.1 F.Y.I) | `State.bridge_mask` | ✅ |
-| Nút New Game / Restart / Solve (3.1) | `code/hud.cpp` (menu chọn màn, Retry, 4 nút solver) | ✅ |
-| BFS / DFS / UCS / A\* (3.2–3.5) | `ai/solvers/*_solver.py` | ⏳ khung có sẵn, thân `solve()` là TODO |
-| Heuristic (3.5) | `ai/heuristics.py` | ⏳ `manhattan_heuristic` TODO |
-| Hàm chi phí không đồng nhất (3.4) | `BloxorzProblem(cost_fn=...)` | ⏳ có chỗ cắm, chưa có hàm, CLI chưa chọn được (mục 7.3.6) |
-| Ghi 4 chỉ số (3.2) | `ai/solvers/base_solver.py` (`SearchResult`, `BaseSolver.run`) | ✅ khung đo đã có |
+| **Làm lại game** (mục 3.1) | 20 | 10đ luật cơ bản (sàn, ô trống, lỗ đích, khối 3 tư thế, lăn 4 hướng, rơi thì thua, đứng trên lỗ thì thắng) + 10đ ô đặc biệt (ô cam dễ vỡ, cầu, 3 loại công tắc). Có giao diện, có nút New Game, Restart và nút gọi từng thuật toán |
+| **BFS** (mục 3.2) | 10 | Tự cài. Ghi lại 4 con số: thời gian, bộ nhớ, số node mở rộng, độ dài lời giải |
+| **DFS** (mục 3.3) | 10 | Tự cài. Phải chống đi lặp vòng tròn |
+| **UCS** (mục 3.4) | 10 | Tự cài. **Phải tự đặt "giá" cho các nước đi và giải thích vì sao**. Nếu mọi nước giá 1 thì UCS y hệt BFS, nên phải cho các nước giá khác nhau |
+| **A\*** (mục 3.5) | 10 | Tự cài. Phải có heuristic và chứng minh nó **không bao giờ đoán quá** |
+| **Báo cáo** (mục 3.6) | 30 | Giải thích thuật toán (10) + **thực nghiệm**: chạy nhiều màn, vẽ bảng, biểu đồ, nhận xét (20) |
+| **Video** (mục 3.7) | 10 | Quay demo giao diện, chơi tay, chạy thuật toán |
 
 ---
 
-## 2. Luật chơi và quy ước tọa độ
+## Phần 2. Hệ thống gồm những gì? (bức tranh lớn)
 
-Phần này cần nắm **trước** khi đọc code. Phần lớn lỗi khi viết solver đến từ việc nhầm trục.
+### 2.1. Hai nửa: "tay chân + mắt" và "bộ não"
 
-### 2.1. Tọa độ: `x` là DÒNG, `y` là CỘT
+Theo buổi Q&A với giảng viên (ghi trong `Docs/report0.md`): giao diện phải là **3D** và được viết bằng ngôn ngữ khác, nhưng **thuật toán phải bằng Python**. Vì vậy hệ thống chia làm hai:
 
-Code giữ nguyên quy ước của game C++ gốc:
+| Nửa | Thư mục | Ví von | Làm gì |
+|---|---|---|---|
+| Game C++ | `code/` | **Tay chân + mắt** | Vẽ 3D, nhận phím, cho khối lăn, hiện menu, tự lăn theo lời giải |
+| AI Python | `ai/`, `main.py` | **Bộ não** | Đọc màn chơi, mô phỏng luật, chạy thuật toán tìm lời giải |
 
-- `x` = chỉ số **dòng** trong file `.data`, `y` = chỉ số **cột**.
-- Hướng đi: **`R`: x+1**, **`L`: x−1**, **`U`: y+1**, **`D`: y−1**.
-- Trong cửa sổ 3D, `R` trông như sang phải. Nhưng **khi nhìn file text, `R` là đi XUỐNG một dòng, `U` là sang PHẢI một cột.**
+Hai nửa **không gọi hàm của nhau**. Chúng nói chuyện qua **dòng lệnh và một file chữ**, giống hai người nhắn tin.
 
-Ba tư thế (biến `along` trong C++, `Orientation` trong Python), lấy ô "neo" `(x, y)` là ô có chỉ số nhỏ nhất:
+### 2.2. Chuyện gì xảy ra khi bấm nút "A\*"?
 
-| Code | Đề (mục 2.2) | Ô bị chiếm |
-|---|---|---|
-| `Z` | Standing | `(x, y)` |
-| `X` | Lying, dọc theo trục x (= "vertically" nếu nhìn file text) | `(x, y)` và `(x+1, y)` |
-| `Y` | Lying, dọc theo trục y (= "horizontally" nếu nhìn file text) | `(x, y)` và `(x, y+1)` |
+```
+ Người chơi bấm nút "A*" trong menu
+        │
+        ▼
+ ① Game C++ chạy lệnh:   python ../main.py data/1.data --algo astar --out solution.txt
+        │                (chạy ở luồng phụ, nên cửa sổ game không bị đứng)
+        ▼
+ ② Python đọc file màn chơi data/1.data
+ ③ Python chạy A* → tìm được chuỗi nước đi
+ ④ Python tự chơi thử chuỗi đó theo luật, đúng thì ghi "R U U R ..." vào solution.txt
+        │
+        ▼
+ ⑤ Game C++ đọc solution.txt
+ ⑥ Game chơi lại màn từ đầu, cứ khối đứng yên 0.25 giây thì "bấm" giùm nước tiếp theo
+ ⑦ Khối lọt lỗ → hiện "LEVEL COMPLETE"
+```
 
-Vì ô neo luôn là ô nhỏ nhất, mỗi vị trí vật lý của khối có **đúng một** cách biểu diễn. Nhờ vậy không có hai trạng thái trùng nhau mà khác tên.
+### 2.3. Điểm nguy hiểm nhất: luật nằm ở HAI chỗ
 
-### 2.2. Bảng chuyển trạng thái (đề nhấn mạnh ở mục 3.1 F.Y.I)
+Game C++ có luật của nó (để chơi). Python cũng có luật của nó (để tìm kiếm). **Hai bản luật phải giống hệt nhau.** Nếu lệch, Python sẽ tìm ra lời giải "thắng trong đầu Python" nhưng khối lại rơi trong game.
 
-Đề yêu cầu chú ý "orientation transition table": mỗi cặp (tư thế, hướng) cho ra đúng một (tư thế mới, vị trí mới). Bảng trong code (`TRANSITIONS` ở `ai/problem.py`, sao từ `SuperBlock::update` ở `code/superblock.cpp`):
+Quy tắc của nhóm: sửa luật thì sửa **cả hai bên**, thêm test vào `tests/test_problem.py`, và cho game tự chơi lại lời giải bằng lệnh `--play` để kiểm tra. Hiện cả 10 màn có lời giải đều đã được kiểm tra: lời giải của Python thắng đúng số bước trong game C++.
 
-| Tư thế hiện tại | L | R | U | D |
+---
+
+## Phần 3. Hiểu game qua hình vẽ
+
+Phần này là **nền móng**. Phần lớn lỗi khi code solver đến từ việc hiểu sai phần này.
+
+### 3.1. Mặt sàn và ký hiệu dùng trong tài liệu
+
+Màn chơi là một lưới ô vuông. Trong tài liệu này ta vẽ bằng các ký hiệu:
+
+| Ký hiệu | Loại ô | Số trong file `.data` |
+|---|---|---:|
+| `·` | Ô trống (không có sàn, đi vào là rơi) | 0 |
+| `□` | Sàn thường | 1 |
+| `▒` | Ô cam dễ vỡ | 2 |
+| `○` | Công tắc thường (soft switch) | 3 |
+| `X` | Công tắc nặng (heavy switch) | 4 |
+| `◎` | Lỗ đích (trong file cũng ghi 0) | 0 |
+| `■` | Khối của người chơi | — |
+
+### 3.2. Tọa độ: chỗ dễ nhầm nhất
+
+Code dùng **`x` = số dòng, `y` = số cột** (giống game C++ gốc). Khi nhìn bản đồ dạng chữ (như file `.data`), các hướng đi là:
+
+```
+                L  (x − 1: đi LÊN một dòng)
+                ▲
+   D (y − 1) ◄──┼──► U (y + 1)
+  (sang TRÁI)   │   (sang PHẢI)
+                ▼
+                R  (x + 1: đi XUỐNG một dòng)
+```
+
+> ⚠️ Trong cửa sổ game 3D, camera được xoay nên `R` trông như sang phải. Nhưng **trên bản đồ chữ, `R` là đi xuống, `U` là sang phải.** Khi đọc code, cứ nhớ: **R/L đổi x (dòng), U/D đổi y (cột).**
+
+### 3.3. Ba tư thế của khối
+
+Khối dài 2 ô nên luôn ở một trong ba tư thế. Code đặt tên `Z`, `X`, `Y`, và luôn lấy **ô có tọa độ nhỏ nhất** làm "ô neo" `(x, y)`:
+
+```
+  Z = ĐỨNG              X = NẰM theo dòng         Y = NẰM theo cột
+  chiếm 1 ô (x,y)       chiếm (x,y) và (x+1,y)    chiếm (x,y) và (x,y+1)
+
+   · · ·                 · · ·                     · · · ·
+   · ■ ·                 · ■ ·    ← (x, y)         · ■ ■ ·
+   · · ·                 · ■ ·    ← (x+1, y)       · · · ·
+                                                     ↑ ↑
+                                                (x,y) (x,y+1)
+```
+
+Vì luôn lấy ô nhỏ nhất làm neo, mỗi vị trí của khối chỉ có **đúng một cách ghi**. Nhờ vậy không bị đếm trùng.
+
+### 3.4. Lăn khối: chỉ có 3 kiểu
+
+Đề (mục 2.3) mô tả 3 kiểu lăn. Lấy khối ở ô `(4,4)` làm ví dụ:
+
+**Kiểu 1: đang ĐỨNG → ĐỔ XUỐNG**, nằm trên 2 ô theo hướng lăn.
+
+```
+  Z(4,4) lăn R:                     kết quả X(5,4)
+   · ■ ·   ← dòng 4                   · · ·   ← dòng 4
+   · · ·   ← dòng 5     ──R──►        · ■ ·   ← dòng 5
+   · · ·   ← dòng 6                   · ■ ·   ← dòng 6
+```
+
+**Kiểu 2: đang NẰM DỌC theo hướng lăn → DỰNG ĐỨNG** lên một ô.
+
+```
+  X(4,4) lăn R:                     kết quả Z(6,4)
+   · ■ ·   ← dòng 4                   · · ·
+   · ■ ·   ← dòng 5     ──R──►        · · ·
+   · · ·   ← dòng 6                   · ■ ·   ← dòng 6
+```
+
+**Kiểu 3: đang NẰM NGANG so với hướng lăn → LĂN NGANG**, vẫn nằm, dịch 1 ô.
+
+```
+  X(4,4) lăn U (sang phải):         kết quả X(4,5)
+   · ■ · ·                            · · ■ ·
+   · ■ · ·              ──U──►        · · ■ ·
+```
+
+Gom lại thành **bảng chuyển trạng thái** (đề mục 3.1 dặn phải cài và test bảng này thật sớm). Trong code nó là `TRANSITIONS` ở `ai/problem.py`:
+
+| Đang ở | lăn L | lăn R | lăn U | lăn D |
 |---|---|---|---|---|
 | `Z (x,y)` đứng | `X (x−2, y)` | `X (x+1, y)` | `Y (x, y+1)` | `Y (x, y−2)` |
-| `X (x,y)` nằm | `Z (x−1, y)` | `Z (x+2, y)` | `X (x, y+1)` | `X (x, y−1)` |
-| `Y (x,y)` nằm | `Y (x−1, y)` | `Y (x+1, y)` | `Z (x, y+2)` | `Z (x, y−1)` |
+| `X (x,y)` nằm theo dòng | `Z (x−1, y)` | `Z (x+2, y)` | `X (x, y+1)` | `X (x, y−1)` |
+| `Y (x,y)` nằm theo cột | `Y (x−1, y)` | `Y (x+1, y)` | `Z (x, y+2)` | `Z (x, y−1)` |
 
-Đọc theo ba kiểu chuyển động của đề (mục 2.3):
+Hai sự thật nhỏ về bảng này sẽ rất quan trọng về sau:
 
-- **Đứng → đổ xuống:** nằm trên hai ô theo hướng lăn. Ví dụ `Z(4,4)` + `R` → `X(5,4)` chiếm `(5,4),(6,4)`.
-- **Nằm dọc theo hướng lăn → dựng đứng:** ví dụ `X(4,4)` + `R` → `Z(6,4)`.
-- **Nằm vuông góc với hướng lăn → lăn ngang, vẫn nằm, dịch 1 ô:** ví dụ `X(4,4)` + `U` → `X(4,5)`.
+1. **Sau mỗi lần lăn, khối rời khỏi hoàn toàn các ô cũ.** Không có ô nào vừa thuộc vị trí cũ vừa thuộc vị trí mới.
+2. **Mỗi lần lăn, khối "tiến" được nhiều nhất 2 ô.** Ô mới xa nhất chỉ cách ô cũ gần nhất 2 bước. Đây là nền tảng của heuristic A\* ở Phần 10.
 
-Hai tính chất của bảng (test `test_transition_table` kiểm tra cả hai):
+### 3.5. Ô đặc biệt
 
-1. Sau mỗi lần lăn, tập ô mới **không giao** tập ô cũ. Hệ quả: khối không bao giờ "đứng yên trên công tắc qua nhiều lượt"; công tắc bị đè cuối nước đi luôn là công tắc vừa được đè mới.
-2. Mỗi ô mới cách một ô cũ **tối đa 2** (Manhattan). Đây là nền tảng của heuristic ở mục 7.4.
+- **Ô cam `▒`:** chịu được khối **nằm** (trọng lượng chia ra 2 ô), nhưng khối **đứng** lên là vỡ → rơi → thua.
+- **Lỗ đích `◎`:** chỉ **thắng** khi khối **đứng** trên nó. Khối nằm vắt ngang qua lỗ thì **không thắng cũng không thua**: lỗ đích lúc đó coi như sàn.
 
-### 2.3. Loại ô và định dạng `.data`
+### 3.6. Công tắc và cầu: giống công tắc đèn
 
-| Số trong lưới | Hằng Python (`ai/level.py`) | Hằng C++ (`tile.cpp`) | Ý nghĩa |
-|---:|---|---|---|
-| 0 | `EMPTY` | `NULL` | Ô trống / lỗ. **Ô đích và ô cầu lúc đầu cũng phải là 0** |
-| 1 | `NORMAL` | `normal` | Sàn thường |
-| 2 | `FRAGILE` | `fragile` | Ô cam dễ vỡ: đứng lên thì thua, nằm thì an toàn |
-| 3 | `NORMAL_SWITCH` | `normal_bridge` | Công tắc thường (= **soft switch** của đề): bị đè bởi bất kỳ phần nào của khối |
-| 4 | `HEAVY_SWITCH` | `heavy_bridge` | Công tắc nặng (= **heavy switch**): chỉ kích hoạt khi khối **đứng** trên nó |
+**Cây cầu** là một ô lúc đầu trống (số 0 trong file). Mỗi cây cầu nối với một công tắc. Cứ **kích hoạt công tắc một lần** thì cầu **đổi trạng thái**: đang trống thì hiện ra thành sàn, đang là sàn thì biến mất. Giống bật/tắt đèn.
 
-> ⚠️ Tên trong C++ dễ gây hiểu nhầm: `normal_bridge`/`heavy_bridge` là **loại ô công tắc**, không phải ô cầu. Ô cầu không có loại riêng. Nó là một ô 0 được công tắc "bật" thành sàn type 1.
+- **Công tắc thường `○`:** khối đè lên bằng **bất kỳ phần nào** (đứng hay nằm) là kích hoạt.
+- **Công tắc nặng `X`:** chỉ kích hoạt khi khối **đứng** trên nó. Nằm đè lên không có tác dụng.
 
-Định dạng file (đọc theo token, cách nhau bởi khoảng trắng bất kỳ). Ví dụ `code/data/1.data`, có chú thích:
+**Trong code, cầu được nhớ bằng `bridge_mask`.** Hãy tưởng tượng một hàng bóng đèn, mỗi bóng ứng với một công tắc:
 
 ```
-13 13                           ← n = 13 dòng, m = 13 cột
+  công tắc số:      2   1   0
+  bridge_mask = 5 = 1   0   1   (viết dạng nhị phân)
+                    ↑   ↑   ↑
+                   bật tắt bật   → cầu của công tắc 0 và 2 đã bị đảo, cầu của công tắc 1 chưa
+```
+
+Kích hoạt công tắc số `i` = đảo bóng số `i` (phép XOR: `mask ^ (1 << i)`).
+
+> ⚠️ **Vì sao `bridge_mask` phải là một phần của trạng thái?** Đề (mục 3.1) nhấn mạnh điều này. Hai ván có khối ở **cùng chỗ** nhưng cầu **khác nhau** thì các nước đi được cũng khác nhau, nên phải coi là **hai trạng thái khác nhau**. Nếu quên, thuật toán sẽ nghĩ "chỗ này đến rồi" và bỏ qua những lời giải kiểu "đi bấm công tắc, quay lại chỗ cũ, giờ cầu đã mở".
+
+### 3.7. Một nước đi được xử lý theo thứ tự nào?
+
+Python phải làm **đúng thứ tự** như game C++, nếu không hai bên sẽ lệch:
+
+```
+  ① Lăn khối theo bảng chuyển
+  ② Kiểm tra:  có ô nào của khối không có sàn (và không phải lỗ đích)?  → THUA
+               đứng trên ô cam?                                         → THUA
+               đứng trên lỗ đích?                                       → THẮNG
+               (thua được ưu tiên hơn thắng)
+  ③ Nếu vừa thắng hoặc thua → DỪNG, không đụng tới công tắc
+  ④ Nếu chưa → kích hoạt các công tắc khối đang đè (theo đúng luật thường/nặng)
+  ⑤ Kiểm tra lại: lỡ công tắc vừa làm biến mất chính cây cầu dưới chân khối → THUA
+```
+
+### 3.8. File màn chơi `.data`
+
+Mỗi màn là một file chữ trong `code/data/`. Cả game C++ và Python đều đọc file này, nên mọi thuật toán giải **cùng một màn** (đề mục 3.1 yêu cầu vậy). Ví dụ `code/data/1.data` có chú thích:
+
+```
+13 13                           ← 13 dòng, 13 cột
 0 0 0 0 0 0 0 0 0 0 0 0 0       ← dòng x = 0
 0 0 0 0 0 0 0 0 0 0 0 0 0
-0 0 1 1 1 3 0 0 0 0 0 0 0       ← x = 2: (2,5) là công tắc thường
+0 0 1 1 1 3 0 0 0 0 0 0 0       ← (2,5) là công tắc thường
 0 0 1 1 1 1 0 0 0 0 0 0 0
 0 0 1 1 1 1 0 0 0 0 0 0 0
-0 0 1 1 1 1 0 1 1 1 0 0 0       ← x = 5: (5,6) = 0 là ô cầu (đóng lúc đầu)
-0 0 0 0 0 1 1 1 1 1 1 0 0       ← x = 6: (6,4) = 0 là ô cầu
-0 0 0 0 0 1 1 0 1 1 1 0 0       ← x = 7: (7,7) = 0 là lỗ đích
+0 0 1 1 1 1 0 1 1 1 0 0 0       ← (5,6) là ô cầu (lúc đầu trống)
+0 0 0 0 0 1 1 1 1 1 1 0 0       ← (6,4) là ô cầu
+0 0 0 0 0 1 1 0 1 1 1 0 0       ← (7,7) là lỗ đích
 0 0 0 0 0 1 1 1 1 1 1 0 0
-0 0 0 0 0 1 1 1 2 1 1 0 0       ← x = 9: (9,8) là ô cam
-0 0 0 0 0 0 4 1 1 1 3 0 0       ← x = 10: (10,6) công tắc nặng, (10,10) công tắc thường
+0 0 0 0 0 1 1 1 2 1 1 0 0       ← (9,8) là ô cam
+0 0 0 0 0 0 4 1 1 1 3 0 0       ← (10,6) công tắc nặng, (10,10) công tắc thường
 0 0 0 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0
-3 3 Z                           ← bắt đầu ở (3,3), tư thế Z (có thể bắt đầu nằm: X/Y)
-7 7                             ← ô đích (7,7)
+3 3 Z                           ← xuất phát ở (3,3), tư thế đứng
+7 7                             ← lỗ đích ở (7,7)
 2                               ← có 2 công tắc thường:
-2 5 6 4                         ←   công tắc tại (2,5) bật/tắt ô cầu (6,4)
-10 10 9 11                      ←   công tắc tại (10,10) bật/tắt ô cầu (9,11)
+2 5 6 4                         ←   công tắc ở (2,5) bật/tắt cầu (6,4)
+10 10 9 11                      ←   công tắc ở (10,10) bật/tắt cầu (9,11)
 1                               ← có 1 công tắc nặng:
-10 6 5 6                        ←   công tắc tại (10,6) bật/tắt ô cầu (5,6)
+10 6 5 6                        ←   công tắc ở (10,6) bật/tắt cầu (5,6)
 ```
 
-`code/data/2.data` là màn 19×14, có 3 công tắc nặng và rất nhiều ô cam, lời giải tối ưu **68 bước**.
-
-### 2.4. Thắng, thua, công tắc: thứ tự xử lý
-
-Đây là chỗ tinh tế nhất. Python phải chép **đúng thứ tự** của C++:
-
-1. **Lăn** theo bảng 2.2.
-2. **Kiểm tra thắng/thua** (`Game::check` / `BloxorzProblem.check`):
-   - Ô neo không có sàn (ngoài lưới, ô 0, cầu đang đóng): nếu không phải ô đích thì **thua**; nếu là ô đích và đang đứng thì **thắng**.
-   - Đứng (`Z`) trên ô cam → **thua**.
-   - Tư thế `X`/`Y` mà ô thứ hai không có sàn và không phải ô đích → **thua**.
-   - **Thua được ưu tiên hơn thắng.** Nằm vắt qua lỗ đích thì **không thắng, không thua** (lỗ đích đóng vai trò như sàn khi khối nằm), đúng mục 2.4 của đề.
-3. Nếu nước đi vừa thắng hoặc thua thì **dừng, KHÔNG kích hoạt công tắc.**
-4. Ngược lại, kích hoạt công tắc **tuần tự**: ô neo là công tắc thường → đảo cầu; (X/Y) ô thứ hai là công tắc thường → đảo cầu; đứng trên công tắc nặng → đảo cầu.
-5. **Kiểm tra lại**: nếu cầu ngay dưới khối vừa bị đóng thì khối rơi (thua). Trong C++, việc này xảy ra ở frame kế tiếp vì `Game::check` chạy mỗi frame. Python mô phỏng bằng cách gọi `check` thêm một lần.
+Hiện có **11 màn** (`1.data` … `11.data`). Danh mục, ảnh sơ đồ và lời giải tối ưu nằm trong `code/data/README.md`, `code/data/catalog.json`, `code/data/previews/`, `code/data/solutions/`. Màn 11 được thiết kế **vô nghiệm**, để kiểm tra thuật toán biết dừng và báo "không có lời giải".
 
 ---
 
-## 3. Thư mục `ai/` — từng file
+## Phần 4. Biến game thành "bài toán tìm đường"
 
-Package Python ≥ 3.10, **chỉ dùng thư viện chuẩn** (đề cho phép thư viện hỗ trợ nhưng thuật toán phải tự cài, mục 3).
+### 4.1. Ý tưởng: giống tìm đường trên bản đồ
 
-### 3.1. `ai/__init__.py`
+Hãy tưởng tượng mỗi **trạng thái** là một **thành phố**, mỗi **nước đi** là một **con đường** nối hai thành phố. Giải Bloxorz chính là **tìm đường từ thành phố "xuất phát" tới thành phố "thắng"**. Bản đồ đó gọi là **đồ thị trạng thái**.
 
-Gom các tên dùng nhiều để viết `from ai import BloxorzProblem, Level, State, ...`. Xuất: `ACTIONS`, `BloxorzProblem`, `Level`, `Orientation`, `Outcome`, `State`, `Switch`, `unit_cost`.
-
-### 3.2. `ai/state.py` — biểu diễn trạng thái
-
-| Thành phần | Ý nghĩa |
-|---|---|
-| `ACTIONS = ("U", "D", "L", "R")` | Thứ tự hành động **cố định**, nên BFS/DFS cho kết quả giống nhau mỗi lần chạy (tái lập được, quan trọng cho thực nghiệm công bằng) |
-| `Orientation(str, Enum)` | `X`, `Y`, `Z`, trùng tên hằng trong `superblock.cpp` |
-| `State(x, y, orientation, bridge_mask)` | `@dataclass(frozen=True, slots=True)` |
-| `State.cells()` | Trả về 1 hoặc 2 ô mà khối đang chiếm |
-
-**Vì sao `frozen=True`?** Trạng thái bất biến thì băm (hash) được, nên dùng làm khóa `dict`/`set`. Đây chính là cơ chế "visited set or hashing" mà đề yêu cầu ở mục 3.3. **Vì sao `slots=True`?** Mỗi object nhỏ hơn (đo được 64 byte/`State`), giúp tiết kiệm bộ nhớ khi BFS lưu hàng nghìn trạng thái.
-
-**`bridge_mask` là gì?** Một số nguyên, mỗi bit ứng với **một công tắc**. Bit `i` = số lần công tắc `i` đã được kích hoạt, lấy mod 2. Đề mục 3.1 F.Y.I: *"the state must include the open/closed status of every bridge … states with the same block placement but different bridge configurations are different states"*. Ví dụ `State(1,2,Z,0)` và `State(1,2,Z,1)` là hai trạng thái khác nhau (test `test_bridge_state_is_part_of_state`). Nếu visited chỉ lưu vị trí khối, solver sẽ cắt nhầm các lời giải buộc phải "đi bấm công tắc rồi quay lại chỗ cũ".
-
-### 3.3. `ai/level.py` — dữ liệu tĩnh của màn chơi
-
-| Thành phần | Chức năng |
-|---|---|
-| Hằng `EMPTY, NORMAL, FRAGILE, NORMAL_SWITCH, HEAVY_SWITCH` (0–4) và `TILE_NAMES` | Loại ô (bảng 2.3) |
-| `Switch(kind, pos, target, bit)` | Một công tắc: loại `"normal"`/`"heavy"`, vị trí, ô cầu nó điều khiển, chỉ số bit trong `bridge_mask` |
-| `Level.__init__` | Lưu lưới dạng tuple (bất biến), điểm bắt đầu, đích. Gộp công tắc **giống `std::map` của C++** (khai báo trùng vị trí thì dòng sau ghi đè). Đánh số bit theo thứ tự: công tắc thường trước, công tắc nặng sau. Dựng `bridge_bits[ô cầu] = mask các công tắc điều khiển ô đó` |
-| `Level.from_file` / `from_text` | Đọc file `.data` theo token, giống hệt `Floor::initialize`. Báo lỗi tiếng Việt khi file thiếu dữ liệu hoặc tư thế không phải X/Y/Z |
-| `Level.validate()` | Bắt các màn mà game C++ sẽ xử lý sai: đích ngoài lưới hoặc khác 0, loại ô lạ, công tắc trỏ ra ngoài, ô công tắc không đúng loại, **ô cầu lúc đầu phải là 0** (vì C++ bật cầu luôn tạo ô type 1), ô cầu trùng ô đích, công tắc thiếu dòng ánh xạ |
-| `in_bounds(x, y)` | Ô có nằm trong lưới không |
-| `has_tile(x, y, mask)` | **Hàm quan trọng nhất**: ô có sàn không, với cấu hình cầu `mask`. Ngoài lưới = không có sàn |
-| `tile_type(x, y, mask)` | Loại ô hiện tại (`EMPTY` nếu không có sàn; cầu đang mở được tính là `NORMAL`) |
-| `switch_at(kind, x, y)` | Tra công tắc theo loại và vị trí |
-
-**`has_tile` tính cầu bằng phép XOR chẵn lẻ.** `present = (ô gốc khác 0)`. Lấy `bits = bridge_bits[(x,y)]` (các công tắc điều khiển ô này). Nếu số bit bật của `mask & bits` là **lẻ** thì đảo `present`. Ví dụ màn 1: ô cầu `(6,4)` do công tắc bit 0 (tại `(2,5)`) điều khiển. Với `mask = 0` thì ô đóng; đè công tắc một lần → `mask = 1` → ô mở; đè lần nữa → `mask = 0` → đóng lại. Cách này cũng đúng khi **nhiều công tắc cùng điều khiển một ô** (test `test_bridge_vanishing_under_block_loses`).
-
-### 3.4. `ai/problem.py` — mô hình bài toán (luật game bản Python)
-
-| Thành phần | Chức năng |
-|---|---|
-| `TRANSITIONS` | Bảng 2.2 dưới dạng `dict`: `(tư thế, hướng) → (tư thế mới, dx, dy)` |
-| `Outcome` | `CONTINUE` / `WON` / `LOST` (tương ứng `-1 / 1 / 0` của `Game::check`) |
-| `CostFn` | Kiểu hàm chi phí `(state, action, next_state) -> float` |
-| `unit_cost` | Hàm chi phí mặc định: mọi nước = 1 |
-| `BloxorzProblem(level, cost_fn=unit_cost)` | Bài toán tìm kiếm. **`cost_fn` là chỗ cắm hàm chi phí không đồng nhất cho UCS/A\*** |
-| `initial_state()` | `State(sx, sy, tư_thế_đầu, 0)`: lúc đầu mọi cầu đóng |
-| `check(state)` | Bản sao `Game::check` (mục 2.4, bước 2) |
-| `_toggle(mask, kind, x, y)` | `mask ^ (1 << bit)`: đảo bit của công tắc |
-| `simulate(state, action)` | **Thực hiện một nước đi** theo đúng thứ tự mục 2.4: lăn → `check` → (nếu `CONTINUE`) kích hoạt công tắc tuần tự trên mask đang thay đổi → nếu mask đổi thì `check` lại. Trả `(trạng thái mới, Outcome)` |
-| `actions(state)` | Các hướng **không làm thua**, theo thứ tự U, D, L, R |
-| `result(state, action)` | Trạng thái kế tiếp; ném `ValueError` nếu nước đó làm thua |
-| `successors(state)` | **Hàm solver dùng chính:** danh sách `(action, next_state, cost)` của các nước hợp lệ. Gọi `simulate` một lần mỗi hướng (không tính hai lần như khi gọi `actions` rồi `result`) |
-| `is_goal(state)` | `check(state) is WON`: đứng trên lỗ đích |
-| `step_cost(s, a, s2)` | Gọi `cost_fn` |
-| `replay(moves)` | Phát lại chuỗi nước đi từ đầu, dừng ngay khi thắng/thua (giống game). Nhận list hoặc chuỗi `"R U U R"` |
-| `is_valid_solution(moves)` | `True` nếu thắng **đúng ở nước cuối cùng** (không thắng sớm, không thua giữa chừng) |
-| `path_cost(moves)` | Tổng chi phí của chuỗi nước đi theo `cost_fn` |
-
-**Nước đi "illegal" của đề được xử lý thế nào?** Đề mục 2.3: nước đi làm khối chạm ô trống hoặc ra ngoài là **illegal**. Trong code, đó là các nước có `Outcome.LOST`. `successors()` và `actions()` **lọc bỏ** chúng, nên solver không bao giờ sinh ra trạng thái "đã rơi".
-
-**Ví dụ dò tay: lời giải tối ưu màn 1 `R U U R U R U R D L`** (lấy từ `simulate` thật):
-
-| # | Nước | Trước | Sau | Ô chiếm sau nước đi | Ghi chú |
-|---:|---|---|---|---|---|
-| 1 | R | `(3,3,Z)` | `(4,3,X)` | (4,3),(5,3) | đứng → đổ xuống |
-| 2 | U | `(4,3,X)` | `(4,4,X)` | (4,4),(5,4) | lăn ngang |
-| 3 | U | `(4,4,X)` | `(4,5,X)` | (4,5),(5,5) | lăn ngang |
-| 4 | R | `(4,5,X)` | `(6,5,Z)` | (6,5) | dựng đứng |
-| 5 | U | `(6,5,Z)` | `(6,6,Y)` | (6,6),(6,7) | đổ xuống |
-| 6 | R | `(6,6,Y)` | `(7,6,Y)` | (7,6),**(7,7)** | nằm vắt qua lỗ đích: không thắng, không thua |
-| 7 | U | `(7,6,Y)` | `(7,8,Z)` | (7,8) | dựng đứng |
-| 8 | R | `(7,8,Z)` | `(8,8,X)` | (8,8),**(9,8)** | nằm trên ô cam: an toàn |
-| 9 | D | `(8,8,X)` | `(8,7,X)` | (8,7),(9,7) | lăn ngang |
-| 10 | L | `(8,7,X)` | `(7,7,Z)` | (7,7) | dựng đứng trên lỗ đích → **WON** |
-
-Lời giải này không đụng công tắc nào nên `bridge_mask` luôn bằng 0.
-
-### 3.5. `ai/heuristics.py`
-
-| Hàm | Trạng thái | Ý nghĩa |
+| Bản đồ | Bloxorz | Trong code |
 |---|---|---|
-| `zero_heuristic` | ✅ có sẵn | `h = 0`: luôn admissible. **A\* với h = 0 chính là UCS**, dùng để đối chứng |
-| `manhattan_heuristic` | ⏳ TODO (TV5) | Docstring đã có gợi ý. Thiết kế và chứng minh ở mục 7.4 |
-| `HEURISTICS` | ✅ | Bảng tên → hàm, để `main.py --heuristic zero|manhattan` chọn |
+| Thành phố | Trạng thái `(x, y, tư thế, bridge_mask)` | `State` |
+| Thành phố xuất phát | Vị trí đầu, mọi cầu đóng | `problem.initial_state()` |
+| Các con đường từ một thành phố | Các nước đi hợp lệ (không rơi) | `problem.successors(state)` |
+| Tới thành phố nào khi đi đường đó | Kết quả lăn + công tắc | `problem.simulate(state, action)` |
+| Thành phố đích | Khối đứng trên lỗ đích | `problem.is_goal(state)` |
+| Độ dài / phí của con đường | Chi phí một nước (mặc định 1) | `cost_fn` |
 
-### 3.6. `ai/solvers/__init__.py`
+Điều khác với bản đồ thật: ta **không có sẵn bản đồ**. Thuật toán phải **tự khám phá** từng thành phố bằng cách đứng ở một trạng thái và thử 4 hướng.
 
-`SOLVERS = {"bfs": BFSSolver, "dfs": DFSSolver, "ucs": UCSSolver, "astar": AStarSolver}`. `main.py` và test tạo solver theo tên qua bảng này. Thêm solver mới (ví dụ IDS) thì đăng ký ở đây.
+### 4.2. Màn đồ chơi dùng xuyên suốt tài liệu
 
-### 3.7. `ai/solvers/base_solver.py` — khung chung và 4 chỉ số đo
+Để chạy tay được, ta dùng một màn **rất nhỏ** (3 dòng × 4 cột):
 
-**`SearchResult`**: kết quả một lần chạy, đủ 4 chỉ số đề yêu cầu (mục 3.2) cộng thêm vài chỉ số phụ:
+```
+          y=0  y=1  y=2  y=3
+  x=0      □    □    □    □
+  x=1      □    ▒    ▒    □        ▒ = ô cam
+  x=2      ■    □    ◎    □        ■ = khối đứng ở (2,0)    ◎ = lỗ đích (2,2)
+```
 
-| Trường | Chỉ số đề | Ý nghĩa |
-|---|---|---|
-| `time_ms` | **Search Time** | Thời gian chạy `solve()` (ms), đo bằng `time.perf_counter()` |
-| `peak_memory_kb` | **Memory Usage** | Bộ nhớ đỉnh (KB) đo bằng `tracemalloc`. `None` nếu không bật đo (giải thích kỹ ở mục 7.1.4) |
-| `nodes_expanded` | **Expanded Nodes** | Số node đã lấy ra khỏi frontier **và sinh con**. Node "cũ" bị bỏ qua trong hàng đợi ưu tiên không được tính |
-| `solution_length` (property) | **Solution Length** | `len(path)`: số nước đi |
-| `path` | | Danh sách `"U/D/L/R"` hoặc `None` |
-| `cost` | | Tổng chi phí theo `cost_fn`. Khác `solution_length` khi chi phí không đồng nhất |
-| `nodes_generated` | | Số node con đã sinh |
-| `max_frontier` | | Kích thước frontier lớn nhất (một cách nhìn khác về bộ nhớ) |
-| `status` | | `"ok"`, `"no_solution"`, `"not_implemented"` (`main.py` có thể đặt thêm `"invalid"`) |
-| `extra` | | Chỗ chứa thông tin phụ (ví dụ thông báo lỗi) |
+Màn này có **27 trạng thái** đi tới được. Ta đặt tên chúng bằng chữ cái A, B, C… (theo thứ tự BFS gặp). Đây là những trạng thái sẽ xuất hiện nhiều:
 
-**`BaseSolver`**: lớp trừu tượng. Lớp con chỉ cần cài `solve()`.
+| Tên | Trạng thái | Hình | Đi được tới (nước → trạng thái) |
+|---|---|---|---|
+| **A** | `(2,0,Z)` đứng | `■` ở (2,0) | U→B, L→C |
+| **B** | `(2,1,Y)` nằm | `■■` ở (2,1),(2,2) — vắt qua lỗ đích | U→D, D→A, L→E |
+| **C** | `(0,0,X)` nằm | `■` ở (0,0) và (1,0) | U→F, R→A |
+| **D** | `(2,3,Z)` đứng | `■` ở (2,3) | D→B, L→G |
+| **E** | `(1,1,Y)` nằm | trên 2 ô cam (1,1),(1,2) | U→H, D→I, L→J, R→B |
+| **F** | `(0,1,X)` nằm | (0,1) và (1,1) cam | U→K, D→C, R→L |
+| **G** | `(0,3,X)` nằm | (0,3) và (1,3) | D→K, R→D |
+| **H** | `(1,3,Z)` đứng | (1,3) | D→E |
+| **I** | `(1,0,Z)` đứng | (1,0) | U→E |
+| **J** | `(0,1,Y)` nằm | (0,1),(0,2) | U→M, D→N, R→E |
+| **K** | `(0,2,X)` nằm | (0,2) và (1,2) cam | U→G, D→F, **R→O** |
+| **L** | `(2,1,Z)` đứng | (2,1) | U→P, L→F |
+| **O** | `(2,2,Z)` | **đứng trên lỗ đích = THẮNG** | — |
 
-| Phương thức | Chức năng |
-|---|---|
-| `reset_counters()` | Đặt `nodes_expanded`, `nodes_generated`, `max_frontier` về 0 |
-| `solve()` (abstract) | Thuật toán tìm kiếm. Lớp con cập nhật các bộ đếm rồi `return self.make_result(path)` |
-| `run(measure_memory=False)` | Bọc `solve()`: reset bộ đếm → (bật `tracemalloc` nếu cần) → bấm giờ → gọi `solve()` → ghi `time_ms`, `peak_memory_kb`. Dùng `try/finally` để luôn tắt `tracemalloc`, kể cả khi solver ném lỗi |
-| `make_result(path)` | Đóng gói `SearchResult` từ path và bộ đếm. Tự tính `cost` bằng `problem.path_cost(path)` |
-| `reconstruct_path(parent, state)` | Truy vết từ trạng thái đích về gốc qua `parent[state] = (trạng_thái_cha, hành_động)`, đảo ngược lại thành danh sách hành động |
+Hai lời giải đáng chú ý (bạn có thể tự lăn bằng bảng 3.4 để kiểm tra):
 
-**Vì sao dùng `parent` dict thay vì lưu cả đường đi trong mỗi node?** Lưu cả path trong mỗi node tốn O(độ sâu) bộ nhớ cho từng node. `parent` chỉ tốn một cặp `(cha, hành động)` cho mỗi trạng thái, đồng thời kiêm luôn vai trò tập visited.
+```
+Lời giải 1 (4 nước):  A ─L→ C ─U→ F ─U→ K ─R→ O       chạm ô cam 2 lần (ở F và K)
+Lời giải 2 (5 nước):  A ─U→ B ─U→ D ─L→ G ─D→ K ─R→ O  chạm ô cam 1 lần (ở K)
+```
 
-### 3.8. `ai/solvers/bfs_solver.py`, `dfs_solver.py`, `ucs_solver.py`, `astar_solver.py`
+Lời giải 1 vẽ từng bước:
 
-Bốn file có cùng cấu trúc: lớp kế thừa `BaseSolver`, có `name`, docstring gợi ý cách cài, và `solve()` đang `raise NotImplementedError` (mỗi thành viên tự cài: TV1 BFS, TV2 DFS, TV3 UCS, TV4 A\*). `AStarSolver` nhận thêm tham số `heuristic` (mặc định `manhattan_heuristic`). Cách các thuật toán chạy được giải thích ở mục 7.
+```
+   A (bắt đầu)       C (sau L)         F (sau U)         K (sau U)         O (sau R)
+   □ □ □ □           ■ □ □ □           □ ■ □ □           □ □ ■ □           □ □ □ □
+   □ ▒ ▒ □    L→     ■ ▒ ▒ □    U→     □ ■ ▒ □    U→     □ ▒ ■ □    R→     □ ▒ ▒ □
+   ■ □ ◎ □           □ □ ◎ □           □ □ ◎ □           □ □ ◎ □           □ □ ■ □  ← THẮNG
+```
+
+Ở các phần sau, cả 4 thuật toán sẽ chạy trên **đúng màn này**, để bạn thấy mỗi thuật toán chọn lời giải nào và tốn bao nhiêu công.
 
 ---
 
-## 4. Các file Python xung quanh: `main.py`, `tests/`
+## Phần 5. Đi dạo qua code
 
-### 4.1. `main.py` — CLI, cầu nối với game
+### 5.1. Nửa Python: "bộ não" (`ai/`, `main.py`, `tests/`)
+
+Đọc theo thứ tự này là dễ hiểu nhất:
+
+#### `ai/state.py`: một "ảnh chụp" ván chơi
+
+- `State(x, y, orientation, bridge_mask)`: đúng 4 thông tin của một trạng thái (Phần 3).
+- `State.cells()`: trả về 1 hoặc 2 ô khối đang chiếm.
+- `Orientation`: ba tư thế `X`, `Y`, `Z`.
+- `ACTIONS = ("U", "D", "L", "R")`: thứ tự thử các hướng **luôn cố định**, nên chạy lại bao nhiêu lần cũng ra cùng kết quả.
+
+`State` được khai báo `frozen=True` (không sửa được sau khi tạo). Nhờ vậy Python cho phép dùng nó làm **khóa của `dict`/`set`**. Đây chính là cách làm "sổ ghi chép đã đi qua" mà đề yêu cầu ("visited set or hashing").
+
+#### `ai/level.py`: đọc và hiểu file màn chơi
+
+- `Level.from_file("code/data/1.data")`: đọc file thành đối tượng `Level` (lưới, xuất phát, đích, công tắc).
+- `Level.validate()`: bắt lỗi file màn sai (đích không phải 0, công tắc trỏ ra ngoài…).
+- `Level.has_tile(x, y, mask)`: **hàm quan trọng nhất của file.** Trả lời câu hỏi "ô `(x, y)` có sàn không, khi các cầu đang như `mask`?". Ô ngoài lưới thì luôn là "không có sàn".
+- `Level.tile_type(x, y, mask)`: ô đó là loại gì lúc này.
+
+#### `ai/problem.py`: luật chơi bản Python
+
+Đây là file **mọi thuật toán đều dùng**. Các hàm thuật toán hay gọi:
+
+| Hàm | Trả lời câu hỏi |
+|---|---|
+| `initial_state()` | Bắt đầu ở trạng thái nào? |
+| `successors(state)` | **Từ đây đi được tới đâu?** Trả về danh sách `(nước đi, trạng thái mới, chi phí)`, đã tự bỏ các nước làm rơi |
+| `is_goal(state)` | Trạng thái này đã thắng chưa? |
+| `simulate(state, action)` | Đi thử một nước, theo đúng 5 bước ở mục 3.7 |
+| `is_valid_solution(moves)` | Chuỗi nước này có thắng đúng ở nước cuối không? (`main.py` dùng để kiểm tra lại lời giải) |
+| `path_cost(moves)` | Tổng chi phí của một chuỗi nước |
+
+Ngoài ra: `TRANSITIONS` (bảng chuyển 3.4), `check()` (thắng/thua), `unit_cost` (mọi nước giá 1). `BloxorzProblem(level, cost_fn=...)` cho phép **cắm hàm chi phí khác** vào, phục vụ UCS (Phần 9).
+
+#### `ai/heuristics.py`: các hàm "ước đoán" cho A\*
+
+- `zero_heuristic`: luôn đoán 0. A\* với heuristic này chạy y hệt UCS (dùng để đối chứng).
+- `manhattan_heuristic`: **TODO của TV5** (Phần 10).
+- `HEURISTICS`: bảng tên → hàm, để `main.py --heuristic zero|manhattan` chọn.
+
+#### `ai/solvers/`: các thuật toán
+
+| File | Trạng thái | Người làm |
+|---|---|---|
+| `base_solver.py` | ✅ Khung chung: bấm giờ, đo bộ nhớ, đóng gói kết quả, truy ngược lời giải | (có sẵn) |
+| `bfs_solver.py` | ⏳ TODO | TV1 |
+| `dfs_solver.py` | ⏳ TODO | TV2 |
+| `ucs_solver.py` | ⏳ TODO | TV3 |
+| `astar_solver.py` | ✅ Đã cài (Sang), giải thích chi tiết ở `Docs/astar_walkthrough.md` | TV4 |
+| `__init__.py` | Bảng `SOLVERS = {"bfs": ..., "dfs": ..., "ucs": ..., "astar": ...}` | |
+
+Trong `base_solver.py` có hai thứ mọi người cần biết:
+
+- **`SearchResult`**: kết quả một lần chạy, chứa đủ **4 con số đề yêu cầu**: `time_ms` (thời gian), `peak_memory_kb` (bộ nhớ đỉnh), `nodes_expanded` (số node mở rộng), `solution_length` (độ dài lời giải). Thêm `path`, `cost`, `nodes_generated`, `max_frontier`, `status`.
+- **`BaseSolver`**: lớp cha. Mỗi thuật toán chỉ cần viết hàm `solve()`. Hàm `run()` lo bấm giờ và đo bộ nhớ. Hàm `reconstruct_path()` lo truy ngược lời giải từ "sổ ghi chép" `parent`.
+
+#### `main.py`: cửa ngõ dòng lệnh
 
 ```bash
-python main.py code/data/1.data --algo bfs                  # chạy 1 solver
-python main.py code/data/2.data --algo astar --out sol.txt  # ghi lời giải ra file (game dùng cách này)
-python main.py code/data/1.data --compare --memory          # chạy cả 4, in bảng, đo thêm bộ nhớ
+python main.py code/data/1.data --algo bfs                  # chạy 1 thuật toán
 python main.py code/data/1.data --algo astar --heuristic zero
+python main.py code/data/1.data --compare --memory          # chạy cả 4 và in bảng so sánh
+python main.py code/data/2.data --algo astar --out sol.txt  # ghi lời giải ra file (game dùng cách này)
 ```
 
-| Hàm | Chức năng |
+`main.py` luôn **cho chạy thử lại lời giải theo luật** trước khi ghi ra file, và trả về mã thoát: `0` có lời giải, `1` vô nghiệm, `2` thuật toán chưa cài, `3` lời giải sai luật, `4` file màn hỏng. Game C++ dựa vào mã này để hiện thông báo.
+
+> ⚠️ Hiện `main.py` luôn dùng **chi phí 1 cho mọi nước**, chưa có tùy chọn chọn hàm chi phí khác. Khi TV3 có hàm chi phí riêng, cần thêm tùy chọn này (xem 9.6).
+
+#### `tests/`: kiểm tra tự động
+
+Chạy `python -m pytest -q`. Hiện tại: **88 passed, 14 skipped** (phần bị bỏ qua là test của BFS, DFS, UCS và heuristic Manhattan chưa cài).
+
+| File | Kiểm tra gì |
 |---|---|
-| `make_solver(name, problem, heuristic)` | Tạo solver theo tên; riêng A\* thì truyền thêm heuristic |
-| `run_one(...)` | Chạy solver một lượt để đo thời gian. Nếu `--memory` thì chạy **lượt thứ hai riêng** để đo bộ nhớ (vì `tracemalloc` làm chậm, đo chung sẽ sai thời gian). Bắt `NotImplementedError` → `status = "not_implemented"`. **Phát lại lời giải theo luật** (`is_valid_solution`); sai luật → `status = "invalid"` |
-| `describe(result)` | In kết quả một solver (số bước, chi phí, node, frontier, thời gian, bộ nhớ, lời giải) |
-| `print_table(results)` | Bảng so sánh cho `--compare` |
-| `main(argv)` | Đặt UTF-8 cho console Windows, đọc tham số, đọc màn, chạy, ghi `--out` (chỉ khi có lời giải) |
+| `test_problem.py` | Luật Python có giống C++ không: 12 ô của bảng chuyển, rơi, ô cam, công tắc, cầu, lời giải đã biết |
+| `test_solvers.py` | Mỗi thuật toán có tìm được lời giải hợp lệ không; BFS/UCS/A\* có tìm được lời giải ngắn nhất không (màn 1: 10 bước, màn 2: 68 bước) |
+| `test_levels.py` | 11 màn: thông tin trong catalog đúng, lời giải tối ưu đúng, màn 11 vô nghiệm, công tắc nào cũng cần thiết… |
+| `test_astar_solver.py`, `test_astar_integration.py` | A\* đúng trong các tình huống khó; heuristic không đoán quá trên **mọi** trạng thái của màn 1, 2 (tự chạy khi TV5 cài xong Manhattan) |
+| `helpers.py` | Hàm tiện ích: nạp màn, tạo màn nhỏ từ chuỗi để test |
 
-**Mã thoát** (game C++ đọc mã này để hiện thông báo): `0` có lời giải · `1` vô nghiệm · `2` solver chưa cài · `3` lời giải sai luật · `4` lỗi đọc màn.
+### 5.2. Nửa C++: "tay chân + mắt" (`code/`)
 
-> ⚠️ Hiện `main.py` luôn tạo `BloxorzProblem(level)` với **chi phí mặc định = 1**. Khi TV3 có hàm chi phí không đồng nhất, cần thêm tham số (ví dụ `--cost`) để UCS/A\* dùng được hàm đó từ CLI và từ nút trong game (mục 7.3.6).
+Bạn **không cần hiểu hết** phần này để làm AI. Chỉ cần biết file nào làm gì.
 
-### 4.2. `tests/` — kiểm thử bằng pytest
+**Nhóm LUẬT** (phải khớp với `ai/problem.py`):
 
-Chạy: `python -m pytest -q` → hiện tại **36 passed, 10 skipped** (10 test solver bị SKIP vì solver chưa cài).
-
-| File | Nội dung |
-|---|---|
-| `tests/helpers.py` | `SOLUTIONS` (lời giải đã kiểm chứng trong game thật: màn 1, 10 bước; màn 2, 68 bước), `OPTIMAL_LENGTH = {1: 10, 2: 68}`, `load_problem(n)`, `make_level(rows, ...)` để tạo màn nhỏ từ danh sách chuỗi ngay trong test |
-| `tests/test_problem.py` | Kiểm tra **luật Python khớp C++**: đọc màn 1, 2; validate báo lỗi; **12 ô của bảng chuyển** + tính chất "không giao, chạm cạnh"; lời giải đã biết thắng đúng ở nước cuối; nước thắng không kích hoạt công tắc; rơi khỏi lưới; ra ngoài biên; đứng trên ô cam thua, nằm an toàn; thắng khi đứng trên đích; nằm vắt qua đích không thắng/thua; công tắc thường đảo cầu khi nằm đè; công tắc nặng chỉ kích hoạt khi đứng; cầu biến mất dưới khối → thua; `bridge_mask` là một phần của trạng thái |
-| `tests/test_solvers.py` | Mỗi solver × mỗi màn: tìm được lời giải, **phát lại hợp lệ**, `nodes_expanded > 0`. BFS/UCS/A\*/A\*(h=0) phải **tối ưu** (10 và 68 bước). Kiểm tra khung `BaseSolver.run` đo được thời gian + bộ nhớ, `reconstruct_path`, CLI báo "chưa cài" mà không crash, `--compare` không crash, file màn hỏng → mã 4 |
-
-### 4.3. Các file cấu hình
-
-- `pyproject.toml`: tên dự án, `requires-python >= 3.10`, cấu hình pytest (`pythonpath = ["."]`, `testpaths = ["tests"]`).
-- `requirements.txt`: chỉ có `pytest>=7`, vì phần AI không cần thư viện ngoài.
-
----
-
-## 5. Thư mục `code/` — từng file
-
-Game 3D C++/OpenGL 3.3, gốc từ repo `chaitanya100100/Bloxorz` @ `c0ccb55` (ghi nguồn trong `README.md`, `THIRD_PARTY_NOTICES.md`). Nhóm đã thêm: phát lại lời giải, gọi solver Python, kiểm tra biên lưới, giao diện mới, menu ImGui, đóng gói. File chia thành 5 nhóm.
-
-### 5.1. Nhóm LUẬT (phải khớp với `ai/`)
-
-#### `game.h` / `game.cpp` — lớp `Game`: thắng, thua, công tắc
-
-| Thành phần | Chức năng | Bản Python tương ứng |
+| File | Làm gì | Ứng với Python |
 |---|---|---|
-| `gameover`, `won`, `level`, `number_of_steps` | Trạng thái ván | |
-| `initialize(level)` | Đặt lại ván, nạp `data/<level>.data` vào `stage`, đặt khối ở vị trí đầu. Gọi lại được (Restart, đổi màn) | `BloxorzProblem.initial_state` |
-| `check()` | Thắng/thua (mục 2.4, bước 2). **Chạy mỗi frame** trong `update_game` (main.cpp). Trả `0` thua, `1` thắng, `-1` tiếp tục | `BloxorzProblem.check` |
-| `check_after_step()` | Gọi **một lần sau mỗi nước lăn xong**: tăng số bước, `check()`; nếu chưa thắng/thua thì kích hoạt công tắc tuần tự | phần sau `check` trong `simulate` |
-| `gameover_fun()`, `won_fun()` | In `GAME OVER` / `WON` và số bước ra console. Chế độ `--play`/`--solve` dùng dòng này để kiểm chứng | |
-| `get_level()`, `get_steps()` | HUD hiển thị | |
+| `game.cpp` / `game.h` | Lớp `Game`: `check()` kiểm tra thắng/thua **mỗi khung hình**; `check_after_step()` chạy sau mỗi lần lăn xong: đếm bước, kích hoạt công tắc | `check()`, phần cuối của `simulate()` |
+| `tile.cpp` / `tile.h` | `Floor`: đọc file `.data`, lưu lưới; `has_tile()` (có sàn không); `toggle()` bật/tắt cầu. Còn lại là vẽ ô | `Level` |
+| `superblock.cpp` / `superblock.h` | `SuperBlock`: khối người chơi. `move()` bắt đầu lăn; `update()` quay dần đủ 90° rồi cập nhật vị trí theo **bảng chuyển** và gọi `check_after_step()` | `TRANSITIONS` |
 
-#### `tile.h` / `tile.cpp` — `Tile` và `Floor` (mặt sàn)
+**Nhóm CẦU NỐI AI:**
 
-- **`Tile`**: một ô, chỉ chứa `tile_type` (1–4). Ô trống là con trỏ `NULL`.
-- **`Floor`** (biến toàn cục `stage`): toàn bộ màn chơi.
-
-| Thành phần | Chức năng |
+| File | Làm gì |
 |---|---|
-| `tiles[n][m]`, `n`, `m`, `sx, sy, along`, `tx, ty` | Lưới, điểm bắt đầu, tư thế đầu, ô đích |
-| `normal_bridge`, `heavy_bridge` (`map<int,int>`) | Ánh xạ `x*m+y` của công tắc → `a*m+b` của ô cầu. **Mỗi công tắc đúng 1 ô cầu** (giới hạn của game nền) |
-| `initialize(filename)` | Đọc file `.data` (định dạng 2.3). Đặt biên phép chiếu song song `leftt/rightt/topp/bottomm` theo kích thước màn |
-| `has_tile(i, j)` | Có sàn không. **Nhóm thêm kiểm tra biên**: bản gốc truy cập ngoài mảng khi khối ra mép lưới |
-| `toggle(a, b)` | **Luật cầu**: ô trống → tạo `Tile(1)`; có sàn → xóa. Phần nhóm thêm chỉ ghi thời điểm để vẽ hiệu ứng |
-| `normal_bridge_toggle`, `heavy_bridge_toggle` | Tra map rồi gọi `toggle` |
-| `draw(now)`, `draw_transparent(now)`, `tile_style`, `break_tile`, `make_ghost` | **Chỉ hình ảnh**: vẽ ô theo loại (màu cam, vòng công tắc, chữ X), khung đích phát sáng, cột sáng trên đích, ô cầu trồi lên, ô bị xóa rơi và mờ dần, ô cam vỡ khi thua. Không ảnh hưởng luật |
-| `get_initial_pos`, `get_initial_index`, `get_along`, `get_tile_type` | Truy vấn cho `SuperBlock` và `Game` |
+| `autoplay.cpp` / `autoplay.h` | `AutoPlayer` đọc file lời giải `U D L R…` rồi "bấm phím" giùm từng nước khi khối đứng yên. `run_solver()` chạy lệnh `python main.py …`, tự tìm Python (`python`, `py -3`, hoặc biến môi trường `BLOXORZ_PYTHON`), đọc mã thoát |
 
-#### `superblock.h` / `superblock.cpp` — lớp `SuperBlock` (khối 1×1×2)
+**Nhóm ỨNG DỤNG:**
 
-| Thành phần | Chức năng |
+| File | Làm gì |
 |---|---|
-| `ix, iy, along` | **Vị trí logic** (ô neo + tư thế), dùng cho luật |
-| `pos, real_pos, dim` | Vị trí và kích thước để vẽ, vị trí để camera bám theo |
-| `move(key)` | Bắt đầu một lần lăn (đặt `rot_dir`). Bỏ qua nếu khối đang lăn |
-| `update(dt)` | Tăng góc quay theo **thời gian thật** (`roll_speed = 450°/s`, bản gốc cộng 5° mỗi frame nên FPS thấp thì lăn chậm). Khi đủ 90°: cập nhật `ix, iy, along` theo **bảng chuyển 2.2**, rồi gọi `game.check_after_step()` |
-| `draw(M)` | Ma trận quay quanh cạnh đáy có easing, hiệu ứng rơi khi mở màn, chìm vào lỗ khi thắng, lật và rơi khi thua |
-| `draw_shadow`, `land_dust`, `start_sink`, `start_fall` | Hiệu ứng: bóng mềm, bụi khi chạm sàn, chìm/rơi |
-| `is_moving()` | `AutoPlayer` dùng để chờ khối đứng yên mới gửi nước tiếp theo |
+| `main.cpp` | Điểm bắt đầu chương trình. Có 2 chế độ: **chơi bình thường** (menu, chọn màn, Restart, nút giải) và **kiểm tra** (`--play <file>` hoặc `--solve <thuật toán>`: tự chơi, in `WON`/`GAME OVER`, tự thoát). Vòng lặp mỗi khung hình: cập nhật → kiểm tra thắng/thua → vẽ. Chạy solver ở luồng phụ để cửa sổ không đứng |
+| `app.h` | Khai báo các thao tác chung: bắt đầu màn, chơi lại, sang màn kế, gọi solver… |
+| `controls.cpp` / `controls.h` | Phím tắt: mũi tên lăn khối, `R` chơi lại, `Esc` menu, `C V B X N M` đổi camera, `Tab` bản đồ nhỏ, `F12` chụp màn hình |
+| `camera.cpp` / `camera.h` | 6 kiểu camera (bám theo khối, nhìn từ trên, từ tháp…) |
 
-Hằng toàn cục: `X=0, Y=1, Z=2` (tư thế), `U=1, D=2, R=3, L=4, NO=0` (hướng lăn).
+**Nhóm HIỂN THỊ** (chỉ để đẹp, **không chứa luật**):
 
-### 5.2. Nhóm CẦU NỐI AI
-
-#### `autoplay.h` / `autoplay.cpp`
-
-**`AutoPlayer`** (biến `autoplayer`): phát lại lời giải.
-
-| Phương thức | Chức năng |
+| File | Làm gì |
 |---|---|
-| `load(path)` | Đọc file lời giải: các ký tự `U/D/L/R`, cách nhau bởi khoảng trắng hoặc viết liền. Ký tự lạ → lỗi. Đường dẫn UTF-8 (mở được thư mục có dấu như "Cơ sở AI") |
-| `start(now)`, `stop()` | Bắt đầu / dừng phát lại |
-| `update(now)` | Gọi mỗi frame: nếu khối đang lăn thì chờ; nếu khối đã **đứng yên đủ `autoplay_delay = 0.25 s`** thì gửi phím của nước kế tiếp vào `superblock.move()` |
-| `is_active`, `total`, `played` | HUD hiển thị "Replay 3/10" |
+| `hud.cpp` / `hud.h` | Giao diện 2D bằng thư viện Dear ImGui: bảng thông số (màn, số bước, chế độ), **menu** (chọn màn, **4 nút BFS / DFS / UCS / A\***, tùy chọn), bảng "LEVEL COMPLETE / GAME OVER" với nút Retry / Next / Menu. Đây là phần đáp ứng yêu cầu "New Game, Restart, nút gọi solver" của đề |
+| `render.cpp` / `render.h`, `shaders.h` | Vẽ 3D: mọi ô và khối đều là hình hộp, vẽ hàng loạt bằng một lệnh cho nhanh |
+| `effects.cpp` / `effects.h` | Hiệu ứng: ô rơi xuống khi mở màn, bụi khi khối chạm sàn, pháo sáng khi thắng |
+| `colors.cpp` / `colors.h` | Bảng màu |
+| `screenshot.cpp` / `screenshot.h` | Chụp màn hình thành file PNG (F12) |
+| `noedit.cpp` / `noedit.h`, `headers.h` | Tiện ích nhỏ: mở file có đường dẫn tiếng Việt, khai báo chung |
 
-**`run_solver(level, algo, out_path, quiet)`**: gọi solver Python.
+**Build và các file khác:**
 
-1. Chỉ chấp nhận `bfs|dfs|ucs|astar`, nên không chèn được lệnh shell qua tên thuật toán.
-2. Đặt `PYTHONIOENCODING=utf-8` (output solver có tiếng Việt).
-3. Chọn script: `solver/main.py` (bản đóng gói) nếu có, ngược lại `../main.py` (chạy trong repo).
-4. Chọn trình thông dịch: biến môi trường `BLOXORZ_PYTHON`, mặc định `python3` (Linux/macOS) hoặc `python` rồi `py -3` (Windows). Mã 9009/127 (không tìm thấy lệnh) → thử cái tiếp theo.
-5. Chạy lệnh và chờ xong. Chế độ `quiet` (GUI) ghi output vào `solver_log.txt` và trên Windows không mở cửa sổ console (`CreateProcessW` + `CREATE_NO_WINDOW`).
-6. Đổi mã thoát thành `SolverStatus` (`0..4` trùng mã của `main.py`, `5` không có Python, `6` lỗi khác). `solver_status_text()` cho câu thông báo hiện trên HUD.
-
-### 5.3. Nhóm ỨNG DỤNG (vòng lặp, phím, camera)
-
-#### `main.cpp` — điểm vào và vòng lặp chính
-
-- **Đối tượng toàn cục:** `stage` (Floor), `superblock`, `game`, `window`, `Matrices`.
-- **Hai chế độ chạy:**
-  - **CLI** (`--play <file>` hoặc `--solve <algo>`): kiểm chứng luật. Tự phát lại, in `WON`/`GAME OVER`, giữ màn hình 2 s rồi thoát với mã 0 (thắng) / 1 (thua).
-  - **Tương tác** (không có hai tham số trên, ví dụ double-click `Bloxorz.exe`): có menu, Restart, Solve chạy nền, không tự thoát.
-- **Tham số:** `[level]`, `--solve`, `--play`, và tùy chọn cho dev: `--no-vsync`, `--no-menu`, `--camera`, `--shot <giây> <file.png>`, `--quit-after`, `--help`.
-- **Thao tác ứng dụng** (khai báo trong `app.h`, HUD và phím tắt dùng chung):
-
-| Hàm | Chức năng |
+| File | Làm gì |
 |---|---|
-| `available_levels()` | Quét `data/1.data … data/99.data` (2 giây/lần) để menu hiện danh sách màn. Thêm màn chỉ cần thả file vào `data/` |
-| `app_input_locked()` | Khóa phím mũi tên khi đang phát lại, đang chạy solver, ván đã kết thúc, đang mở menu hoặc đang hiệu ứng mở màn |
-| `app_start_level(lv)` | **New Game / chọn màn**: `game.initialize`, reset autoplay, hiệu ứng mở màn, tính lại phép chiếu và camera |
-| `app_restart()`, `app_next_level()` | **Restart** (phím R / nút Retry) và sang màn kế |
-| `app_solve(algo)` | Nút Solve: chạy `run_solver` trong **`std::thread` riêng** để cửa sổ không treo khi Python tìm kiếm lâu |
-| `poll_solver()` | Mỗi frame kiểm tra luồng solver xong chưa. Thành công và màn chưa đổi → nạp `solution.txt`, chơi lại màn từ đầu, phát lại sau hiệu ứng mở màn. Thất bại → hiện thông báo lỗi |
-
-- **Mỗi frame:** `update_game` (camera → hiệu ứng → autoplay → `superblock.update` → `game.check` → nếu kết thúc thì `on_game_end`: khối chìm vào lỗ kèm pháo sáng, hoặc ô cam vỡ và khối rơi), rồi `render_frame` (nền → cảnh 3D gồm lượt vẽ đục rồi lượt trong suốt → bản đồ nhỏ góc trái dưới → HUD).
-- **Chi tiết nền tảng:** gợi ý chạy trên GPU rời cho laptop 2 GPU (`NvOptimusEnablement`); đọc lại tham số dòng lệnh dạng UTF-16 trên Windows; `chdir_to_exe_if_needed()` để chạy được từ shortcut.
-
-#### `app.h`
-
-Khai báo trạng thái cấp ứng dụng (`level`, `cli_mode`, `menu_open`, `game_result`, FPS, `solve_state`, nhãn replay…) và các hàm `app_*` ở trên.
-
-#### `controls.h` / `controls.cpp` — bàn phím, chuột, phép chiếu
-
-- `keyboard()`: **mũi tên lăn khối** (xử lý khi **nhả phím**, và chỉ khi `!app_input_locked()`); `C V B X N M` đổi camera; `Space` đổi phép chiếu phối cảnh ↔ song song; `Tab` bản đồ nhỏ; `F1` bảng phím; `F12` chụp màn hình; `R` chơi lại; `Enter` sang màn kế (thắng) hoặc chơi lại (thua); `Esc` mở/đóng menu (chế độ CLI: thoát); `A S W D T G`, `I J K L` di chuyển/xoay camera tự do. Khi menu ImGui đang nhận phím thì game nhường phím cho menu.
-- `keyboardChar()`: `Q` thoát.
-- `mouseButton()`, `scroll()`, `cursor_pos_callback()`: điều khiển camera bằng chuột.
-- `reshapeWindow()`: tính lại phép chiếu phối cảnh (FOV 75°) và song song khi đổi kích thước cửa sổ. `ortho_fit()`: phép chiếu song song giữ đúng tỉ lệ, đặt màn chơi ở giữa.
-
-#### `camera.h` / `camera.cpp` — 6 chế độ camera (từ bản gốc)
-
-`C` follow (mặc định, bám theo khối mượt) · `V` nhìn thẳng từ trên (song song) · `B` tower (nhìn chéo từ một góc cao) · `X` helicopter (di chuyển và xoay tự do bằng phím) · `N` kéo chuột · `M` xoay theo vị trí chuột. Nhóm sửa để tốc độ camera **không phụ thuộc FPS** (nhân theo `dt`).
-
-### 5.4. Nhóm HIỂN THỊ (thuần hình ảnh, không chứa luật)
-
-| File | Chức năng |
-|---|---|
-| `render.h` / `render.cpp` | `Renderer`: **một mesh hộp đơn vị [0,1]³ dùng chung** cho mọi ô, khối và hạt. `draw_box()` chỉ ghi hộp vào lô; `flush()` gửi cả lô lên GPU và vẽ bằng **một lệnh instanced** (thay vì mỗi ô một lệnh như bản gốc). `BoxStyle` mô tả màu, hoa văn (`PAT_FRAGILE`, `PAT_SWITCH`, `PAT_HEAVY`, `PAT_SHADOW`), độ phát sáng, độ trong suốt. `draw_background()` vẽ nền gradient có sao |
-| `shaders.h` | Mã GLSL **nhúng thẳng** vào chương trình (bản đóng gói không cần file shader đi kèm): shader hộp có ánh sáng, viền tối và gờ sáng ở mép, hoa văn theo loại ô, sương mù theo khoảng cách; shader nền có sao lấp lánh |
-| `colors.h` / `colors.cpp` | Bảng màu: màu cơ bản của bản gốc + bảng màu nền tối (`FLOOR_COLOR`, `BRIDGE_COLOR`, `FRAGILE_COLOR`, `SWITCH_ACCENT`, `HEAVY_ACCENT`, `BLOCK_COLOR`, `GOAL_COLOR`, `DUST_COLOR`). `col(id)` đổi sang `glm::vec3` |
-| `effects.h` / `effects.cpp` | `Effects`: hiệu ứng mở màn (ô rơi xuống lần lượt, khối rơi từ trên cao), bụi khi khối chạm sàn, pháo sáng khi thắng; các hàm easing. Tắt được trong menu (máy yếu) |
-| `hud.h` / `hud.cpp` | Giao diện 2D bằng **Dear ImGui** vẽ đè lên cảnh 3D: bảng thông số góc trên trái (LEVEL, MOVES, MODE: Manual / Solving / Replay x/y, FPS, GPU), thanh gợi ý phím, thông báo solver ("Solving level 1 with A\*…" hoặc lỗi), bảng kết thúc (LEVEL COMPLETE / GAME OVER + nút **Retry**, **Next**, **Menu**), **menu chính** (Resume, **SELECT LEVEL**, **AI SOLVER: BFS / DFS / UCS / A\***, tùy chọn Mini-map/Effects/Hints, Quit). Đây là phần đáp ứng yêu cầu "New Game, Restart, buttons for invoking the solvers" của đề |
-| `screenshot.h` / `screenshot.cpp` | Ghi framebuffer ra **PNG** bằng bộ ghi PNG tối giản tự viết (zlib dạng "stored", CRC32, Adler-32), không cần thư viện ngoài. Dùng cho F12 và `--shot` (chụp ảnh cho báo cáo) |
-| `noedit.h` / `noedit.cpp` | Tiện ích: `error_callback` của GLFW, `quit`, `utf8_fopen` / `read_text_file` (mở file theo đường dẫn UTF-8; trên Windows đổi sang UTF-16 và dùng `_wfopen`) |
-| `headers.h` | Include chung (STL, GLAD, GLFW, GLM), struct `GLMatrices`, khai báo biến toàn cục `Matrices`, `proj_type`, `window` |
-
-### 5.5. Build, đóng gói, thư viện bên thứ ba
-
-| File / thư mục | Chức năng |
-|---|---|
-| `makefile` | Build trên Linux/WSL, macOS (Homebrew), Windows (MSYS2 MinGW64). `make` → `a.out`/`a.exe` (bản dev, có console); `make release` → `Bloxorz.exe` link tĩnh, không console, có icon; `make dist` → `../dist/<nền tảng>/Bloxorz/` (exe + `data/` + `solver/` chứa `main.py` và `ai/` + licenses) và file zip; `make clean`. Object để riêng theo nền tảng trong `build/<linux|win64>/` để build WSL và MSYS2 trên cùng thư mục không lẫn nhau. **Phải dùng tab** |
-| `bloxorz.rc` | Tài nguyên Windows: icon cửa sổ (`GLFW_ICON`) và thông tin phiên bản của `Bloxorz.exe` |
-| `assets/bloxorz.ico`, `assets/bloxorz_256.png` | Icon do nhóm tự sinh |
-| `assets/make_icon.py` | Script Python (chỉ thư viện chuẩn) vẽ icon isometric "khối đỏ đứng trên sàn 3×3" và ghi file `.ico`/`.png` |
-| `assets/README_dist.txt` | README đi kèm bản đóng gói (cách chơi, phím, cách dùng nút Solve) |
-| `glad.c`, `include/glad/glad.h`, `include/KHR/khrplatform.h` | GLAD: bộ nạp hàm OpenGL 3.3 core (sinh bằng glad 0.1.36) |
-| `third_party/imgui/` | Dear ImGui v1.91.9 (MIT): core + backend GLFW và OpenGL3, giữ nguyên bản gốc |
-
-### 5.6. Dữ liệu và file sinh ra khi chạy
-
-| File | Ý nghĩa |
-|---|---|
-| `data/1.data`, `data/2.data` | Hai màn chơi (mục 2.3), dùng chung cho game C++ và solver Python |
-| `a.out`, `a.exe`, `bloxorz`, `Bloxorz.exe` | File chạy đã build (bị `.gitignore` bỏ qua) |
-| `solution.txt` | Lời giải solver vừa ghi, game đọc để phát lại (gitignore) |
-| `solver_log.txt` | Output của lần chạy solver gần nhất từ GUI (gitignore). Hiện chứa "[bfs] chưa cài" vì solver chưa có |
-| `sol1.txt` | File lời giải màn 1 để thử `--play` (chưa commit) |
-| `screenshot_*.png` | Ảnh chụp F12 (gitignore) |
-| `readme.MD` | README của tác giả gốc (tính năng, phím, các chế độ camera) |
-
-### 5.7. Ví dụ đầu-cuối: bấm nút "A\*" trên menu
-
-```
-hud.cpp main_menu: bấm "A*"                     → app_solve("astar")         (main.cpp)
-  └─ std::thread: run_solver(1, "astar", "solution.txt", quiet=true)       (autoplay.cpp)
-       └─ python ../main.py data/1.data --algo astar --out solution.txt
-            main.py: Level.from_file → BloxorzProblem(level) → AStarSolver(...).run()
-                     → is_valid_solution(path)? → ghi "R U U R ..." → exit 0
-  └─ solver_done = true
-mỗi frame: poll_solver() thấy SOLVER_OK      → autoplayer.load("solution.txt")
-                                             → app_start_level(1)  (chơi lại từ đầu + hiệu ứng mở màn)
-                                             → pending_autoplay = true
-hết hiệu ứng mở màn                          → autoplayer.start()
-mỗi frame: autoplayer.update()               → khối đứng yên ≥ 0.25 s → superblock.move(phím)
-           superblock.update(dt)             → đủ 90°: cập nhật ix, iy, along → game.check_after_step()
-           game.check()                      → 1 (thắng) → on_game_end: khối chìm + pháo sáng
-hud.cpp end_panel                            → "LEVEL COMPLETE — 10 moves"  [Retry] [Next] [Menu]
-```
-
-Nếu solver chưa cài: `main.py` thoát mã 2 → HUD hiện "A\*: This algorithm is not implemented yet (TODO in ai/solvers)".
+| `makefile` | Lệnh build: `make` (bản thử), `make release` (ra `Bloxorz.exe`), `make dist` (đóng gói zip kèm màn chơi và solver Python) |
+| `bloxorz.rc`, `assets/` | Icon và thông tin của file `.exe`; `make_icon.py` vẽ icon |
+| `glad.c`, `include/` | Thư viện nạp OpenGL |
+| `third_party/imgui/` | Thư viện Dear ImGui (vẽ menu) |
+| `data/` | 11 màn chơi + danh mục + ảnh + lời giải |
+| `a.out`, `a.exe`, `Bloxorz.exe` | File chạy đã build (không đưa lên git) |
+| `solution.txt`, `solver_log.txt` | File tạm: lời giải vừa tìm, nhật ký lần chạy solver gần nhất |
+| `readme.MD` | README của tác giả game gốc |
 
 ---
 
-## 6. Hình thức hóa bài toán tìm kiếm
+## Phần 6. Khung chung của mọi thuật toán tìm kiếm
 
-Đề mục 3.6 yêu cầu báo cáo mô tả: *state representation (including orientation and bridge configuration), actions, transition model, goal test, cost function, heuristics, and how you avoid revisiting states*. Ánh xạ sang code:
+### 6.1. Ví von: đi tìm đường trong một tòa nhà lạ
 
-| Thành phần | Định nghĩa | Trong code |
+Bạn đứng ở cửa một tòa nhà lạ, cần tìm phòng "ĐÍCH". Bạn mang theo hai tờ giấy:
+
+- **Tờ "Danh sách chờ" (frontier):** những phòng **đã biết là có** nhưng **chưa vào xem**.
+- **Tờ "Sổ ghi chép" (visited/parent):** những phòng **đã biết tới**, kèm ghi chú "tới phòng này từ phòng nào, đi cửa nào".
+
+Cách làm:
+
+```
+1. Ghi phòng xuất phát vào cả hai tờ giấy.
+2. Lặp lại:
+   a. Chọn MỘT phòng trong "danh sách chờ", gạch khỏi danh sách.      ← mở rộng (expand)
+   b. Nếu đó là phòng ĐÍCH → dò ngược sổ ghi chép để biết đường đi. XONG.
+   c. Nhìn các cửa của phòng đó, xem dẫn tới những phòng nào.           ← sinh (generate)
+   d. Phòng nào CHƯA có trong sổ → ghi vào sổ ("tới từ đây, cửa này")
+      và thêm vào danh sách chờ.
+3. Danh sách chờ hết sạch mà chưa thấy ĐÍCH → không có đường. XONG.
+```
+
+**Cả 4 thuật toán đều làm y như vậy.** Chúng chỉ khác nhau ở **bước 2a: chọn phòng nào trong danh sách chờ để vào tiếp?**
+
+| Thuật toán | Chọn phòng nào tiếp? | Danh sách chờ là |
 |---|---|---|
-| **Trạng thái** | `(x, y, orientation, bridge_mask)` | `State` |
-| **Trạng thái đầu** | Ô và tư thế bắt đầu trong file, mọi cầu đóng (`mask = 0`) | `initial_state()` |
-| **Hành động** | `{U, D, L, R}`, chỉ những hướng không làm rơi | `actions()`, `successors()` |
-| **Mô hình chuyển** | Lăn theo bảng 2.2 → kiểm tra → công tắc → kiểm tra lại (mục 2.4) | `simulate()`, `result()` |
-| **Kiểm tra đích** | Khối đứng (`Z`) trên lỗ đích | `is_goal()` |
-| **Chi phí** | Mặc định 1/nước; UCS cần hàm không đồng nhất (mục 7.3) | `cost_fn`, `step_cost()` |
-| **Heuristic** | Cận dưới chi phí còn lại (mục 7.4) | `ai/heuristics.py` |
-| **Chống lặp** | Visited/parent dict theo `State` (băm được); với UCS/A\* là `best_g` | trong `solve()` của từng solver |
+| **BFS** | Phòng được ghi vào **sớm nhất** | Hàng đợi (xếp hàng mua vé: ai tới trước được phục vụ trước) |
+| **DFS** | Phòng được ghi vào **muộn nhất** | Ngăn xếp (chồng đĩa: đĩa đặt sau cùng được lấy ra trước) |
+| **UCS** | Phòng có **tổng chi phí đã đi `g` nhỏ nhất** | Hàng đợi ưu tiên (heap) theo `g` |
+| **A\*** | Phòng có **`g + h` nhỏ nhất** (đã đi + ước đoán còn lại) | Hàng đợi ưu tiên theo `f = g + h` |
 
-**Kích thước không gian trạng thái.** Với `T` ô có thể đứng và `k` công tắc: tối đa khoảng `3T · 2^k` trạng thái. Màn 1 (3 công tắc) có **1028** trạng thái đạt được từ trạng thái đầu (đếm bằng cách duyệt hết, không dừng ở đích). Số này nhỏ nên mọi thuật toán đều chạy gần như tức thời. Muốn thấy khác biệt rõ giữa các thuật toán trong thực nghiệm thì cần màn **lớn** và **nhiều công tắc**.
+### 6.2. Vì sao cần "sổ ghi chép"?
+
+Không có sổ thì bạn sẽ đi vòng tròn mãi. Ví dụ ở màn đồ chơi: từ **A** lăn `U` tới **B**, từ **B** lăn `D` lại về **A**, rồi lại `U` tới **B**… Sổ ghi chép giúp nhận ra "A đến rồi, khỏi thêm vào danh sách chờ nữa".
+
+Sổ còn có công dụng thứ hai: **truy ngược lời giải**. Sổ ghi `parent[K] = (F, "U")` nghĩa là "tới K từ F bằng nước U". Khi tới đích O, ta dò ngược `O ← K ← F ← C ← A`, rồi đảo lại thành `L U U R`. Trong code, việc này do `BaseSolver.reconstruct_path()` làm.
+
+### 6.3. Ba con số đếm
+
+- **Sinh (generated):** mỗi lần nhìn thấy một trạng thái con (bước 2c). `nodes_generated`.
+- **Mở rộng (expanded):** mỗi lần lấy một trạng thái ra và sinh con của nó (bước 2a, không tính lần lấy ra đích). `nodes_expanded`. **Đề yêu cầu đếm con số này.**
+- **Frontier lớn nhất:** lúc đông nhất, danh sách chờ có bao nhiêu trạng thái. `max_frontier`.
+
+> Các thành viên cần **thống nhất cách đếm** (ví dụ: có tính lần lấy ra đích không, có tính bản ghi cũ bị bỏ qua không). A\* của Sang **không tính** lần lấy ra đích và **không tính** bản ghi cũ. BFS, DFS, UCS nên đếm giống vậy để bảng so sánh công bằng.
 
 ---
 
-## 7. Các thuật toán tìm kiếm chạy như thế nào
+## Phần 7. BFS — loang theo từng lớp
 
-### 7.0. Khung chung cho cả bốn thuật toán
+### 7.1. Ý tưởng
 
-Cả bốn đều là **tìm kiếm trên đồ thị** (graph search) và chỉ khác nhau ở **cấu trúc frontier**:
+Giống **ném hòn đá xuống mặt hồ**: sóng lan ra thành từng vòng. BFS xét **hết** các trạng thái cách xuất phát 1 nước, rồi **hết** các trạng thái cách 2 nước, rồi 3 nước… Danh sách chờ là **hàng đợi**: vào trước, ra trước.
 
-```
-frontier ← { trạng thái đầu }
-đã_thấy  ← { trạng thái đầu }              (parent dict: vừa chống lặp, vừa truy vết)
-lặp khi frontier còn phần tử:
-    s ← LẤY_RA(frontier)                    ← BFS: đầu hàng đợi; DFS: đỉnh ngăn xếp;
-                                              UCS: g nhỏ nhất; A*: g + h nhỏ nhất
-    nếu s là đích: truy vết parent → trả về đường đi
-    nodes_expanded += 1
-    với mỗi (a, s', cost) trong successors(s):
-        nodes_generated += 1
-        nếu s' chưa thấy (hoặc có g tốt hơn — UCS/A*): ghi parent[s'] = (s, a); ĐƯA_VÀO(frontier, s')
-    cập nhật max_frontier
-trả về "không có lời giải"
-```
-
-Ba khái niệm cần phân biệt khi viết báo cáo:
-
-- **Sinh (generate):** tạo ra trạng thái con khi gọi `successors()`.
-- **Mở rộng (expand):** lấy một trạng thái ra khỏi frontier và sinh con của nó. Đây là chỉ số "Expanded Nodes" của đề.
-- **Thời điểm kiểm tra đích:** khi **sinh** (sớm hơn, vẫn tối ưu với BFS) hay khi **lấy ra** (bắt buộc với UCS/A\* để tối ưu). Các thành viên phải **thống nhất cách đếm** và ghi rõ trong báo cáo, nếu không bảng so sánh sẽ không công bằng.
-
-### 7.1. BFS — Breadth-First Search (TV1, đề mục 3.2)
-
-#### 7.1.1. Ý tưởng và mã giả
-
-Duyệt **theo từng tầng**: xét hết các trạng thái cách gốc 1 nước, rồi 2 nước, rồi 3 nước… Frontier là **hàng đợi FIFO** (`collections.deque`).
+Mã giả:
 
 ```
-BFS(problem):
-    s0 ← initial_state;  parent ← {s0: None};  queue ← [s0]
-    while queue:
-        s ← queue.pop_left()
-        if is_goal(s): return reconstruct(parent, s)
-        expanded += 1
-        for (a, s', _) in successors(s):
-            if s' ∉ parent:                  ← đánh dấu đã thấy KHI ĐẨY VÀO, không phải khi lấy ra
-                parent[s'] ← (s, a);  queue.push_right(s')
-        max_frontier ← max(max_frontier, |queue|)
-    return None
+BFS:
+    hàng_đợi ← [xuất_phát];   sổ ← {xuất_phát: không có cha}
+    lặp khi hàng_đợi còn phần tử:
+        s ← lấy phần tử ĐẦU hàng_đợi
+        nếu s là đích: truy ngược sổ → trả về lời giải
+        với mỗi (nước a, trạng thái con t) trong successors(s):
+            nếu t chưa có trong sổ:
+                sổ[t] ← (s, a);   thêm t vào CUỐI hàng_đợi
+    trả về "không có lời giải"
 ```
 
-Đánh dấu khi đẩy vào hàng đợi giúp một trạng thái không bị đẩy vào nhiều lần (frontier không chứa trùng).
+> **Mẹo:** ghi vào sổ **ngay lúc thêm vào hàng đợi**, không đợi tới lúc lấy ra. Như vậy một trạng thái không bị thêm vào hàng đợi hai lần.
 
-#### 7.1.2. Ví dụ: 4 tầng đầu của màn 1
+### 7.2. Chạy tay trên màn đồ chơi
 
-| Tầng (số nước) | Các trạng thái mới | Giải thích |
-|---:|---|---|
-| 0 | `(3,3,Z,mask=0)` | xuất phát |
-| 1 | `(3,4,Y,0)`, `(4,3,X,0)` | từ `(3,3,Z)` chỉ có U và R hợp lệ (L, D làm rơi) |
-| 2 | `(2,4,Y,1)`, `(4,4,Y,0)`, `(4,4,X,0)`, `(4,2,X,0)` | `(2,4,Y)` nằm đè lên công tắc `(2,5)` → **mask = 1**, cầu `(6,4)` mở |
-| 3 | `(2,3,Z,1)`, `(3,4,Y,1)`, `(4,3,Z,0)`, `(5,4,Y,0)`, `(4,5,X,0)`, `(3,4,Z,0)`, `(3,2,Z,0)` | `(3,4,Y,1)` trùng **vị trí** với `(3,4,Y,0)` ở tầng 1 nhưng **khác mask**, nên là trạng thái mới |
+(Tên trạng thái xem bảng ở mục 4.2. "đã thấy" = đã có trong sổ, bỏ qua.)
 
-Số trạng thái mỗi tầng tăng dần (1, 2, 4, 7, 10, 16, 24, …). Lời giải nằm ở tầng 10. Vì BFS xét hết tầng 9 rồi mới tới tầng 10, lời giải đầu tiên tìm được chắc chắn **ngắn nhất về số nước**.
-
-#### 7.1.3. Tính chất
-
-- **Đầy đủ** (không gian hữu hạn) và **tối ưu theo số nước đi** (mọi nước chi phí bằng nhau).
-- Thời gian và bộ nhớ `O(b^d)`, với `b ≤ 4` (hệ số nhánh) và `d` là độ dài lời giải. Thực tế bị chặn bởi số trạng thái `|S|`.
-
-#### 7.1.4. "Memory usage trong BFS" là gì?
-
-**Định nghĩa trong đồ án:** đề yêu cầu đo *Memory Usage* (mục 3.2) và ghi rõ là *peak memory* (mục 3.6). Đó là **lượng bộ nhớ lớn nhất mà thuật toán chiếm cùng một lúc trong khi tìm kiếm**, không phải tổng bộ nhớ đã từng cấp phát, cũng không phải bộ nhớ của cả chương trình Python.
-
-**Đo bằng gì trong code:** `BaseSolver.run(measure_memory=True)` gọi `tracemalloc.start()` trước `solve()`, rồi lấy `tracemalloc.get_traced_memory()[1]`, tức **đỉnh** số byte Python cấp phát kể từ lúc bắt đầu đo. Kết quả được đổi sang KB và ghi vào `SearchResult.peak_memory_kb`. Vì đo từ lúc `solve()` bắt đầu, phần đã có sẵn (đối tượng `Level`, `BloxorzProblem`, trình thông dịch) **không bị tính**. Chỉ tính phần do thuật toán tạo ra.
-
-**Với BFS, bộ nhớ đỉnh gồm những gì?**
-
-| Thành phần | Kích thước |
-|---|---|
-| `parent` dict (kiêm tập visited) | Một mục cho **mỗi trạng thái đã thấy**, tăng suốt quá trình tìm và không bao giờ giảm |
-| Hàng đợi `deque` (frontier) | Nhiều nhất bằng độ rộng của tầng lớn nhất (`max_frontier`) |
-| Các object `State` | 64 byte mỗi object (nhờ `slots=True`), cộng chi phí của khóa dict |
-| Danh sách tạm do `successors()` trả về | Nhỏ, sống ngắn |
-
-**Vì sao BFS tốn bộ nhớ nhất trong các thuật toán "mù"?** BFS phải giữ **toàn bộ tầng đang xét** trong hàng đợi và **mọi trạng thái đã thấy** trong `parent`. Số trạng thái mỗi tầng tăng theo cấp số `b^d`, nên bộ nhớ cũng tăng theo `b^d`. DFS lý thuyết chỉ cần `O(b·m)` (một nhánh), nhưng khi có visited toàn cục thì cũng thành `O(|S|)`. Đây là điểm đáng thảo luận trong báo cáo.
-
-**Độ lớn tham chiếu** (bản BFS cài thử ngoài repo, Python 3.12, kiểm tra đích khi lấy ra):
-
-| Màn | Độ dài | Node mở rộng | Trạng thái đã thấy | Frontier lớn nhất | Bộ nhớ đỉnh |
-|---|---:|---:|---:|---:|---:|
-| 1 | 10 | 160 | 207 | 47 | ≈ 26 KB |
-| 2 | 68 | 377 | 385 | 14 | ≈ 50 KB |
-
-Màn 2 có lời giải dài hơn nhiều nhưng frontier lại nhỏ vì màn hẹp, gần như chỉ có một đường. Bộ nhớ chủ yếu do `parent` dict quyết định. Số liệu của nhóm sẽ hơi khác tùy cách cài.
-
-**Lưu ý khi đo và báo cáo:**
-
-- **Đo bộ nhớ ở lượt chạy riêng** (`main.py --memory` đã làm vậy). `tracemalloc` làm Python chậm đi nhiều, nên đo chung với thời gian sẽ sai số liệu thời gian.
-- `max_frontier` là chỉ số **đếm phần tử**, còn `peak_memory_kb` là chỉ số **byte**. Có thể báo cáo cả hai: `max_frontier` không phụ thuộc phiên bản Python, `peak_memory_kb` đúng với yêu cầu đề.
-- Chạy nhiều lần lấy trung vị cho thời gian; bộ nhớ đỉnh thường ổn định giữa các lần chạy.
-
-### 7.2. DFS — Depth-First Search (TV2, đề mục 3.3)
-
-#### 7.2.1. Ý tưởng và mã giả
-
-Đi **sâu nhất có thể** theo một nhánh, hết đường mới quay lui. Frontier là **ngăn xếp LIFO**. Dùng **stack tường minh**, không đệ quy: giới hạn đệ quy mặc định của Python (~1000) sẽ bị vượt trên màn lớn.
-
-```
-DFS(problem):
-    s0 ← initial_state;  parent ← {s0: None};  stack ← [s0]
-    while stack:
-        s ← stack.pop()
-        if is_goal(s): return reconstruct(parent, s)
-        expanded += 1
-        for (a, s', _) in reversed(successors(s)):   ← đẩy NGƯỢC để lấy ra theo thứ tự U, D, L, R
-            if s' ∉ parent:
-                parent[s'] ← (s, a);  stack.push(s')
-    return None
-```
-
-**Chống lặp (đề bắt buộc):** tập `parent`/visited theo `State`. Không có nó, DFS sẽ lăn qua lại giữa hai trạng thái mãi mãi (ví dụ `U` rồi `D` rồi `U`…).
-
-#### 7.2.2. Tính chất
-
-- **Đầy đủ** khi có visited (không gian hữu hạn). **Không tối ưu**: lời giải thường dài hơn BFS rất nhiều.
-- **Thứ tự hành động ảnh hưởng mạnh** tới độ dài lời giải và số node. Phải cố định thứ tự (U, D, L, R) và ghi rõ trong báo cáo.
-- **Bộ nhớ:** lý thuyết `O(b·m)` (m = độ sâu tối đa), nhưng visited toàn cục đẩy lên `O(|S|)`.
-- **Phương án IDS** (đề cho phép, phải ghi rõ): chạy DFS giới hạn độ sâu 0, 1, 2, … Được tối ưu theo số nước (như BFS) với bộ nhớ nhỏ, đổi lại phải mở rộng lại các tầng nông nhiều lần. Chống lặp phải làm theo **đường đi hiện tại** hoặc lưu "độ sâu nhỏ nhất đã gặp". Dùng visited toàn cục kiểu DFS sẽ làm IDS **mất tính tối ưu**. Nếu cài IDS thì tạo `ai/solvers/ids_solver.py` và đăng ký trong `SOLVERS`.
-
-### 7.3. UCS — Uniform-Cost Search (TV3, đề mục 3.4)
-
-#### 7.3.1. Ý tưởng và mã giả
-
-Luôn mở rộng trạng thái có **tổng chi phí đường đi `g` nhỏ nhất**. Frontier là **hàng đợi ưu tiên** (`heapq`).
-
-```
-UCS(problem):
-    s0 ← initial_state;  best_g ← {s0: 0};  parent ← {s0: None}
-    heap ← [(0, counter++, s0)]                ← counter để phá hòa, tránh so sánh hai State
-    while heap:
-        (g, _, s) ← heap.pop_min()
-        if g > best_g[s]: continue              ← bản "cũ" đã có bản tốt hơn → bỏ qua, KHÔNG tính expanded
-        if is_goal(s): return reconstruct(parent, s)     ← kiểm tra đích KHI LẤY RA
-        expanded += 1
-        for (a, s', c) in successors(s):
-            g' ← g + c
-            if g' < best_g.get(s', ∞):
-                best_g[s'] ← g';  parent[s'] ← (s, a);  heap.push((g', counter++, s'))
-    return None
-```
-
-Hai điểm bắt buộc để UCS đúng:
-
-- **Kiểm tra đích khi lấy ra**, không phải khi sinh. Khi sinh, đích có thể đang ở `g` chưa tốt nhất; một đường rẻ hơn tới đích có thể vẫn còn nằm trong heap.
-- **Lazy deletion:** `heapq` không hỗ trợ "giảm khóa". Khi tìm được `g` tốt hơn cho `s'`, ta đẩy bản mới vào heap và để bản cũ lại; lúc lấy bản cũ ra thì bỏ qua (`g > best_g[s]`).
-
-**Tính chất:** đầy đủ và **tối ưu theo tổng chi phí** khi mọi chi phí ≥ ε > 0.
-
-#### 7.3.2. "Hàm chi phí không đồng nhất để cho ra bộ trọng số thích hợp" nghĩa là gì?
-
-**Hàm chi phí** `c(s, a, s')` gán cho **mỗi nước đi** một con số dương: "đi nước này tốn bao nhiêu". Trong code đó là `cost_fn` truyền vào `BloxorzProblem`. UCS (và A\*) tìm đường có **tổng** các con số này nhỏ nhất.
-
-- **Đồng nhất (uniform):** mọi nước đều tốn 1 (`unit_cost`). Khi đó tổng chi phí = số nước đi, và đề nói rõ **UCS suy biến thành BFS** (mục 3.4): cùng lời giải, chỉ chậm hơn vì dùng heap.
-- **Không đồng nhất (non-uniform):** các **loại** nước đi khác nhau có giá khác nhau. Ví dụ: lăn lên ô cam đắt hơn vì rủi ro; dựng khối đứng lên đắt hơn đổ xuống vì tốn sức hơn.
-- **"Bộ trọng số"** là tập các con số gán cho từng loại nước đi, ví dụ `{đổ xuống: 1.118, lăn ngang: 1.207, dựng đứng: 1.618}` hoặc `{nước thường: 1, nước chạm ô cam: 3}`.
-- **"Thích hợp"** nghĩa là bộ trọng số thỏa 4 điều kiện:
-  1. **Dương thật sự** (≥ ε > 0). Chi phí 0 hoặc âm làm UCS/A\* mất tính đúng đắn hoặc lặp vô hạn.
-  2. **Có lý giải** viết được trong báo cáo (đề: *"as long as you give a reasonable explanation"*): vật lý, rủi ro, sở thích người chơi…
-  3. **Thực sự làm UCS khác BFS** trên bộ test. Nếu trọng số gần đều nhau, UCS vẫn ra đúng lời giải của BFS và phần này mất ý nghĩa (xem 7.3.4).
-  4. **A\* dùng cùng hàm chi phí** và heuristic phải **admissible theo hàm chi phí đó** (đề mục 3.5: *"your heuristic must remain admissible with respect to your chosen cost function"*). Khi đó `cost(A*) = cost(UCS)` trên mọi màn, là một phép kiểm tra chéo tốt.
-
-Theo Q&A (câu 10, `report0.md`), nhóm **được dùng ML để suy ra trọng số**, miễn trình bày rõ.
-
-#### 7.3.3. Hai hướng thiết kế (chi tiết ở `report0.md` mục 5.3)
-
-**(a) Theo năng lượng vật lý.** Muốn lăn khối quanh một cạnh đáy, phải nâng trọng tâm lên điểm cao nhất rồi mới đổ sang. Độ nâng trọng tâm `Δh`: đổ xuống ≈ 0.118, lăn ngang ≈ 0.207, dựng đứng ≈ 0.618. Đặt `cost = 1 + Δh`: **đổ xuống 1.118, lăn ngang 1.207, dựng đứng 1.618.** Số 1 đại diện cho "một thao tác của người chơi", phần `Δh` đại diện cho công vật lý.
-
-**(b) Theo rủi ro / tình huống.** Ví dụ: nước đi khiến khối chạm ô cam `+2` (rủi ro làm vỡ nếu thao tác sai); nước kích hoạt công tắc rẻ hơn nhưng **vẫn > 0**; về sau có split thì di chuyển khi đang tách đắt hơn.
-
-#### 7.3.4. Phân tích quan trọng: vì sao bộ trọng số năng lượng gần như không đổi lời giải
-
-Mỗi nước đi thuộc một trong ba loại: **đổ** (Z → nằm), **dựng** (nằm → Z), **lăn ngang** (nằm → nằm). Trên một đường đi từ trạng thái **đứng** tới đích **đứng**, mỗi lần đổ phải được "trả" bằng đúng một lần dựng. Vậy **số lần đổ = số lần dựng = k**. Gọi `r` là số lần lăn ngang, `L = 2k + r` là độ dài:
-
-```
-chi_phí = 1.118·k + 1.618·k + 1.207·r = 1.207·L + 0.322·k
-```
-
-Nghĩa là UCS năng lượng **gần như chỉ tối ưu độ dài**, chỉ khác ở chỗ ưu tiên ít cặp đổ–dựng khi hòa. Muốn một đường **dài hơn 1 nước** thắng, nó phải có **ít hơn ít nhất 4 cặp đổ–dựng** (vì 1.207 / 0.322 ≈ 3.75). Rất hiếm gặp:
-
-- Trên màn 1 và màn 2, UCS năng lượng cho **đúng lời giải của BFS** (10 và 68 bước, chi phí 13.036 và 88.516).
-- Thử 40.000 màn ngẫu nhiên nhỏ (lưới tới 5×7), không màn nào UCS năng lượng chọn đường khác BFS.
-
-**Kết luận cho TV3:** nếu dùng (a) thì cần (i) tăng độ chênh giữa các trọng số (ví dụ `λ` lớn trong `1 + λ·Δh`), và/hoặc (ii) thiết kế màn có hai đường mà một đường nhiều cặp đổ–dựng hơn hẳn, và/hoặc (iii) kết hợp với (b). Trình bày phép phân tích này trong báo cáo là một điểm cộng: nó cho thấy nhóm hiểu **vì sao** kết quả UCS giống hay khác BFS.
-
-(Nếu bắt đầu ở tư thế nằm thì số lần dựng = số lần đổ + 1. Lập luận không đổi.)
-
-#### 7.3.5. Ví dụ dò tay: chi phí phạt ô cam làm UCS khác BFS
-
-Màn đồ chơi 3×4 (dựng bằng `make_level` trong test). Bắt đầu `Z` tại `(2,0)`, đích `(2,2)`:
-
-```
-        y=0 y=1 y=2 y=3
-x=0      1   1   1   1
-x=1      1   2   2   1        2 = ô cam
-x=2      S   1   ◎   1        S = xuất phát (2,0), ◎ = lỗ đích (2,2)
-```
-
-Hàm chi phí: `c = 1`, cộng thêm `2` nếu **sau nước đi** có ô nào của khối nằm trên ô cam.
-
-| Thuật toán | Lời giải | Số nước | Tổng chi phí (phạt ô cam) |
-|---|---|---:|---:|
-| BFS (tối ưu số nước) | `L U U R` | **4** | 1 + 3 + 3 + 1 = 8 |
-| UCS (tối ưu chi phí) | `U U L D R` | 5 | 1 + 1 + 1 + 3 + 1 = **7** |
-
-Dò từng nước (lấy từ `simulate` thật):
-
-```
-BFS:  L: (2,0,Z) → (0,0,X) chiếm (0,0),(1,0)          chi phí 1
-      U: (0,0,X) → (0,1,X) chiếm (0,1),(1,1)=cam      chi phí 3
-      U: (0,1,X) → (0,2,X) chiếm (0,2),(1,2)=cam      chi phí 3
-      R: (0,2,X) → (2,2,Z)  WON                       chi phí 1      tổng 8
-UCS:  U: (2,0,Z) → (2,1,Y) chiếm (2,1),(2,2)=lỗ đích  chi phí 1  (nằm vắt qua đích: hợp lệ)
-      U: (2,1,Y) → (2,3,Z)                            chi phí 1
-      L: (2,3,Z) → (0,3,X) chiếm (0,3),(1,3)          chi phí 1
-      D: (0,3,X) → (0,2,X) chiếm (0,2),(1,2)=cam      chi phí 3
-      R: (0,2,X) → (2,2,Z)  WON                       chi phí 1      tổng 7
-```
-
-Diễn biến hàng đợi ưu tiên của UCS (vài bước đầu; `g` = chi phí tích lũy; hòa thì phá theo thứ tự đẩy vào):
-
-| Lần lấy ra | Trạng thái lấy ra (g) | Sinh con (g mới) | Ghi chú |
+| Bước | Lấy ra | Sinh con | Hàng đợi sau bước này |
 |---:|---|---|---|
-| 1 | `(2,0,Z)` (0) | `(2,1,Y)` (1), `(0,0,X)` (1) | |
-| 2 | `(2,1,Y)` (1) | `(2,3,Z)` (2), `(1,1,Y)` (4) | `(1,1,Y)` chạm ô cam nên g tăng 3 |
-| 3 | `(0,0,X)` (1) | `(0,1,X)` (4) | BFS đi tiếp nhánh này; UCS thấy nó đắt nên để sau |
-| 4 | `(2,3,Z)` (2) | `(0,3,X)` (3) | nhánh "vòng phải" rẻ hơn |
-| 5 | `(0,3,X)` (3) | `(0,2,X)` (6) | |
-| … | các trạng thái g = 4, 5, 6 | | `(0,2,X)` được tới với g = 6 (qua `(0,1,X)` thì g = 7, không tốt hơn) |
-| cuối | `(2,2,Z)` (7) | — | lấy ra thì là đích → dừng, chi phí 7 |
+| 1 | A | U→**B**, L→**C** | B C |
+| 2 | B | U→**D**, D→A (đã thấy), L→**E** | C D E |
+| 3 | C | U→**F**, R→A (đã thấy) | D E F |
+| 4 | D | D→B (đã thấy), L→**G** | E F G |
+| 5 | E | U→**H**, D→**I**, L→**J**, R→B (đã thấy) | F G H I J |
+| 6 | F | U→**K**, D→C (đã thấy), R→**L** | G H I J K L |
+| 7 | G | D→K (đã thấy), R→D (đã thấy) | H I J K L |
+| 8 | H | D→E (đã thấy) | I J K L |
+| 9 | I | U→E (đã thấy) | J K L |
+| 10 | J | U→**M**, D→**N**, R→E (đã thấy) | K L M N |
+| 11 | K | U→G, D→F (đều đã thấy), R→**O** | L M N O |
+| 12 | L | U→**P**, L→F (đã thấy) | M N O P |
+| 13 | M | D→J (đã thấy), R→**Q** | N O P Q |
+| 14 | N | U→J (đã thấy), R→**R** | O P Q R |
+| 15 | **O** | = **ĐÍCH** | |
 
-Bài học: BFS chỉ "nhìn" số nước nên đi thẳng qua 2 lần chạm ô cam. UCS chấp nhận thêm 1 nước để chỉ chạm ô cam 1 lần. Đây chính là điều đề muốn thấy khi nói *"rolling onto a fragile tile is expensive because it is risky"*.
+Truy ngược sổ: `O ← K (R) ← F (U) ← C (U) ← A (L)` → lời giải **`L U U R`**, **4 nước**, mở rộng **14** trạng thái.
 
-#### 7.3.6. Cắm hàm chi phí vào code
-
-- Viết hàm `(state, action, next_state) -> float` và truyền vào `BloxorzProblem(level, cost_fn=...)`. `successors()` tự trả chi phí, `make_result` tự tính `cost`.
-- **Việc còn thiếu:** `main.py` luôn dùng `unit_cost`, nên nút UCS trong game hiện tại sẽ cho kết quả giống BFS. Cần thêm tham số chọn hàm chi phí (ví dụ `--cost unit|energy|fragile`). Có thể để UCS và A\* mặc định dùng hàm không đồng nhất khi được gọi từ game.
-- `tests/test_solvers.py` hiện kiểm tra UCS/A\* với **chi phí 1** (độ dài 10 và 68). Khi thêm hàm chi phí mới, giữ test đó và thêm test riêng, ví dụ `cost(A*) == cost(UCS)` với hàm mới, cùng màn đồ chơi 7.3.5 (UCS phải ra chi phí 7).
-
-### 7.4. A\* Search (TV4 solver, TV5 heuristic; đề mục 3.5)
-
-#### 7.4.1. Ý tưởng và mã giả
-
-Giống UCS nhưng ưu tiên theo **`f(s) = g(s) + h(s)`**: `g` là chi phí đã đi, `h` là **ước lượng** chi phí còn lại tới đích. Nhờ `h`, A\* "hướng" về phía đích thay vì loang đều mọi phía như UCS.
+Để ý cách BFS đi theo lớp:
 
 ```
-A*(problem, h):
-    giống UCS, chỉ đổi khóa heap: (g + h(s'), h(s'), counter++, s')   ← hòa f thì ưu tiên h nhỏ (gần đích hơn)
-    vẫn giữ best_g + lazy deletion; vẫn kiểm tra đích KHI LẤY RA
+  Lớp 0 (0 nước):  A
+  Lớp 1 (1 nước):  B C
+  Lớp 2 (2 nước):  D E F
+  Lớp 3 (3 nước):  G H I J K L
+  Lớp 4 (4 nước):  M N O P …      ← O nằm ở lớp 4, nên lời giải ngắn nhất dài 4 nước
 ```
 
-- `h = 0` → A\* **chính là UCS** (`zero_heuristic`; test `astar_zero` dùng điều này để đối chứng).
-- `h` **admissible** (không bao giờ đánh giá quá chi phí thật) → A\* **tối ưu**.
-- `h` **consistent** (`h(s) ≤ c(s, a, s') + h(s')` với mọi nước, và `h(đích) = 0`) → mỗi trạng thái chỉ cần mở rộng **một lần**. Consistent kéo theo admissible.
+### 7.3. Vì sao BFS luôn tìm ra lời giải ngắn nhất?
 
-#### 7.4.2. Thiết kế heuristic theo gợi ý của đề
+Vì BFS xét **xong hết lớp 3** rồi mới tới lớp 4. Nếu có lời giải 3 nước, BFS đã gặp nó trong lớp 3. Vậy lần đầu gặp đích ở lớp 4 thì không thể có lời giải nào ngắn hơn 4.
 
-Đề đưa ra 3 ý tưởng (không bắt buộc). Phân tích từng ý tưởng với **chi phí 1**:
+Lưu ý: BFS ngắn nhất theo **số nước**, nó không quan tâm "giá" của nước đi. Lời giải `L U U R` chạm ô cam **2 lần**. BFS không biết điều đó là "tệ" (Phần 9 sẽ quay lại chuyện này).
 
-**① Manhattan chia 2.** Gọi `d(s)` = khoảng cách Manhattan **nhỏ nhất** từ các ô khối chiếm tới ô đích. Theo tính chất 2 của bảng chuyển (mục 2.2), mỗi nước đi làm `d` giảm **tối đa 2**. Ở đích `d = 0`, vậy cần ít nhất `⌈d/2⌉` nước. Nếu chưa ở đích thì cần ít nhất 1 nước. Ta có:
+### 7.4. Trên màn thật
+
+Màn 1 có tới **1028** trạng thái đi tới được (vì có 3 công tắc → 2³ = 8 kiểu cấu hình cầu). Lời giải ngắn nhất dài **10** nước. Số trạng thái mỗi lớp tăng dần: 1, 2, 4, 7, 10, 16, 24, … Ví dụ ở lớp 2 có trạng thái `(2,4,Y)` với `bridge_mask = 1`: khối nằm đè lên công tắc ở (2,5), làm cầu (6,4) hiện ra.
+
+### 7.5. "Memory usage" (bộ nhớ) của BFS là gì?
+
+**Định nghĩa:** đề yêu cầu đo **bộ nhớ đỉnh** (peak memory): trong suốt lúc chạy, **thời điểm thuật toán chiếm nhiều bộ nhớ nhất là bao nhiêu**. Không phải tổng bộ nhớ đã từng dùng, cũng không phải bộ nhớ của cả chương trình.
+
+**Ví von:** bạn dọn nhà, bày đồ ra sàn. "Bộ nhớ đỉnh" là **lúc sàn nhà bừa nhất** thì chiếm bao nhiêu mét vuông.
+
+**BFS phải giữ những gì trong bộ nhớ?**
+
+| Thứ phải giữ | Lớn cỡ nào? |
+|---|---|
+| **Sổ ghi chép** (`parent`) | Một dòng cho **mỗi trạng thái đã gặp**. Chỉ tăng, không bao giờ giảm |
+| **Hàng đợi** | Cùng lắm bằng một lớp "sóng" lớn nhất. Màn đồ chơi: lúc đông nhất có 6 trạng thái (bước 6) |
+| Mỗi đối tượng `State` | Khoảng 64 byte |
+
+**Vì sao BFS tốn bộ nhớ?** Vì nó phải nhớ **cả một vòng sóng** đang lan, và vòng sóng càng ra xa càng to. Nếu mỗi trạng thái có tối đa 4 con thì lớp thứ `d` có thể có tới cỡ 4^d trạng thái. Ngược lại, DFS chỉ cần nhớ **một nhánh** đang đi (về lý thuyết), nhưng vì cũng phải có sổ ghi chép để chống lặp nên thực tế cũng tốn gần như BFS.
+
+**Đo trong code thế nào?** `BaseSolver.run(measure_memory=True)` bật công cụ `tracemalloc` của Python ngay trước khi thuật toán chạy, rồi hỏi "lúc đỉnh đã cấp phát bao nhiêu byte?". Kết quả lưu vào `SearchResult.peak_memory_kb` (đơn vị KB). Vì chỉ bắt đầu đo khi thuật toán chạy, phần có sẵn trước đó (màn chơi, Python) **không bị tính**.
+
+**Độ lớn để tham khảo** (BFS cài thử ngoài repo, Python 3.12):
+
+| Màn | Độ dài lời giải | Trạng thái đã gặp | Hàng đợi lúc đông nhất | Bộ nhớ đỉnh |
+|---|---:|---:|---:|---:|
+| 1 | 10 | 207 | 47 | khoảng 26 KB |
+| 2 | 68 | 385 | 14 | khoảng 50 KB |
+
+Màn 2 có lời giải dài hơn nhiều nhưng hàng đợi lại nhỏ: màn hẹp, gần như chỉ có một con đường, nên sóng không loang rộng được.
+
+**Hai lưu ý khi đo:**
+
+- **Đo bộ nhớ ở một lần chạy riêng.** `tracemalloc` làm Python chạy chậm hẳn đi. Nếu đo chung thì con số thời gian bị sai. Lệnh `main.py --memory` đã làm đúng như vậy.
+- `max_frontier` đếm **số phần tử**, còn `peak_memory_kb` đếm **byte**. Báo cáo nên có cả hai.
+
+---
+
+## Phần 8. DFS — đi sâu tới cùng rồi quay lui
+
+### 8.1. Ý tưởng
+
+Giống **đi trong mê cung**: cứ chọn một lối và đi thẳng vào sâu nhất có thể. Gặp ngõ cụt thì **quay lui** về chỗ rẽ gần nhất và thử lối khác. Danh sách chờ là **ngăn xếp**: thứ bỏ vào sau cùng được lấy ra trước.
+
+Mã giả: giống hệt BFS, chỉ đổi **lấy phần tử ĐẦU hàng đợi** thành **lấy phần tử ĐỈNH ngăn xếp**:
 
 ```
-h(s) = 0                       nếu s là đích
-h(s) = max(⌈d(s)/2⌉, 1)        nếu không
+DFS:
+    ngăn_xếp ← [xuất_phát];   sổ ← {xuất_phát: không có cha}
+    lặp khi ngăn_xếp còn phần tử:
+        s ← lấy phần tử TRÊN CÙNG ngăn_xếp
+        nếu s là đích: truy ngược sổ → trả về lời giải
+        với mỗi (a, t) trong successors(s), duyệt theo thứ tự NGƯỢC (R, L, D, U):
+            nếu t chưa có trong sổ: sổ[t] ← (s, a);  đặt t lên TRÊN CÙNG ngăn_xếp
+    trả về "không có lời giải"
 ```
 
-- **Admissible:** mọi đường tới đích có ít nhất `h(s)` nước, mỗi nước tốn 1.
-- **Consistent:** sau một nước, `d` giảm tối đa 2 nên `⌈d/2⌉` giảm tối đa 1, suy ra `h(s) ≤ 1 + h(s')`. Với nước đi vào đích: trạng thái liền trước có `d ≤ 2` nên `h = 1 = c`, và `h(đích) = 0`.
+Vì sao duyệt ngược? Muốn **lấy ra** theo thứ tự U, D, L, R thì phải **đặt vào** theo thứ tự R, L, D, U (cái đặt sau cùng nằm trên cùng).
 
-**② Thành phần theo tư thế ("chưa đứng thì cần thêm 1 nước").** ⚠️ **Cẩn thận: công thức `⌈d/2⌉ + 1` khi khối đang nằm KHÔNG admissible.** Phản ví dụ (đã kiểm chứng bằng `replay`): lưới 4 dòng × 1 cột, khối `X` tại `(1,0)` chiếm `(1,0),(2,0)`, đích `(3,0)`. Ta có `d = 1`, công thức cho `⌈1/2⌉ + 1 = 2`, nhưng chỉ cần **1** nước (`R` → đứng tại `(3,0)`). Dùng dạng `max(…, 1)` như ① thì an toàn.
+Hai lưu ý khi cài:
+- Dùng ngăn xếp tự làm (list + `pop()`), **không dùng đệ quy**. Python giới hạn độ sâu đệ quy khoảng 1000, màn lớn sẽ bị lỗi.
+- **Bắt buộc có sổ ghi chép** (đề mục 3.3). Không có sổ, DFS sẽ lăn qua lại A ↔ B mãi mãi.
 
-**③ Khoảng cách "điểm" trên lưới 4-kề (bài toán nới lỏng).** Bỏ qua tư thế, ô trống và ô cam, coi khối là một điểm đi trên lưới gồm mọi ô **có thể** có sàn (kể cả cầu coi như mở), tính đường đi ngắn nhất tới đích bằng một lần BFS ngược từ đích. Cách này chặt hơn Manhattan vì tính đến "tường" ô trống. ⚠️ **Phải chia 2 (lấy trần).** Khoảng cách điểm chưa chia **không** phải cận dưới số nước, vì một nước lăn đưa khối đi được 2 ô. Phản ví dụ (đã kiểm chứng): khối đứng tại `(0,0)`, đích `(3,0)` trên một hành lang thẳng. Khoảng cách điểm là 3, nhưng `R R` là thắng sau **2** nước. Dùng `max(⌈dist/2⌉, 1)` thì vẫn admissible và consistent, lập luận giống ①.
+### 8.2. Chạy tay trên màn đồ chơi
 
-**Cầu và công tắc không phá admissible.** Heuristic coi mọi cầu là mở (lạc quan hơn thực tế), nên vẫn không đánh giá quá. Riêng **split switch** (nếu sau này cài) dịch chuyển tức thời khối tới vị trí khác, nên `d` có thể giảm rất nhiều trong một nước và heuristic có thể **mất admissible**. Cách sửa (thêm "cạnh cổng dịch chuyển" chi phí 0 khi tính khoảng cách) ở `report0.md` mục 5.4.
-
-#### 7.4.3. Khi dùng chi phí không đồng nhất
-
-Heuristic phải admissible **theo chi phí đang dùng**:
-
-- **Cách đơn giản:** nhân số nước tối thiểu với **chi phí nhỏ nhất của một nước** `c_min`: `h = c_min · n(s)` với `n(s) = max(⌈d/2⌉, 1)`. Chi phí phạt ô cam (7.3.5) có `c_min = 1` nên heuristic chi phí 1 vẫn dùng được nguyên vẹn.
-- **Chặt hơn cho chi phí năng lượng:** nước vào đích **luôn là một nước dựng đứng** (đổ tạo khối nằm, lăn ngang giữ khối nằm), nên `h = c_dựng + c_min · (n(s) − 1)` = `1.618 + 1.118 · (n − 1)`. Chứng minh admissible và consistent ở `report0.md` mục 5.4.
-- **Bẫy:** nếu có nước "rẻ" (ví dụ bấm công tắc tốn 0.5) thì `c_min` phải là giá trị nhỏ nhất **thật sự**, nếu không heuristic mất admissible.
-- **Kiểm chứng:** với cùng hàm chi phí, `cost(A*)` phải **bằng** `cost(UCS)` trên mọi màn. Khác nhau nghĩa là heuristic không admissible hoặc có bug.
-
-#### 7.4.4. Ví dụ dò tay: 6 lần lấy ra đầu tiên của A\* trên màn 1
-
-Chi phí 1, `h = max(⌈d/2⌉, 1)`, đích `(7,7)`:
-
-| Lần | Lấy ra (f = g + h) | Sinh con: g / h / f | Ghi chú |
+| Bước | Lấy ra | Đặt lên ngăn xếp (mới) | Ngăn xếp (đáy → đỉnh) |
 |---:|---|---|---|
-| 1 | `(3,3,Z)` f = 0 + 4 | `(3,4,Y)` 1/3/**4**, `(4,3,X)` 1/3/**4** | `d = 8` → `h = 4` |
-| 2 | `(3,4,Y)` f = 4 | `(2,4,Y,mask=1)` 2/4/6, `(4,4,Y)` 2/3/5 | đè công tắc (2,5) xa đích → f = 6, bị xếp sau |
-| 3 | `(4,3,X)` f = 4 | `(4,4,X)` 2/3/5, `(4,2,X)` 2/4/6 | |
-| 4 | `(4,4,Y)` f = 5 | `(5,4,Y)` 3/2/5, `(4,3,Z)` 3/4/7 | hòa với `(4,4,X)` cả f = 5 lẫn h = 3 → lấy cái được đẩy vào trước |
-| 5 | `(5,4,Y)` f = 5 | `(5,3,Z)` 4/3/7 | hòa f = 5 với `(4,4,X)` nhưng h = 2 < 3 nên được lấy trước; con của nó có f = 7, nhánh này bắt đầu "đắt" |
-| 6 | `(4,4,X)` f = 5 | `(4,5,X)` 3/2/**5**, `(3,4,Z)` 3/4/7 | `(4,5,X)` chính là trạng thái sau nước 3 của lời giải tối ưu (bảng 3.4) |
+| 1 | A | C, B | C **B** |
+| 2 | B | E, D | C E **D** |
+| 3 | D | G | C E **G** |
+| 4 | G | K | C E **K** |
+| 5 | K | **O** (đích!), F | C E O **F** |
+| 6 | F | L | C E O **L** |
+| 7–22 | L, P, S, V, X, U, T, Q, M, J, N, W, Y, … , R | (cứ đi sâu vào nhánh F mãi) | O vẫn nằm dưới đáy |
+| 23 | **O** | = **ĐÍCH** | |
 
-So với BFS (loang hết tầng 1, 2, 3… theo mọi phía), A\* gần như đi thẳng theo hướng lời giải và để các nhánh xa đích (như nhánh đè công tắc `(2,5)`) lại phía sau. Đó là lý do A\* với heuristic tốt **mở rộng ít node hơn** BFS/UCS nhưng vẫn tối ưu.
+Kết quả: lời giải **`U U L D R`**, **5 nước**, mở rộng **22** trạng thái.
 
-### 7.5. Bảng so sánh lý thuyết (dùng cho báo cáo)
+Điều thú vị: ngay ở **bước 5**, DFS đã **nhìn thấy** đích O. Nhưng O bị đè dưới F trong ngăn xếp, nên DFS cứ lấy F ra và đi sâu thêm 17 bước nữa vào nhánh đó. Hết đường mới quay lại lấy O. (Nếu kiểm tra đích ngay lúc sinh con thì DFS đã dừng ở bước 5. Nhóm chọn cách nào thì phải ghi rõ trong báo cáo.)
 
-| Thuật toán | Frontier | Đầy đủ | Tối ưu | Thời gian | Bộ nhớ | Ghi chú |
-|---|---|---|---|---|---|---|
-| BFS | Hàng đợi FIFO | Có (hữu hạn) | Theo số nước | `O(b^d)` | `O(b^d)` | Mốc tối ưu số nước |
-| DFS + visited | Ngăn xếp LIFO | Có (hữu hạn) | **Không** | `O(\|S\|)` | `O(\|S\|)` do visited | Lời giải dài, phụ thuộc thứ tự hành động |
-| IDS (tùy chọn) | DFS giới hạn sâu | Có | Theo số nước | `O(b^d)`, mở lại nhiều | `O(b·d)` | Tiết kiệm bộ nhớ, chậm hơn |
-| UCS | Heap theo `g` | Có (c ≥ ε) | Theo **tổng chi phí** | `O(b^{1+⌊C*/ε⌋})` | như thời gian | ≡ BFS khi chi phí đều |
-| A\* | Heap theo `g + h` | Có | Có (h admissible) | Tùy chất lượng `h` | Lưu mọi node đã sinh | Ít node nhất nếu `h` tốt |
+### 8.3. Đặc điểm
+
+- **Không tối ưu:** ở đây ra 5 nước, trong khi ngắn nhất là 4. Trên màn lớn, DFS thường cho lời giải dài hơn rất nhiều.
+- **Đầy đủ** (có sổ ghi chép và số trạng thái hữu hạn): nếu có lời giải thì chắc chắn tìm ra.
+- **Thứ tự thử hướng ảnh hưởng mạnh** tới kết quả. Phải cố định (U, D, L, R) và ghi trong báo cáo.
+- **Có thể thay bằng IDS** (đề cho phép, phải ghi rõ): chạy DFS nhưng giới hạn độ sâu 0, rồi 1, rồi 2… Cách này tìm được lời giải ngắn nhất như BFS mà tốn ít bộ nhớ, đổi lại phải đi lại các lớp nông nhiều lần.
 
 ---
 
-## 8. Đo đạc và thực nghiệm
+## Phần 9. UCS — luôn đi tiếp từ chỗ "rẻ nhất"
 
-Đề mục 3.6 *Experiments* (20 điểm): bộ test **cố định**, chia nhóm theo độ khó (cơ bản, có ô cam, có công tắc, kết hợp), đo **4 chỉ số** cho từng thuật toán, trình bày bằng **bảng + biểu đồ + nhận xét**.
+### 9.1. Ý tưởng
 
-| Chỉ số đề | Lấy từ đâu | Cách đo đúng |
+BFS đếm **số bước**. UCS đếm **tiền**. Hãy tưởng tượng đi taxi: mỗi con đường có giá khác nhau (đường thường rẻ, đường có trạm thu phí đắt). UCS luôn đi tiếp từ chỗ mà **tổng tiền đã trả `g` ít nhất**. Danh sách chờ là **hàng đợi ưu tiên (heap)**: lúc nào cũng lấy ra được phần tử có `g` nhỏ nhất.
+
+Mã giả:
+
+```
+UCS:
+    heap ← [(0, xuất_phát)];   g_tốt_nhất ← {xuất_phát: 0};   sổ ← {xuất_phát: không có cha}
+    lặp khi heap còn phần tử:
+        (g, s) ← lấy phần tử có g NHỎ NHẤT
+        nếu g > g_tốt_nhất[s]: bỏ qua (đây là bản ghi cũ, xem 9.4)
+        nếu s là đích: truy ngược sổ → trả về lời giải           ← kiểm tra KHI LẤY RA
+        với mỗi (a, t, giá) trong successors(s):
+            g_mới ← g + giá
+            nếu g_mới < g_tốt_nhất của t (chưa có thì coi là vô cùng):
+                g_tốt_nhất[t] ← g_mới;  sổ[t] ← (s, a);  đưa (g_mới, t) vào heap
+    trả về "không có lời giải"
+```
+
+(Khi cài bằng `heapq`, phần tử nên là `(g, số_thứ_tự, trạng_thái)`. `số_thứ_tự` tăng dần để khi hai phần tử cùng `g`, Python không phải so sánh hai `State` với nhau.)
+
+### 9.2. Nếu mọi nước đều giá 1 thì sao?
+
+Thì "tiền đã trả" = "số bước đã đi", và UCS chạy **y hệt BFS**. Trên màn đồ chơi, UCS chi phí 1 cũng mở rộng 14 trạng thái và ra `L U U R`, giống bảng 7.2. Đề nói rõ điều này (mục 3.4): *"if every move has cost 1, UCS reduces to BFS"*. Vì vậy phải **thiết kế giá khác nhau** cho các nước đi.
+
+### 9.3. "Hàm chi phí không đồng nhất" và "bộ trọng số thích hợp" nghĩa là gì?
+
+**Hàm chi phí** là quy tắc trả lời câu hỏi "nước đi này giá bao nhiêu?". Trong code là `cost_fn(trạng_thái_cũ, nước_đi, trạng_thái_mới) → số`.
+
+- **Đồng nhất:** nước nào cũng giá 1 (`unit_cost`).
+- **Không đồng nhất:** các **loại** nước đi có giá **khác nhau**.
+
+**Bộ trọng số** là bảng giá cụ thể cho từng loại nước, giống bảng giá cước taxi. Ví dụ:
+
+| Loại nước | Giá (ví dụ A: phạt ô cam) | Giá (ví dụ B: theo sức lực) |
+|---|---:|---:|
+| Nước bình thường | 1 | — |
+| Nước làm khối chạm ô cam | 3 (= 1 + phạt 2) | — |
+| Đổ khối từ đứng xuống nằm | — | 1.118 |
+| Lăn ngang khi đang nằm | — | 1.207 |
+| Dựng khối từ nằm lên đứng | — | 1.618 |
+
+**"Thích hợp"** nghĩa là bộ trọng số thỏa 4 điều:
+
+1. **Mọi giá đều dương** (lớn hơn 0). Giá 0 hoặc âm làm UCS và A\* chạy sai.
+2. **Giải thích được bằng lời** trong báo cáo (đề mục 3.4: *"as long as you give a reasonable explanation"*). Ví dụ A: "lăn lên ô cam nguy hiểm, lỡ tay là vỡ, nên tính đắt". Ví dụ B: "dựng khối lên phải nâng trọng tâm cao hơn nên tốn sức hơn".
+3. **Thực sự làm UCS chọn khác BFS** trên các màn thử. Nếu không, phần UCS mất ý nghĩa (xem 9.5).
+4. **A\* dùng chung bảng giá với UCS**, và heuristic phải "không đoán quá" **theo bảng giá đó** (đề mục 3.5). Khi đó UCS và A\* phải ra **cùng tổng chi phí** trên mọi màn, một cách tự kiểm tra rất tốt.
+
+Theo Q&A với giảng viên (câu 10 trong `report0.md`), nhóm **được dùng học máy để tìm ra bộ trọng số**, miễn trình bày rõ cách làm.
+
+### 9.4. Chạy tay UCS với giá "phạt ô cam" trên màn đồ chơi
+
+Bảng giá: **mỗi nước giá 1, cộng thêm 2 nếu sau nước đó khối chạm ô cam.** Ví dụ B → E giá 3 (E nằm trên 2 ô cam), C → F giá 3 (F chạm 1 ô cam), G → K giá 3.
+
+| Bước | Lấy ra (g) | Sinh con (g mới) | Ghi chú |
+|---:|---|---|---|
+| 1 | A (0) | B (1), C (1) | |
+| 2 | B (1) | D (2), **E (4)** | B→E chạm ô cam: 1 + 3 = 4 |
+| 3 | C (1) | **F (4)** | C→F chạm ô cam: 1 + 3 = 4 |
+| 4 | D (2) | G (3) | đường "vòng bên phải" đang rẻ |
+| 5 | G (3) | **K (6)** | G→K chạm ô cam: 3 + 3 = 6 |
+| 6 | E (4) | H (5), I (5), J (5) | |
+| 7 | F (4) | L (5) | F→K sẽ là 4 + 3 = 7, không rẻ hơn 6, nên **không cập nhật** |
+| 8–11 | H, I, J, L (5) | M (6), N (6), P (6) | |
+| 12 | K (6) | **O (7)** | đích được sinh ra với g = 7 |
+| 13–15 | M, N, P (6) | … | vẫn còn trạng thái g = 6 rẻ hơn 7, phải xét hết |
+| 16 | **O (7)** | = **ĐÍCH** | |
+
+Kết quả: lời giải **`U U L D R`**, **5 nước**, **tổng giá 7**, mở rộng 15 trạng thái.
+
+So sánh với BFS:
+
+| | Lời giải | Số nước | Chạm ô cam | Tổng giá (phạt ô cam) |
+|---|---|---:|---:|---:|
+| BFS | `L U U R` | **4** | 2 lần | 1 + 3 + 3 + 1 = 8 |
+| UCS | `U U L D R` | 5 | 1 lần | 1 + 1 + 1 + 3 + 1 = **7** |
+
+**Đây chính là điều đề muốn thấy:** UCS chấp nhận đi **thêm 1 nước** để **bớt 1 lần** chạm ô cam nguy hiểm. BFS không làm được vậy vì nó chỉ đếm số bước.
+
+### 9.5. Hai câu hỏi hay bị hỏi về UCS
+
+**(a) Vì sao phải kiểm tra đích lúc LẤY RA, không phải lúc SINH?**
+
+Ví dụ nhỏ: từ S có đường thẳng tới đích G giá **10**, và đường vòng S → A → G giá **1 + 1 = 2**. Lúc mở rộng S, ta **sinh** ra G với g = 10. Nếu dừng ngay thì chọn đường giá 10, sai. Còn nếu đợi: heap lấy A (g = 1) ra trước, sinh G với g = 2, rồi lấy G (g = 2) ra. Lần đầu **lấy ra** đích là lúc giá đã nhỏ nhất. (A\* của Sang có test `test_astar_waits_for_cheapest_goal_to_be_popped` kiểm tra đúng tình huống này.)
+
+**(b) "Bản ghi cũ" (lazy deletion) là gì?**
+
+Heap của Python không cho sửa phần tử đã đưa vào. Khi tìm được đường rẻ hơn tới một trạng thái, ta **đưa thêm bản mới** (giá rẻ hơn) vào heap và **để bản cũ nằm đó**. Lúc lấy bản cũ ra, thấy `g > g_tốt_nhất` thì bỏ qua, không tính là mở rộng. Giống như có hai vé cho cùng một chuyến: dùng vé rẻ, vé đắt vứt đi.
+
+### 9.6. Cảnh báo: bộ trọng số "theo sức lực" gần như không đổi được lời giải
+
+Ví dụ B ở trên (1.118 / 1.207 / 1.618) nghe rất hợp lý, nhưng có một cái bẫy.
+
+- Mỗi lần **đổ** khối xuống, về sau phải có đúng một lần **dựng** khối lên (vì cuối cùng phải đứng trên lỗ đích). Vậy số lần đổ **luôn bằng** số lần dựng. Gọi số đó là `k`, số lần lăn ngang là `r`.
+- Số nước `L = 2k + r`, và tổng giá là: `1.118·k + 1.618·k + 1.207·r = 1.207·L + 0.322·k`.
+- Nghĩa là tổng giá **gần như chỉ phụ thuộc số nước `L`**. Phần `0.322·k` rất nhỏ. Muốn một lời giải dài hơn 1 nước mà vẫn rẻ hơn, nó phải có **ít hơn ít nhất 4 lần** đổ-dựng. Rất hiếm khi xảy ra.
+
+Thực tế đã kiểm tra: trên màn 1 và màn 2, UCS với bảng giá này ra **đúng lời giải của BFS**. Thử 40.000 màn nhỏ ngẫu nhiên cũng không màn nào khác.
+
+**Lời khuyên cho TV3:** nên dùng kiểu phạt ô cam (hoặc kết hợp), hoặc làm các giá chênh nhau nhiều hơn, và cần có màn chơi có **nhiều đường đi khác nhau** (TV4 thiết kế) để thấy UCS khác BFS. Đưa phép phân tích này vào báo cáo cũng là một điểm cộng.
+
+**Cắm vào code:** viết hàm `(trạng_thái_cũ, nước, trạng_thái_mới) → giá`, rồi truyền vào `BloxorzProblem(level, cost_fn=...)`. `successors()` sẽ tự trả về giá theo hàm đó. Còn thiếu: thêm tùy chọn trong `main.py` (ví dụ `--cost unit|fragile`) để nút UCS trong game dùng được hàm này.
+
+---
+
+## Phần 10. A\* — rẻ nhất + biết hướng về đích
+
+### 10.1. Ý tưởng
+
+UCS giống người đi đường **bịt mắt**: chỉ biết mình đã tốn bao nhiêu (`g`), không biết đích ở hướng nào, nên loang đều ra mọi phía. A\* giống người có **la bàn**: ngoài `g` còn có **ước đoán `h`** "từ đây tới đích còn khoảng bao nhiêu". A\* chọn trạng thái có
+
+```
+f = g + h  =  (đã tốn)  +  (ước đoán còn lại)
+```
+
+nhỏ nhất. Giống GPS: chọn hướng mà **tổng quãng đường dự kiến** ngắn nhất, không chỉ quãng đã đi ngắn nhất.
+
+Code A\* đã có trong `ai/solvers/astar_solver.py` (Sang cài): giống UCS, chỉ khác khóa của heap là `(f, h, số_thứ_tự, g, trạng_thái)`. Hai trạng thái cùng `f` thì ưu tiên cái có `h` nhỏ hơn (gần đích hơn). Giải thích từng dòng ở `Docs/astar_walkthrough.md`.
+
+### 10.2. Heuristic Manhattan (việc của TV5)
+
+**Bước 1: đo khoảng cách.** Gọi `d` là **khoảng cách Manhattan nhỏ nhất** từ các ô khối đang chiếm tới lỗ đích. Khoảng cách Manhattan = số ô phải đi nếu chỉ được đi ngang/dọc: `|x₁ − x₂| + |y₁ − y₂|`.
+
+**Bước 2: đổi ra số nước.** Theo sự thật nhỏ số 2 ở mục 3.4, mỗi nước lăn làm `d` **giảm tối đa 2**. Vậy muốn `d` về 0 cần **ít nhất** `⌈d / 2⌉` nước (`⌈ ⌉` là làm tròn **lên**). Chưa thắng thì cần ít nhất 1 nước. Ta có:
+
+```
+h = 0                       nếu đang đứng trên đích (đã thắng)
+h = max( ⌈d / 2⌉ , 1 )      nếu chưa
+```
+
+**Ví dụ trên màn đồ chơi** (đích ở (2,2)):
+
+| Trạng thái | Ô chiếm | Khoảng cách tới (2,2) | d | h |
+|---|---|---|---:|---:|
+| A `(2,0,Z)` | (2,0) | 0 + 2 = 2 | 2 | ⌈2/2⌉ = 1 |
+| B `(2,1,Y)` | (2,1), (2,2) | 1 và **0** | 0 | max(0, 1) = **1** |
+| C `(0,0,X)` | (0,0), (1,0) | 4 và **3** | 3 | ⌈3/2⌉ = 2 |
+| K `(0,2,X)` | (0,2), (1,2) | 2 và **1** | 1 | ⌈1/2⌉ = 1 |
+| O `(2,2,Z)` | (2,2) | đã thắng | — | **0** |
+
+B nằm vắt qua lỗ đích nên `d = 0`, nhưng chưa thắng (chưa đứng), nên vẫn cần ít nhất 1 nước. Đó là lý do có `max(…, 1)`.
+
+### 10.3. Admissible và consistent: nói bằng lời thường
+
+**Admissible = "không bao giờ hứa quá".** Heuristic luôn đoán **≤** chi phí thật còn lại. Giống GPS nói "còn ít nhất 5 km" thì thật sự không thể dưới 5 km. Nếu heuristic hứa quá (đoán 10 khi thật ra chỉ cần 7), A\* có thể bỏ qua đường tốt nhất và **ra lời giải không tối ưu**.
+
+> Vì sao Manhattan ở trên không hứa quá? Vì mỗi nước làm `d` giảm **nhiều nhất** 2, nên thật sự cần **ít nhất** `⌈d/2⌉` nước. `h` chính là con số "ít nhất" đó, không thể vượt chi phí thật.
+
+**Consistent = "không tụt đột ngột".** Đi một nước có giá `c` thì `h` giảm **không quá `c`**. Viết thành công thức: `h(trước) ≤ c + h(sau)`. Heuristic consistent thì mỗi trạng thái chỉ cần mở rộng **một lần**. Consistent thì chắc chắn admissible.
+
+> Vì sao Manhattan ở trên consistent (với giá 1)? Mỗi nước làm `d` giảm tối đa 2, nên `⌈d/2⌉` giảm tối đa 1, nên `h` giảm tối đa 1 = giá của nước đó.
+
+Bộ test `tests/test_astar_integration.py` (Sang viết) sẽ **tự kiểm tra cả hai tính chất** trên mọi trạng thái của màn 1 và 2 khi TV5 cài xong hàm.
+
+### 10.4. Hai cái bẫy khi thiết kế heuristic
+
+**Bẫy 1: "Đang nằm thì cộng thêm 1".** Đề gợi ý thêm "phạt" khi khối chưa đứng. Nhưng công thức `⌈d/2⌉ + 1` **sai** (hứa quá). Phản ví dụ (đã chạy thử): hành lang dọc 4 ô, khối **nằm** chiếm (1,0) và (2,0), đích ở (3,0). Ta có `d = 1`, công thức cho `⌈1/2⌉ + 1 = 2`, nhưng chỉ cần **1** nước (`R` → dựng đứng đúng trên (3,0)). Dùng `max(…, 1)` như trên thì an toàn.
+
+**Bẫy 2: "Khoảng cách điểm" mà quên chia 2.** Đề gợi ý tính đường đi ngắn nhất của một "điểm" trên lưới (bỏ qua tư thế khối). Ý này hay hơn Manhattan vì biết tránh ô trống. Nhưng **phải chia 2 rồi làm tròn lên**. Phản ví dụ (đã chạy thử): khối đứng ở (0,0), đích ở (3,0) trên hành lang thẳng. Điểm phải đi 3 ô, nhưng khối chỉ cần **2** nước (`R` đổ xuống chiếm (1,0),(2,0), rồi `R` dựng lên ở (3,0)). Đoán 3 là hứa quá.
+
+### 10.5. Chạy tay A\* trên màn đồ chơi (giá 1, heuristic Manhattan)
+
+| Bước | Lấy ra (f = g + h) | Sinh con: g / h / f | Ghi chú |
+|---:|---|---|---|
+| 1 | A (0 + 1) | B 1/1/**2**, C 1/2/**3** | B gần đích hơn nên f nhỏ hơn |
+| 2 | B (1 + 1) | D 2/1/3, E 2/1/3 | |
+| 3 | D (2 + 1) | G 3/1/4 | D, E, C cùng f = 3; D và E có h = 1 < h(C) = 2 nên được chọn trước |
+| 4 | E (2 + 1) | H 3/1/4, I 3/2/5, J 3/1/4 | |
+| 5 | C (1 + 2) | F 2/1/3 | |
+| 6 | F (2 + 1) | K 3/1/4, L 3/1/4 | |
+| 7–9 | G, H, J (f = 4) | M 4/2/6, N 4/2/6 | các con mới đều không rẻ hơn |
+| 10 | K (3 + 1) | **O 4/0/4** | đích được sinh ra |
+| 11 | **O** (4 + 0) | = **ĐÍCH** | |
+
+Kết quả: **`L U U R`**, 4 nước (tối ưu, giống BFS), nhưng chỉ mở rộng **10** trạng thái thay vì 14. A\* **không cần mở rộng** I, L, M, N: lúc tìm ra đích, chúng vẫn còn nằm trong heap. I, M, N có f lớn hơn 4 ("đi hướng đó chắc chắn tốn hơn"). L cũng có f = 4 nhưng O có h = 0 nên được lấy ra trước.
+
+### 10.6. Khi dùng bảng giá không đồng nhất
+
+Heuristic phải không hứa quá **theo bảng giá đang dùng**:
+
+- **Cách đơn giản:** lấy số nước tối thiểu nhân với **giá rẻ nhất của một nước**. Với bảng phạt ô cam, giá rẻ nhất là 1, nên dùng nguyên heuristic ở trên là được.
+- **Cẩn thận:** nếu có loại nước rẻ hơn 1 (ví dụ bấm công tắc giá 0.5) thì phải nhân với 0.5. Nếu không, heuristic sẽ hứa quá.
+- **Tự kiểm tra:** cùng bảng giá thì A\* và UCS phải ra **cùng tổng giá**. Khác nhau nghĩa là heuristic đang hứa quá hoặc có lỗi.
+
+### 10.7. Kết quả A\* trên 11 màn thật (heuristic = 0, tức là chạy như UCS giá 1)
+
+| Màn | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Số nước | 10 | 68 | 4 | 16 | 6 | 20 | 12 | 15 | 36 | 27 | vô nghiệm |
+| Số node mở rộng | 160 | 377 | 4 | 127 | 52 | 215 | 238 | 232 | 1393 | 1201 | 113 |
+
+Khi TV5 cài xong Manhattan, số node mở rộng phải **giảm** (độ dài lời giải giữ nguyên). Đó là bằng chứng heuristic có ích.
+
+---
+
+## Phần 11. So sánh 4 thuật toán
+
+### 11.1. Trên màn đồ chơi
+
+| Thuật toán | Danh sách chờ | Lời giải | Số nước | Tổng giá (phạt ô cam) | Số node mở rộng |
+|---|---|---|---:|---:|---:|
+| BFS | Hàng đợi | `L U U R` | **4** | 8 | 14 |
+| DFS | Ngăn xếp | `U U L D R` | 5 | 7 | 22 |
+| UCS (giá 1) | Heap theo g | `L U U R` | **4** | 8 | 14 |
+| UCS (phạt ô cam) | Heap theo g | `U U L D R` | 5 | **7** | 15 |
+| A\* (giá 1, Manhattan) | Heap theo g + h | `L U U R` | **4** | 8 | **10** |
+
+DFS ra đúng lời giải mà UCS (phạt ô cam) chọn chỉ là **may mắn** do thứ tự thử hướng. DFS không hề biết gì về giá.
+
+### 11.2. Bảng lý thuyết (dùng cho báo cáo)
+
+| | BFS | DFS | UCS | A\* |
+|---|---|---|---|---|
+| Chọn tiếp | Vào sớm nhất | Vào muộn nhất | g nhỏ nhất | g + h nhỏ nhất |
+| Đầy đủ? | Có | Có (khi có sổ ghi chép) | Có (giá > 0) | Có |
+| Tối ưu? | Theo **số nước** | **Không** | Theo **tổng giá** | Theo tổng giá (khi h không hứa quá) |
+| Bộ nhớ | Lớn (cả vòng sóng) | Lý thuyết nhỏ, thực tế lớn do sổ ghi chép | Lớn | Lớn, nhưng thường xét ít node nhất |
+| Điểm mạnh | Đơn giản, chắc chắn ngắn nhất | Có thể gặp đích rất nhanh | Tính được "giá" | Nhanh nhất nếu h tốt |
+| Điểm yếu | Loang mọi hướng | Lời giải dài, phụ thuộc may rủi | Cũng loang mọi hướng | Cần thiết kế và chứng minh h |
+
+---
+
+## Phần 12. Đo đạc cho phần thực nghiệm
+
+Phần thực nghiệm chiếm **20 điểm** báo cáo. Đề (mục 3.6) yêu cầu: chạy trên một **bộ màn cố định**, chia nhóm theo độ khó, đo **4 con số** cho mỗi thuật toán, trình bày bằng **bảng + biểu đồ + nhận xét**.
+
+| Con số | Lấy ở đâu | Đo cho đúng |
 |---|---|---|
-| Search time | `SearchResult.time_ms` | `time.perf_counter()` chỉ bao quanh `solve()`; chạy nhiều lần, lấy trung vị; không in log trong vòng lặp |
-| Memory usage (peak) | `SearchResult.peak_memory_kb` | Lượt chạy riêng có `tracemalloc` (`--memory`) |
-| Expanded nodes | `SearchResult.nodes_expanded` | Thống nhất định nghĩa giữa 4 solver (mục 7.0) |
-| Solution length | `SearchResult.solution_length` | Kèm `cost` cho UCS/A\* khi chi phí không đồng nhất |
+| Thời gian | `SearchResult.time_ms` | Chạy vài lần, lấy giá trị giữa (trung vị); không in log trong lúc tìm |
+| Bộ nhớ đỉnh | `SearchResult.peak_memory_kb` | Đo ở một lần chạy riêng (`--memory`) |
+| Số node mở rộng | `SearchResult.nodes_expanded` | Cả nhóm thống nhất cách đếm (mục 6.3) |
+| Độ dài lời giải | `SearchResult.solution_length` | Ghi thêm `cost` khi dùng bảng giá không đồng nhất |
 
-Lệnh nhanh: `python main.py code/data/<n>.data --compare --memory` in bảng 4 thuật toán. Thực nghiệm chính thức nên có script riêng (ví dụ `experiments/run_all.py`) chạy mọi màn × mọi thuật toán, ghi CSV (thư mục `results/` đã được gitignore), rồi vẽ biểu đồ (trục log cho số node).
+Bộ màn hiện có 11 màn, chia nhóm: G1 cơ bản (màn 3, 4), G2 có ô cam (5, 6), G3 có công tắc (1, 2, 7, 8), G5 kết hợp (9), G6 đặc biệt (10 sân rộng 20×30, 11 vô nghiệm).
 
-**Gợi ý nhận xét cần kiểm chứng bằng số liệu thật, không viết trước:** BFS và A\* (cùng chi phí 1) cho cùng độ dài nhưng A\* mở rộng ít node hơn; DFS có thể nhanh trên vài màn nhưng lời giải dài; UCS chỉ khác BFS khi bộ trọng số đủ chênh và màn có nhiều đường (mục 7.3.4); số trạng thái tăng theo `2^k` khi có nhiều công tắc.
+Lệnh nhanh: `python main.py code/data/<n>.data --compare --memory`. Bản chính thức nên có script riêng (ví dụ `experiments/run_all.py`) chạy mọi màn × mọi thuật toán, ghi ra file CSV, rồi vẽ biểu đồ (trục số node nên dùng thang log).
 
----
-
-## 9. Khoảng cách so với đề — việc còn lại
-
-| Việc | Mục đề | Ai (theo `Docs/task.md`) |
-|---|---|---|
-| Cài thân `solve()` của BFS / DFS / UCS / A\* | 3.2–3.5 | TV1 / TV2 / TV3 / TV4 |
-| Cài `manhattan_heuristic` (hoặc heuristic tốt hơn) + chứng minh | 3.5 | TV5 |
-| Hàm chi phí không đồng nhất + lý giải + tham số chọn trong `main.py` | 3.4 | TV3 |
-| Split switch (tách/gộp 2 khối lập phương), cầu permanent, một công tắc → nhiều ô cầu: sửa **cả** C++ và Python, mở rộng định dạng `.data` | 3.1 (advanced, 10đ) | TV1 (+ TV2 phần vẽ) |
-| Tối thiểu 10 màn chia nhóm độ khó | Q&A, 3.6 | TV4 |
-| Script thực nghiệm, CSV, biểu đồ | 3.6 | TV5 |
-| Báo cáo PDF, video YouTube công khai có phụ đề/thuyết minh | 3.6, 3.7 | Cả nhóm |
-
-Khi thêm split switch, `State` phải mở rộng (vị trí hai khối lập phương, có thể thêm khối đang điều khiển), hành động có thể thành 8 (`(khối_i, hướng)`), và heuristic phải xử lý dịch chuyển tức thời. Chi tiết các phương án ở `report0.md` mục 3.2–3.3.
+**Nhận xét cần kiểm chứng bằng số liệu thật** (đừng viết trước): BFS và A\* ra cùng độ dài nhưng A\* mở rộng ít node hơn; DFS có lúc nhanh nhưng lời giải dài; UCS chỉ khác BFS khi bảng giá đủ chênh và màn có nhiều đường đi.
 
 ---
 
-## 10. Câu hỏi vấn đáp thường gặp
+## Phần 13. Còn thiếu gì so với đề?
 
-**Hỏi: Trạng thái của bài toán gồm những gì? Vì sao cần `bridge_mask`?**
-Đáp: `(x, y, tư thế, bridge_mask)`. Đề yêu cầu cấu hình cầu là một phần trạng thái: cùng vị trí khối nhưng cầu khác nhau thì các nước đi hợp lệ khác nhau. Thiếu `bridge_mask` thì visited sẽ cắt nhầm lời giải phải quay lại chỗ cũ sau khi bấm công tắc.
+| Việc | Mục đề | Ai | Trạng thái |
+|---|---|---|---|
+| Game 3D, luật cơ bản, ô cam, công tắc thường/nặng, cầu bật/tắt | 3.1 | (đã có) | ✅ |
+| Menu: chọn màn, Restart, 4 nút thuật toán | 3.1 | (đã có) | ✅ |
+| Bộ ≥ 10 màn | Q&A | TV4 | ✅ 11 màn |
+| A\* | 3.5 | TV4 | ✅ |
+| `manhattan_heuristic` + chứng minh | 3.5 | **TV5** | ⏳ |
+| BFS / DFS / UCS | 3.2–3.4 | TV1 / TV2 / TV3 | ⏳ |
+| Bảng giá không đồng nhất + tùy chọn trong `main.py` | 3.4 | TV3 | ⏳ |
+| **Split switch** (tách khối thành 2 khối nhỏ), cầu **permanent**, một công tắc điều khiển **nhiều** cầu | 3.1 (10đ ô đặc biệt) | TV1 (+ TV2 phần vẽ) | ⏳ phải sửa **cả** C++ lẫn Python |
+| Thêm màn nhiều công tắc, nhiều ô cam (để thực nghiệm thấy rõ khác biệt) | 3.6 | TV4 | ⏳ gợi ý |
+| Script thực nghiệm, CSV, biểu đồ | 3.6 | TV5 | ⏳ |
+| Báo cáo PDF, video YouTube | 3.6, 3.7 | Cả nhóm | ⏳ |
 
-**Hỏi: Nước đi không hợp lệ được xử lý ở đâu?**
-Đáp: `BloxorzProblem.simulate` trả `Outcome.LOST`; `successors()` và `actions()` lọc bỏ các nước đó, nên solver không bao giờ sinh trạng thái "đã rơi".
+---
 
-**Hỏi: Vì sao BFS tối ưu mà DFS thì không?**
-Đáp: BFS xét hết các trạng thái cách gốc `k` nước rồi mới tới `k+1`, nên lời giải đầu tiên gặp là ngắn nhất. DFS đi theo nhánh đầu tiên tới cùng và trả về lời giải đầu tiên gặp, không quan tâm độ dài.
+## Phần 14. Câu hỏi vấn đáp thường gặp
+
+**Hỏi: Trạng thái gồm những gì? Vì sao cần `bridge_mask`?**
+Đáp: Gồm `(x, y, tư thế, bridge_mask)`. Cùng vị trí khối nhưng cầu khác thì nước đi được cũng khác, nên phải là trạng thái khác. Thiếu `bridge_mask` thì thuật toán bỏ sót những lời giải phải quay lại chỗ cũ sau khi bấm công tắc.
+
+**Hỏi: Nước đi làm rơi được xử lý ở đâu?**
+Đáp: `simulate()` trả về kết quả "thua", và `successors()` tự bỏ những nước đó. Thuật toán không bao giờ nhìn thấy trạng thái "đã rơi".
+
+**Hỏi: Vì sao BFS ra lời giải ngắn nhất còn DFS thì không?**
+Đáp: BFS xét hết các trạng thái cách `k` nước rồi mới tới `k+1`, nên lần đầu gặp đích là ở lớp nông nhất. DFS lao sâu theo một nhánh và trả về đích đầu tiên nó lấy ra, bất kể dài hay ngắn (màn đồ chơi: DFS ra 5 nước, BFS ra 4).
 
 **Hỏi: Khi nào UCS giống BFS?**
-Đáp: Khi mọi nước có cùng chi phí. Với bộ trọng số năng lượng, UCS cũng gần như giống BFS vì `chi_phí = 1.207·L + 0.322·k` (mục 7.3.4).
+Đáp: Khi mọi nước cùng giá. Bảng giá "theo sức lực" cũng làm UCS gần như giống BFS, vì tổng giá = `1.207·L + 0.322·k` (mục 9.6).
 
-**Hỏi: Vì sao UCS phải kiểm tra đích khi lấy ra chứ không phải khi sinh?**
-Đáp: Lúc sinh, đích có thể đang đi theo đường chưa rẻ nhất; một đường rẻ hơn có thể vẫn đang nằm trong heap. Lấy ra theo `g` nhỏ nhất thì lần đầu lấy ra đích là lúc `g` đã tối ưu.
+**Hỏi: Vì sao UCS kiểm tra đích lúc lấy ra, không phải lúc sinh?**
+Đáp: Lúc sinh, đích có thể đang đi theo đường đắt. Đường rẻ hơn có thể vẫn nằm trong heap. Lấy ra theo g nhỏ nhất thì lần đầu lấy ra đích chắc chắn là rẻ nhất (ví dụ S→G giá 10 so với S→A→G giá 2).
 
-**Hỏi: Admissible và consistent khác nhau thế nào? Heuristic của nhóm có cả hai không?**
-Đáp: Admissible: `h(s)` ≤ chi phí thật còn lại. Consistent: `h(s) ≤ c(s,a,s') + h(s')` và `h(đích) = 0`. Consistent kéo theo admissible. `max(⌈d/2⌉, 1)` có cả hai với chi phí 1 vì mỗi nước làm `d` giảm tối đa 2 (mục 7.4.2).
+**Hỏi: Admissible và consistent khác nhau thế nào?**
+Đáp: Admissible: không bao giờ đoán quá chi phí thật. Consistent: đi một nước giá `c` thì `h` giảm không quá `c`. Consistent thì chắc chắn admissible. Heuristic `max(⌈d/2⌉, 1)` có cả hai với giá 1, vì mỗi nước làm `d` giảm tối đa 2.
 
-**Hỏi: Vì sao không cộng "+1 nếu đang nằm" vào heuristic?**
-Đáp: Không admissible: khối nằm cách đích 1 ô có thể dựng đứng vào đích chỉ bằng 1 nước, trong khi công thức cho 2 (phản ví dụ ở 7.4.2).
+**Hỏi: Vì sao không cộng "+1 nếu đang nằm"?**
+Đáp: Vì sẽ hứa quá. Khối nằm cách đích 1 ô có thể dựng đứng vào đích chỉ bằng 1 nước, nhưng công thức đoán 2 (mục 10.4).
 
-**Hỏi: "Memory usage" đo cái gì, đo thế nào?**
-Đáp: Bộ nhớ **đỉnh** do thuật toán cấp phát trong lúc tìm kiếm, đo bằng `tracemalloc` (`get_traced_memory()[1]`) trong `BaseSolver.run(measure_memory=True)`, ở một lượt chạy riêng để không làm sai thời gian. Với BFS, phần lớn là `parent` dict (mọi trạng thái đã thấy) và hàng đợi (mục 7.1.4).
+**Hỏi: "Memory usage" là gì, đo thế nào?**
+Đáp: Bộ nhớ **đỉnh** thuật toán chiếm trong lúc tìm kiếm. Đo bằng `tracemalloc` trong `BaseSolver.run(measure_memory=True)`, ở một lần chạy riêng để không làm sai thời gian. Với BFS, phần lớn là sổ ghi chép (mọi trạng thái đã gặp) và hàng đợi (mục 7.5).
 
-**Hỏi: Làm sao biết luật Python khớp với game C++?**
-Đáp: Sao chép đúng thứ tự `Game::check` / `check_after_step`, có 36 test luật trong `tests/test_problem.py`, và phát lại lời giải trong game thật bằng `./a.out <n> --play <file>` (màn 1 thắng sau 10 bước, màn 2 sau 68 bước). `main.py` cũng tự phát lại mọi lời giải trước khi ghi ra file.
+**Hỏi: Làm sao chắc luật Python giống game C++?**
+Đáp: Python chép đúng thứ tự kiểm tra của C++; có test luật trong `tests/test_problem.py`; và lời giải của cả 10 màn có lời giải đều được cho game C++ tự chơi lại bằng `--play`, thắng đúng số bước. `main.py` cũng tự chơi lại mọi lời giải trước khi ghi ra file.
 
-**Hỏi: GUI viết bằng C++, có vi phạm "source code must be written in Python" không?**
-Đáp: Theo Q&A với giảng viên (câu 7), GUI được viết bằng ngôn ngữ khác, **thuật toán phải bằng Python**. Toàn bộ phần tìm kiếm nằm trong `ai/` (Python, chỉ thư viện chuẩn, tự cài). Game C++ chỉ gọi `main.py` rồi phát lại kết quả. Mã nguồn game gốc được dùng theo phép giảng viên và ghi nguồn đầy đủ.
+**Hỏi: Game viết bằng C++, có vi phạm "source code must be written in Python" không?**
+Đáp: Theo Q&A với giảng viên (câu 7), giao diện được dùng ngôn ngữ khác, nhưng **thuật toán phải bằng Python**. Toàn bộ phần tìm kiếm nằm trong `ai/`, viết bằng Python thuần, tự cài. Game C++ chỉ gọi `main.py` và chơi lại kết quả. Mã nguồn game gốc được dùng theo phép giảng viên và ghi nguồn đầy đủ.
