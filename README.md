@@ -16,7 +16,8 @@ Tài liệu nội bộ: **[Docs/report1.md](Docs/report1.md) (bắt đầu từ 
 | `BFSSolver`, `DFSSolver`, `UCSSolver`, `AStarSolver` | ⏳ **TODO** — mỗi thành viên tự cài |
 | `manhattan_heuristic` | ⏳ **TODO** |
 | Giao diện mới, menu chọn màn, Restart, nút Solve chạy nền, `Bloxorz.exe` đóng gói | ✅ Xong — xem `Docs/report2.md` |
-| Split switch, permanent, ≥ 10 màn | ⏳ Kế hoạch — xem `Docs/task.md` |
+| Bộ màn v1 | ✅ 11 màn (10 có lời giải, 1 vô nghiệm), lời giải tối ưu và sơ đồ — xem [code/data/README.md](code/data/README.md); các màn mới đã kiểm tra bằng mô phỏng Python, chờ nghiệm thu phát lại C++ |
+| Split switch, permanent | ⏳ Kế hoạch — xem `Docs/task.md` |
 
 ## Cấu trúc thư mục
 
@@ -97,11 +98,12 @@ Solver chưa cài sẽ được báo **"chưa cài"** (không crash). Mã thoát
 ## Chạy test
 
 ```bash
-python -m pytest -q        # hiện tại: 36 passed, 10 skipped (solver chưa cài)
+python -m pytest -q        # nhánh bộ màn v1: 73 passed, 10 skipped (solver chưa cài)
 ```
 
 - `tests/test_problem.py`: luật game (bảng chuyển, rơi, ô cam, công tắc, cầu, lời giải đã biết của màn 1 và 2).
 - `tests/test_solvers.py`: mỗi solver phải trả về lời giải hợp lệ khi phát lại; BFS/UCS/A\* phải tối ưu (màn 1 = **10** bước, màn 2 = **68** bước). Solver chưa cài → SKIP.
+- `tests/test_levels.py`: lời giải và độ dài tối ưu của cả 11 màn theo BFS độc lập; xác nhận màn vô nghiệm, viền trống, cầu bắt buộc và tác dụng của ô dễ vỡ.
 
 ## Mô hình trạng thái
 
