@@ -1,8 +1,8 @@
 # Bộ màn chơi Bloxorz — TV4
 
-Bộ dữ liệu có **11 màn: 10 màn có lời giải và 1 màn vô nghiệm**. Các màn
+Bộ dữ liệu có **14 màn: 13 màn có lời giải và 1 màn vô nghiệm**. Các màn
 dùng định dạng `.data` v1 và các luật đang có: sàn, lỗ, ô dễ vỡ, công tắc
-thường/nặng và cầu toggle. Màn 1–2 giữ nguyên dữ liệu gốc; màn 3–11 bổ sung
+thường/nặng và cầu toggle. Màn 1–2 giữ nguyên dữ liệu gốc; màn 3–14 bổ sung
 cho kiểm thử và thực nghiệm. Mỗi lời giải được phát lại trong mô phỏng Python
 và đối chiếu độ dài với BFS độc lập trong bộ test.
 
@@ -25,6 +25,9 @@ màn tương ứng. Bộ hiện tại bao phủ các cơ chế v1, chưa thay ch
 | [9](9.data) | G5 | Three chambers | 19×25 | 284 | 4 | 1/1 | 2 | 36 |
 | [10](10.data) | G6 | Open field | 20×30 | 415 | 0 | 0/0 | 0 | 27 |
 | [11](11.data) | G6 | Disconnected islands | 11×17 | 76 | 0 | 0/0 | 0 | Vô nghiệm |
+| [12](12.data) | G5 | 4-switch vault | 17×35 | 158 | 0 | 2/2 | 4 | 44 |
+| [13](13.data) | G5 | 6-switch vault | 21×49 | 278 | 0 | 3/3 | 6 | 66 |
+| [14](14.data) | G2 | Amber labyrinth | 21×29 | 363 | 200 | 0/0 | 0 | 36 |
 
 Ô có sàn là số ô khác 0 trong lưới ban đầu, gồm công tắc và ô dễ vỡ; không
 gồm lỗ đích hoặc cầu đang tắt. `catalog.json` là danh mục để test và công cụ
@@ -42,6 +45,7 @@ Chạy từ thư mục `code/` sau khi build theo README của dự án:
 ./a.out 3                                 # chơi màn 3 trên Linux/WSL
 ./a.out 7 --play data/solutions/7.txt       # tự phát lại màn công tắc
 ./a.out 9 --play data/solutions/9.txt       # màn lớn kết hợp
+./a.out 13 --play data/solutions/13.txt     # màn khó 6 công tắc
 ```
 
 Windows native dùng `./a.exe` hoặc `./Bloxorz.exe` thay cho `./a.out`.
@@ -193,12 +197,54 @@ Hai đảo không có cầu; vùng xuất phát có nhiều nước đi nhưng k
 
 ![Sơ đồ màn 11](previews/11.png)
 
+### Màn 12 — 4-switch vault
+
+Phòng công tắc 4 bit độc lập; phải mở đủ các cầu trên hành lang dẫn tới đích.
+
+Lời giải tối ưu **44 bước**: [file phát lại](solutions/12.txt).
+
+```text
+L L L R U R R D R R R R U U U U L U R L L L L L L L R R R U R U U U U U U U U U U U U U
+```
+
+BFS/A* `h=0` mở rộng **6,663 node** và gặp đủ **16 cấu hình cầu**. Bỏ riêng từng công tắc thì màn vô nghiệm.
+
+![Sơ đồ màn 12](previews/12.png)
+
+### Màn 13 — 6-switch vault
+
+Phòng công tắc 6 bit độc lập; phải mở đủ các cầu trên hành lang dẫn tới đích.
+
+Lời giải tối ưu **66 bước**: [file phát lại](solutions/13.txt).
+
+```text
+U U U U U U U L U L L L L D D D D D D D L D R R R R R R R R R R U U U U U U U U L D L L L U L U U U U U U U U U U U U U U U U U U U
+```
+
+BFS/A* `h=0` mở rộng **47,675 node** và gặp đủ **64 cấu hình cầu**. Bỏ riêng từng công tắc thì màn vô nghiệm.
+
+![Sơ đồ màn 13](previews/13.png)
+
+### Màn 14 — Amber labyrinth
+
+Mê cung nhiều ô dễ vỡ: vừa chọn đường qua hốc trống, vừa tránh dựng đứng trên ô cam.
+
+Lời giải tối ưu **36 bước**: [file phát lại](solutions/14.txt).
+
+```text
+R U R U R R R U U L U L U U R U L U L U U R R U U U U U R U R U R R R R
+```
+
+Có **200 ô dễ vỡ**; thay chúng bằng sàn thường làm tối ưu giảm từ **36** xuống **25 bước**. Lời giải thực sự đi qua nhiều ô cam ở tư thế nằm.
+
+![Sơ đồ màn 14](previews/14.png)
+
 ## Kiểm chứng và dựng lại hình
 
 Từ thư mục gốc repository:
 
 ```bash
-python -m pytest tests/test_levels.py -q
+python -m pytest tests/test_levels.py tests/test_hard_levels.py -q
 python -m pytest -q
 python -m pip install -r scripts/requirements-previews.txt
 python scripts/render_level_previews.py
@@ -209,14 +255,18 @@ theo BFS độc lập, viền 2 ô trống của màn mới, cầu bắt buộc,
 và tác dụng của ô dễ vỡ. Pillow chỉ phục vụ dựng lại hình; các file ảnh
 đã được lưu sẵn, solver và pytest không cần cài Pillow.
 
-Các lời giải mới cần được nhóm phát lại bằng game C++ khi nghiệm thu
-so khớp GUI; kiểm chứng mô phỏng Python không thay cho lượt chạy game đó.
+Màn 1–10 đã được Kiên phát lại và xác nhận thắng trong game C++ theo
+[report3](../../Docs/report3.md). Ba màn khó 12–14 đã kiểm chứng mô phỏng
+Python, chờ nhóm nghiệm thu phát lại C++; xem [thiết kế màn khó](../../Docs/hard_levels.md).
 
 ## Nguồn và phụ lục sử dụng AI
 
 Màn 1–2 lấy từ game nền `chaitanya100100/Bloxorz`, giữ nguyên theo
-[THIRD_PARTY_NOTICES](../../THIRD_PARTY_NOTICES.md). Màn 3–11 được thiết kế
+[THIRD_PARTY_NOTICES](../../THIRD_PARTY_NOTICES.md). Màn 3–14 được thiết kế
 cho bộ test của nhóm với hỗ trợ ChatGPT/Codex, dựa trên luật đã có trong repo.
 Prompt chính: **‘Thiết kế thêm màn chơi theo phân công đầy đủ TV4’**.
 Ghi thông tin này vào phụ lục sử dụng AI chung của nhóm và review lại
 màn chơi, lời giải, số liệu trước khi đưa vào báo cáo chính thức.
+
+Bổ sung màn khó 12–14 theo prompt **‘Làm thêm màn khó theo góp ý của Kiên’**;
+thiết kế và số liệu node được giải thích trong `Docs/hard_levels.md`.

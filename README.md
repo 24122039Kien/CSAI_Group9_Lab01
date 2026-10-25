@@ -12,12 +12,12 @@ Tài liệu nội bộ: **[Docs/report1.md](Docs/report1.md) (bắt đầu từ 
 | Phần | Trạng thái |
 |---|---|
 | Luật game trong Python (`ai/problem.py`) | ✅ Cài đầy đủ, 36 test PASS |
-| Game phát lại lời giải (`--play`, `--solve`) | ✅ Đã kiểm chứng: lời giải của cả 10 màn có lời giải đều thắng trong game C++ đúng số bước |
+| Game phát lại lời giải (`--play`, `--solve`) | ✅ Màn 1–10 đã thắng trong game C++ đúng số bước; màn khó 12–14 đã kiểm tra Python, chờ phát lại C++ |
 | `AStarSolver` | ✅ Đã cài (giải thích: [Docs/astar_walkthrough.md](Docs/astar_walkthrough.md)); chạy được với `--heuristic zero`, nút A\* trong game chờ `manhattan_heuristic` |
 | `BFSSolver`, `DFSSolver`, `UCSSolver` | ⏳ **TODO** — mỗi thành viên tự cài |
 | `manhattan_heuristic` | ⏳ **TODO** |
 | Giao diện mới, menu chọn màn, Restart, nút Solve chạy nền, `Bloxorz.exe` đóng gói | ✅ Xong — xem `Docs/report2.md` |
-| Bộ màn v1 | ✅ 11 màn (10 có lời giải, 1 vô nghiệm), lời giải tối ưu và sơ đồ — xem [code/data/README.md](code/data/README.md); đã kiểm tra bằng mô phỏng Python và phát lại trong game C++ (`--play`) |
+| Bộ màn v1 | ✅ 14 màn (13 có lời giải, 1 vô nghiệm), có màn 4/6 công tắc và 200 ô dễ vỡ — xem [code/data/README.md](code/data/README.md) và [Docs/hard_levels.md](Docs/hard_levels.md) |
 | Split switch, permanent | ⏳ Kế hoạch — xem `Docs/task.md` |
 
 ## Cấu trúc thư mục
@@ -99,12 +99,13 @@ Solver chưa cài sẽ được báo **"chưa cài"** (không crash). Mã thoát
 ## Chạy test
 
 ```bash
-python -m pytest -q        # hiện tại: 88 passed, 14 skipped (BFS/DFS/UCS và manhattan_heuristic chưa cài)
+python -m pytest -q        # hiện tại: 104 passed, 14 skipped (BFS/DFS/UCS và manhattan_heuristic chưa cài)
 ```
 
 - `tests/test_problem.py`: luật game (bảng chuyển, rơi, ô cam, công tắc, cầu, lời giải đã biết của màn 1 và 2).
 - `tests/test_solvers.py`: mỗi solver phải trả về lời giải hợp lệ khi phát lại; BFS/UCS/A\* phải tối ưu (màn 1 = **10** bước, màn 2 = **68** bước). Solver chưa cài → SKIP.
-- `tests/test_levels.py`: lời giải và độ dài tối ưu của cả 11 màn theo BFS độc lập; xác nhận màn vô nghiệm, viền trống, cầu bắt buộc và tác dụng của ô dễ vỡ.
+- `tests/test_levels.py`: lời giải và độ dài tối ưu của cả 14 màn theo BFS độc lập; xác nhận màn vô nghiệm, viền trống, cầu bắt buộc và tác dụng của ô dễ vỡ.
+- `tests/test_hard_levels.py`: đối chiếu A* với BFS trên màn 12–14; kiểm tra đủ 16/64 cấu hình cầu và độ lớn không gian tìm kiếm, cũng như việc lời giải thực sự đi qua nhiều ô dễ vỡ.
 - `tests/test_astar_solver.py`, `tests/test_astar_integration.py`: các trường hợp biên của A\* (vô nghiệm, xuất phát tại đích, mở rộng lại, bản ghi cũ) và đối chiếu heuristic với khoảng cách thật trên toàn bộ đồ thị trạng thái (phần Manhattan SKIP tới khi cài).
 
 ## Mô hình trạng thái
