@@ -102,12 +102,6 @@ python main.py code/data/1.data --algo astar --heuristic manhattan
 python main.py code/data/2.data --algo astar --heuristic manhattan
 ```
 
-Trên máy đang dùng Python portable của workspace, thay `python` bằng:
-
-```powershell
-& "..\.runtime\astar-python312\python.exe"
-```
-
 Kết quả tối ưu với chi phí 1: màn 1 là 10 bước, màn 2 là 68 bước. So sánh thêm
 node mở rộng và thời gian của hai heuristic; ghi nhận số đo thực tế.
 Khi TV3 bổ sung chi phí không đồng nhất, cần kiểm tra chi phí A* bằng UCS
