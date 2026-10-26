@@ -98,8 +98,17 @@ class BloxorzProblem:
             return Outcome.LOST
         return Outcome.WON if won else Outcome.CONTINUE
 
+    def _activate_switch(self, mask: int, kind: str, x: int, y: int) -> int:
+        switch = self.level.switch_at(kind, x, y)
+        if switch.mode == "toggle":
+            return mask ^ (1 << switch.bit)
+        elif switch.mode in ("on", "permanent_on", "off", "permanent_off"):
+            # Công tắc permanent: một khi kích hoạt thì giữ nguyên trạng thái
+            return mask | (1 << switch.bit)
+        return mask
+
     def _toggle(self, mask: int, kind: str, x: int, y: int) -> int:
-        return mask ^ (1 << self.level.switch_at(kind, x, y).bit)
+        return self._activate_switch(mask, kind, x, y)
 
     def simulate(self, state: State, action: str) -> tuple[State, Outcome]:
         """Thực hiện một nước đi, trả về (trạng thái mới, kết quả).
@@ -116,13 +125,13 @@ class BloxorzProblem:
 
         lv, x, y, mask = self.level, s.x, s.y, s.bridge_mask
         if lv.tile_type(x, y, mask) == NORMAL_SWITCH:
-            mask = self._toggle(mask, "normal", x, y)
+            mask = self._activate_switch(mask, "normal", x, y)
         if new_o is X and lv.tile_type(x + 1, y, mask) == NORMAL_SWITCH:
-            mask = self._toggle(mask, "normal", x + 1, y)
+            mask = self._activate_switch(mask, "normal", x + 1, y)
         if new_o is Y and lv.tile_type(x, y + 1, mask) == NORMAL_SWITCH:
-            mask = self._toggle(mask, "normal", x, y + 1)
+            mask = self._activate_switch(mask, "normal", x, y + 1)
         if new_o is Z and lv.tile_type(x, y, mask) == HEAVY_SWITCH:
-            mask = self._toggle(mask, "heavy", x, y)
+            mask = self._activate_switch(mask, "heavy", x, y)
 
         if mask != s.bridge_mask:
             s = State(x, y, new_o, mask)
