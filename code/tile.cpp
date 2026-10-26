@@ -54,6 +54,9 @@ void Floor::clear()
     n = m = 0;
     normal_bridge.clear();
     heavy_bridge.clear();
+    normal_bridges.clear();
+    heavy_bridges.clear();
+    switch_modes.clear();
     bridge_cells.clear();
     appear_time.clear();
     hidden.clear();
@@ -107,6 +110,8 @@ void Floor::initialize(string filename)
         int x, y, a, b;
         fin >> x >> y >> a >> b;
         normal_bridge[x*m+y] = a*m+b;
+        normal_bridges[x*m+y] = {a*m+b};
+        switch_modes[x*m+y] = "toggle";
         bridge_cells.insert(a*m+b);
     }
 
@@ -116,7 +121,49 @@ void Floor::initialize(string filename)
         int x, y, a, b;
         fin >> x >> y >> a >> b;
         heavy_bridge[x*m+y] = a*m+b;
+        heavy_bridges[x*m+y] = {a*m+b};
+        switch_modes[x*m+y] = "toggle";
         bridge_cells.insert(a*m+b);
+    }
+
+    string token;
+    while(fin >> token)
+    {
+        if(token == "ext")
+        {
+            int ver;
+            if(fin >> ver)
+            {
+                string cmd;
+                while(fin >> cmd)
+                {
+                    if(cmd == "switch")
+                    {
+                        string kind, mode;
+                        int x, y, count;
+                        if(fin >> kind >> x >> y >> mode >> count)
+                        {
+                            vector<int> targets;
+                            for(int c=0; c<count; c++)
+                            {
+                                int a, b;
+                                fin >> a >> b;
+                                targets.push_back(a*m+b);
+                                bridge_cells.insert(a*m+b);
+                            }
+                            int key = x*m+y;
+                            if(mode == "on") mode = "permanent_on";
+                            if(mode == "off") mode = "permanent_off";
+                            switch_modes[key] = mode;
+                            if(kind == "normal")
+                                normal_bridges[key] = targets;
+                            else if(kind == "heavy")
+                                heavy_bridges[key] = targets;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fin.close();
@@ -311,14 +358,60 @@ void Floor::toggle(int a, int b)
 
 void Floor::heavy_bridge_toggle(int i, int j)
 {
-    int q = heavy_bridge[i*m+j];
-    toggle(q/m, q%m);
+    int key = i*m+j;
+    string mode = switch_modes.count(key) ? switch_modes[key] : "toggle";
+    vector<int> targets;
+    if(heavy_bridges.count(key) && !heavy_bridges[key].empty())
+        targets = heavy_bridges[key];
+    else if(heavy_bridge.count(key))
+        targets.push_back(heavy_bridge[key]);
+
+    for(size_t idx=0; idx<targets.size(); idx++)
+    {
+        int q = targets[idx];
+        int a = q/m, b = q%m;
+        if(mode == "permanent_on")
+        {
+            if(!tiles[a][b]) toggle(a, b);
+        }
+        else if(mode == "permanent_off")
+        {
+            if(tiles[a][b]) toggle(a, b);
+        }
+        else // toggle
+        {
+            toggle(a, b);
+        }
+    }
 }
 
 void Floor::normal_bridge_toggle(int i, int j)
 {
-    int q = normal_bridge[i*m+j];
-    toggle(q/m, q%m);
+    int key = i*m+j;
+    string mode = switch_modes.count(key) ? switch_modes[key] : "toggle";
+    vector<int> targets;
+    if(normal_bridges.count(key) && !normal_bridges[key].empty())
+        targets = normal_bridges[key];
+    else if(normal_bridge.count(key))
+        targets.push_back(normal_bridge[key]);
+
+    for(size_t idx=0; idx<targets.size(); idx++)
+    {
+        int q = targets[idx];
+        int a = q/m, b = q%m;
+        if(mode == "permanent_on")
+        {
+            if(!tiles[a][b]) toggle(a, b);
+        }
+        else if(mode == "permanent_off")
+        {
+            if(tiles[a][b]) toggle(a, b);
+        }
+        else // toggle
+        {
+            toggle(a, b);
+        }
+    }
 }
 
 Floor::~Floor()
