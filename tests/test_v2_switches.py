@@ -31,7 +31,9 @@ switch normal 1 1 toggle 2 1 2 1 3
     assert switch.mode == "toggle"
     assert (1, 2) in level.bridge_bits
     assert (1, 3) in level.bridge_bits
-    assert level.bridge_bits[(1, 2)] == level.bridge_bits[(1, 3)]
+    # Mỗi ô cầu một bit riêng; công tắc giữ mask gồm cả hai ô
+    assert level.bridge_bits[(1, 2)] != level.bridge_bits[(1, 3)]
+    assert switch.mask == level.bridge_bits[(1, 2)] | level.bridge_bits[(1, 3)]
 
 
 def test_v2_multi_bridge_toggle():
@@ -105,11 +107,58 @@ ext 1
 switch heavy 1 1 permanent_off 1 1 2
 """
     prob = BloxorzProblem(Level.from_text(raw))
-    # Kích hoạt switch -> bit được set
+    # Cầu đang đóng: permanent_off giữ nguyên đóng (KHÔNG được mở ra)
     mask1 = prob._activate_switch(0, "heavy", 1, 1)
-    # Dẫm tiếp lần nữa -> vẫn giữ bit đã set
+    assert not prob.level.has_tile(1, 2, mask1)
+    # Dẫm tiếp lần nữa -> vẫn đóng
     mask2 = prob._activate_switch(mask1, "heavy", 1, 1)
     assert mask1 == mask2
+    assert not prob.level.has_tile(1, 2, mask2)
+
+
+def test_v2_permanent_off_closes_bridge_opened_by_another_switch():
+    # Giống Floor::heavy_bridge_toggle: off xóa ô cầu đang có, không đảo ô đang trống
+    raw = """
+3 5
+1 1 1 1 1
+1 4 0 3 1
+1 1 1 1 0
+0 0 Z
+2 4
+1
+1 3 1 2
+1
+1 1 1 2
+ext 1
+switch heavy 1 1 permanent_off 1 1 2
+"""
+    prob = BloxorzProblem(Level.from_text(raw))
+    mask = prob._activate_switch(0, "normal", 1, 3)  # công tắc toggle mở cầu
+    assert prob.level.has_tile(1, 2, mask)
+    mask = prob._activate_switch(mask, "heavy", 1, 1)  # off đóng lại
+    assert not prob.level.has_tile(1, 2, mask)
+    mask = prob._activate_switch(mask, "normal", 1, 3)  # toggle mở lại
+    assert prob.level.has_tile(1, 2, mask)
+    mask = prob._activate_switch(mask, "heavy", 1, 1)  # off đóng lần nữa (parity sẽ sai ở đây)
+    assert not prob.level.has_tile(1, 2, mask)
+
+
+def test_v2_permanent_off_level_matches_cpp_replay():
+    # Đã đối chiếu với ./a.exe --play: đứng lên công tắc off rồi lăn qua cầu -> rơi ở bước 3
+    raw = """
+1 7
+1 1 1 4 0 1 0
+0 0 Z
+0 6
+0
+1
+0 3 0 4
+ext 1
+switch heavy 0 3 permanent_off 1 0 4
+"""
+    prob = BloxorzProblem(Level.from_text(raw))
+    _, outcome, steps = prob.replay("U U U U")
+    assert outcome is Outcome.LOST and steps == 3
 
 
 def test_v2_multiple_switches_controlling_same_bridge_tile():

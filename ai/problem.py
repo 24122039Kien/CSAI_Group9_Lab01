@@ -116,13 +116,13 @@ class BloxorzProblem:
         return Outcome.WON if won else Outcome.CONTINUE
 
     def _activate_switch(self, mask: int, kind: str, x: int, y: int) -> int:
+        """Áp tác dụng của công tắc lên các ô cầu (bit = ô cầu đang mở), như Floor::*_toggle."""
         switch = self.level.switch_at(kind, x, y)
-        if switch.mode == "toggle":
-            return mask ^ (1 << switch.bit)
-        elif switch.mode in ("on", "permanent_on", "off", "permanent_off"):
-            # Công tắc permanent: một khi kích hoạt thì giữ nguyên trạng thái
-            return mask | (1 << switch.bit)
-        return mask
+        if switch.mode == "permanent_on":
+            return mask | switch.mask  # mở mọi ô cầu, ô đang mở giữ nguyên
+        if switch.mode == "permanent_off":
+            return mask & ~switch.mask  # đóng mọi ô cầu, ô đang đóng giữ nguyên
+        return mask ^ switch.mask  # toggle: đảo từng ô cầu
 
     def _toggle(self, mask: int, kind: str, x: int, y: int) -> int:
         return self._activate_switch(mask, kind, x, y)
@@ -161,27 +161,17 @@ class BloxorzProblem:
                 if self.check(s) is Outcome.LOST:
                     return s, Outcome.LOST
 
-            # Tự động gộp khối (Recombination) nếu 4-kề
+            # Tự động gộp khối (Recombination) nếu 4-kề. Gộp chỉ đổi hình dạng, không phải
+            # một lần "đè" mới: công tắc dưới cube vừa lăn đã được kích hoạt ở trên, cube kia
+            # đã nằm sẵn, nên không kích hoạt lại (giống Game::check_after_step).
             assert s.cubes is not None
             c1, c2 = s.cubes
-            dist = abs(c1[0] - c2[0]) + abs(c1[1] - c2[1])
-            if dist == 1:
-                if abs(c1[0] - c2[0]) == 1 and c1[1] == c2[1]:
-                    # Kề dọc -> gộp thành khối nằm theo trục X
-                    s = State(min(c1[0], c2[0]), c1[1], X, s.bridge_mask)
-                elif c1[0] == c2[0] and abs(c1[1] - c2[1]) == 1:
-                    # Kề ngang -> gộp thành khối nằm theo trục Y
-                    s = State(c1[0], min(c1[1], c2[1]), Y, s.bridge_mask)
-
-                # Sau khi gộp, kiểm tra kích hoạt công tắc thường dưới khối mới
-                mask = s.bridge_mask
-                for cx, cy in s.cells():
-                    if lv.tile_type(cx, cy, mask) == NORMAL_SWITCH:
-                        mask = self._activate_switch(mask, "normal", cx, cy)
-                if mask != s.bridge_mask:
-                    s = State(s.x, s.y, s.orientation, mask)
-                    if self.check(s) is Outcome.LOST:
-                        return s, Outcome.LOST
+            if abs(c1[0] - c2[0]) == 1 and c1[1] == c2[1]:
+                # Kề dọc -> gộp thành khối nằm theo trục X
+                s = State(min(c1[0], c2[0]), c1[1], X, s.bridge_mask)
+            elif c1[0] == c2[0] and abs(c1[1] - c2[1]) == 1:
+                # Kề ngang -> gộp thành khối nằm theo trục Y
+                s = State(c1[0], min(c1[1], c2[1]), Y, s.bridge_mask)
 
             return s, Outcome.CONTINUE
 

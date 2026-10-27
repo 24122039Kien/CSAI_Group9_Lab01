@@ -51,7 +51,8 @@ class Switch:
     pos: tuple[int, int]
     targets: tuple[tuple[int, int], ...]
     mode: str = "toggle"  # "toggle" | "permanent_on" | "permanent_off"
-    bit: int = 0  # chỉ số bit trong State.bridge_mask
+    bit: int = 0  # số thứ tự công tắc (dùng để đánh nhãn, KHÔNG phải bit của bridge_mask)
+    mask: int = 0  # các bit trong State.bridge_mask ứng với ô cầu công tắc điều khiển
 
     def __post_init__(self) -> None:
         # Nếu targets truyền vào là 1 tuple đơn (a, b), chuyển thành ((a, b),)
@@ -99,19 +100,23 @@ class Level:
             for s in v2_switches:
                 switch_map[(s.kind, s.pos)] = s
 
-        # Gán lại bit theo thứ tự duyệt
+        # Mỗi Ô CẦU có một bit riêng trong State.bridge_mask (1 = đang mở), đánh số theo
+        # thứ tự xuất hiện lần đầu. Lưu trạng thái theo ô (không theo công tắc) giống C++
+        # (Floor lưu ô thật) nên permanent_on/off và nhiều công tắc chung một ô đều đúng.
+        bits: dict[tuple[int, int], int] = {}
+        for s in switch_map.values():
+            for target in s.targets:
+                bits.setdefault(target, 1 << len(bits))
+        self.bridge_bits: dict[tuple[int, int], int] = bits
+
         switches: list[Switch] = []
-        for (kind, pos), s in switch_map.items():
-            switches.append(Switch(s.kind, s.pos, s.targets, s.mode, len(switches)))
+        for s in switch_map.values():
+            mask = 0
+            for target in s.targets:
+                mask |= bits[target]
+            switches.append(Switch(s.kind, s.pos, s.targets, s.mode, len(switches), mask))
         self.switches: tuple[Switch, ...] = tuple(switches)
         self._switch_at = {(s.kind, s.pos): s for s in self.switches}
-
-        # Ô cầu -> mask các công tắc điều khiển nó (một ô có thể bị nhiều công tắc bật/tắt).
-        bits: dict[tuple[int, int], int] = {}
-        for s in self.switches:
-            for target in s.targets:
-                bits[target] = bits.get(target, 0) | (1 << s.bit)
-        self.bridge_bits: dict[tuple[int, int], int] = bits
 
         self.validate()
 
@@ -248,11 +253,10 @@ class Level:
         """Ô (x, y) có sàn không, với cấu hình cầu ``mask``. Ngoài lưới = không."""
         if not self.in_bounds(x, y):
             return False
-        present = self.grid[x][y] != EMPTY
-        bits = self.bridge_bits.get((x, y), 0)
-        if bits and (bin(mask & bits).count("1") & 1):
-            present = not present
-        return present
+        bit = self.bridge_bits.get((x, y))
+        if bit is not None:
+            return bool(mask & bit)  # ô cầu (lúc đầu luôn là 0): có sàn khi bit đang bật
+        return self.grid[x][y] != EMPTY
 
     def tile_type(self, x: int, y: int, mask: int) -> int:
         """Loại ô hiện tại (``EMPTY`` nếu không có sàn). Cầu được bật là ô thường."""

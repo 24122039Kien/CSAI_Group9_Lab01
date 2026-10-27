@@ -101,7 +101,7 @@ def test_every_switch_is_required_and_activated_correctly(entry):
         child, _ = problem.simulate(state, action)
         toggled = state.bridge_mask ^ child.bridge_mask
         for switch in level.switches:
-            if toggled & (1 << switch.bit):
+            if toggled & switch.mask:
                 activations.add(switch.bit)
                 if switch.kind == "heavy":
                     assert child.orientation is Orientation.Z

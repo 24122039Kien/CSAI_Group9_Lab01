@@ -223,21 +223,22 @@ Hai sự thật nhỏ về bảng này sẽ rất quan trọng về sau:
 
 ### 3.6. Công tắc và cầu: giống công tắc đèn
 
-**Cây cầu** là một ô lúc đầu trống (số 0 trong file). Mỗi cây cầu nối với một công tắc. Cứ **kích hoạt công tắc một lần** thì cầu **đổi trạng thái**: đang trống thì hiện ra thành sàn, đang là sàn thì biến mất. Giống bật/tắt đèn.
+**Cây cầu** là một ô lúc đầu trống (số 0 trong file). Mỗi công tắc điều khiển một hoặc nhiều ô cầu. Cứ **kích hoạt công tắc một lần** thì cầu **đổi trạng thái**: đang trống thì hiện ra thành sàn, đang là sàn thì biến mất. Giống bật/tắt đèn.
 
 - **Công tắc thường `○`:** khối đè lên bằng **bất kỳ phần nào** (đứng hay nằm) là kích hoạt.
 - **Công tắc nặng `X`:** chỉ kích hoạt khi khối **đứng** trên nó. Nằm đè lên không có tác dụng.
+- **Chế độ** (định dạng v2, màn 15–16): `toggle` đảo cầu như trên; `permanent_on` chỉ **mở** (cầu đang mở giữ nguyên); `permanent_off` chỉ **đóng**.
 
-**Trong code, cầu được nhớ bằng `bridge_mask`.** Hãy tưởng tượng một hàng bóng đèn, mỗi bóng ứng với một công tắc:
+**Trong code, cầu được nhớ bằng `bridge_mask`.** Hãy tưởng tượng một hàng bóng đèn, **mỗi bóng ứng với một ô cầu**, bóng sáng = ô cầu đang mở:
 
 ```
-  công tắc số:      2   1   0
+  ô cầu số:         2   1   0
   bridge_mask = 5 = 1   0   1   (viết dạng nhị phân)
                     ↑   ↑   ↑
-                   bật tắt bật   → cầu của công tắc 0 và 2 đã bị đảo, cầu của công tắc 1 chưa
+                   mở  đóng mở   → ô cầu 0 và 2 đang mở, ô cầu 1 đang đóng
 ```
 
-Kích hoạt công tắc số `i` = đảo bóng số `i` (phép XOR: `mask ^ (1 << i)`).
+Mỗi công tắc biết các bóng của mình (`switch.mask`). Kích hoạt công tắc: `toggle` = đảo các bóng đó (`mask ^ switch.mask`), `permanent_on` = bật (`mask | switch.mask`), `permanent_off` = tắt (`mask & ~switch.mask`).
 
 > ⚠️ **Vì sao `bridge_mask` phải là một phần của trạng thái?** Đề (mục 3.1) nhấn mạnh điều này. Hai ván có khối ở **cùng chỗ** nhưng cầu **khác nhau** thì các nước đi được cũng khác nhau, nên phải coi là **hai trạng thái khác nhau**. Nếu quên, thuật toán sẽ nghĩ "chỗ này đến rồi" và bỏ qua những lời giải kiểu "đi bấm công tắc, quay lại chỗ cũ, giờ cầu đã mở".
 

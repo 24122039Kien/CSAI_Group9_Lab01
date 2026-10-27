@@ -222,3 +222,30 @@ split 2 2 1 1 3 3
     assert not s3.is_split
     assert s3.orientation is Orientation.Y
     assert (s3.x, s3.y) == (2, 2)
+
+
+def test_merge_on_soft_switch_activates_it_once():
+    # Cube 0 lăn lên công tắc mềm (1,4) ngay cạnh cube 1 -> gộp thành X(1,4).
+    # Công tắc phải mở cầu (1,5) đúng một lần (trước đây bị kích hoạt hai lần -> cầu vẫn đóng).
+    # Cùng chuỗi nước đã được đối chiếu với ./a.exe --play.
+    raw = """
+3 7
+0 0 0 0 1 0 0
+1 1 1 5 3 0 0
+0 0 0 0 1 1 0
+1 0 Z
+0 6
+1
+1 4 1 5
+0
+ext 1
+split 1 3 0 4 2 4
+"""
+    prob = BloxorzProblem(Level.from_text(raw))
+    merged, outcome, steps = prob.replay("U U 0R")
+    assert outcome is Outcome.CONTINUE and steps == 3
+    assert not merged.is_split and merged.cells() == ((1, 4), (2, 4))
+    assert prob.level.has_tile(1, 5, merged.bridge_mask)
+    after, outcome, _ = prob.replay("U U 0R U")  # lăn sang (1,5),(2,5): cầu đang mở
+    assert outcome is Outcome.CONTINUE
+    assert after.cells() == ((1, 5), (2, 5))

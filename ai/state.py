@@ -38,8 +38,8 @@ class State:
     Attributes:
         x, y: ô "neo" của khối (ô có chỉ số nhỏ nhất).
         orientation: tư thế X/Y/Z.
-        bridge_mask: bit thứ ``i`` = số lần công tắc thứ ``i`` đã được kích hoạt
-            (mod 2). Hai trạng thái cùng vị trí nhưng khác ``bridge_mask`` là
+        bridge_mask: mỗi Ô CẦU có một bit (``Level.bridge_bits``), bit bật = ô cầu
+            đang mở. Hai trạng thái cùng vị trí nhưng khác ``bridge_mask`` là
             HAI trạng thái khác nhau (cầu đóng/mở khác nhau).
         cubes: khi khối bị tách thành 2 cube 1x1x1, lưu cặp tọa độ ((x1, y1), (x2, y2))
             đã chuẩn hóa sắp xếp; None khi khối chưa tách.

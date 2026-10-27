@@ -16,10 +16,11 @@ int Game::check()
 {
     if(superblock.is_split)
     {
+        // Cube 1x1x1 không lọt lỗ đích: đi qua lỗ đích như đi trên sàn (giống ai/problem.py).
         for(int k=0; k<2; k++)
         {
             int cx = superblock.cube_ix[k], cy = superblock.cube_iy[k];
-            if(!stage.has_tile(cx, cy))
+            if(!stage.has_tile(cx, cy) && !(cx==stage.tx && cy==stage.ty))
             {
                 gameover = true;
                 return 0;
@@ -72,17 +73,9 @@ void Game::check_after_step()
         if(stage.has_tile(cx, cy) && stage.tiles[cx][cy]->get_tile_type()==normal_bridge)
             stage.normal_bridge_toggle(cx, cy);
 
-        if(superblock.check_recombine())
-        {
-            int sx = superblock.ix, sy = superblock.iy;
-            int along = superblock.along;
-            if(stage.has_tile(sx, sy) && stage.tiles[sx][sy]->get_tile_type()==normal_bridge)
-                stage.normal_bridge_toggle(sx, sy);
-            if(along==X && stage.has_tile(sx+1, sy) && stage.tiles[sx+1][sy]->get_tile_type()==normal_bridge)
-                stage.normal_bridge_toggle(sx+1, sy);
-            if(along==Y && stage.has_tile(sx, sy+1) && stage.tiles[sx][sy+1]->get_tile_type()==normal_bridge)
-                stage.normal_bridge_toggle(sx, sy+1);
-        }
+        // Gộp chỉ đổi hình dạng: công tắc dưới cube vừa lăn đã kích hoạt ở trên, cube kia đã nằm
+        // sẵn, nên KHÔNG kích hoạt lại (trước đây ô vừa lăn bị đảo hai lần -> công tắc vô tác dụng).
+        superblock.check_recombine();
         return;
     }
 

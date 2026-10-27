@@ -115,7 +115,7 @@ Hướng đi: `R: x+1`, `L: x−1`, `U: y+1`, `D: y−1` — trong cửa sổ 3D
 
 **Tư thế:** `Z` đứng, chiếm `(x,y)` · `X` nằm, chiếm `(x,y),(x+1,y)` · `Y` nằm, chiếm `(x,y),(x,y+1)`.
 
-**State** = `(x, y, orientation, bridge_mask)` — `bridge_mask` có 1 bit cho mỗi công tắc (số lần đã kích hoạt, mod 2). Cùng vị trí nhưng khác `bridge_mask` là **hai trạng thái khác nhau**.
+**State** = `(x, y, orientation, bridge_mask, cubes)` — `bridge_mask` có 1 bit cho mỗi **ô cầu** (bit bật = ô cầu đang mở); `cubes` là vị trí hai khối 1×1×1 khi đã tách (split), `None` khi chưa tách. Cùng vị trí nhưng khác `bridge_mask` là **hai trạng thái khác nhau**.
 
 | Tư thế | L | R | U | D |
 |---|---|---|---|---|

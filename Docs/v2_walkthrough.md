@@ -42,29 +42,28 @@ switch heavy 4 5 permanent_on 3 6 1 6 2 6 3
 
 ---
 
-## 3. Kiến trúc toán học Bitmask Parity
+## 3. Biểu diễn trạng thái cầu (`bridge_mask`)
 
-### 3.1. Đại số trạng thái cầu (`bridge_mask`)
-Trong lớp `State(x, y, orientation, bridge_mask)`:
-- Mỗi công tắc $S_i$ được gán một chỉ số bit duy nhất: $\text{bit}_i \in \{0, 1, 2, \dots\}$.
-- Giá trị `bridge_mask` là một số nguyên đại diện cho vector nhị phân trạng thái kích hoạt của tất cả công tắc.
+> **Cập nhật khi merge vào `main` (report4):** bản đầu dùng 1 bit cho mỗi **công tắc** (chẵn lẻ số lần
+> kích hoạt) và cho `permanent_off` cũng `mask | bit` như `permanent_on`. Cách đó **mở** cầu khi bấm
+> công tắc "off", lệch với C++ (đã đối chiếu bằng `./a.exe --play`: Python thắng, C++ rơi). Nay đổi
+> sang 1 bit cho mỗi **ô cầu**, đúng như đề yêu cầu "state must include the open/closed status of
+> every bridge" và giống cách C++ lưu ô thật.
 
-### 3.2. Nhiều ô cầu cho một công tắc
-- Trong `Level.bridge_bits`:
-  Với mỗi ô cầu $(a, b)$, mask các công tắc điều khiển nó là:
-  $$\text{bits}[(a, b)] = \bigvee_{S_i \text{ điều khiển } (a, b)} (1 \ll \text{bit}_i)$$
-- Khi kiểm tra ô $(x, y)$ có sàn hay không (`Level.has_tile(x, y, mask)`):
-  $$\text{parity} = \text{popcount}(\text{mask} \ \& \ \text{bits}[(x, y)]) \pmod 2$$
-  Nếu $\text{parity} = 1$, trạng thái mặt sàn của ô $(x, y)$ bị đảo ngược so với lưới ban đầu $\text{grid}[x][y]$.
-  Nhờ tính chất tuyến tính của XOR parity, **nhiều công tắc khác nhau cùng điều khiển chung một ô cầu** sẽ tự động tương tác chính xác (XOR lẫn nhau) mà không cần code thêm trường hợp đặc biệt nào!
+### 3.1. Mỗi ô cầu một bit
+- `Level.bridge_bits[(a, b)]` = bit riêng của ô cầu $(a, b)$, đánh số theo thứ tự xuất hiện lần đầu.
+- Bit bật = ô cầu đang **mở**. Ô cầu lúc đầu luôn là 0 trên lưới (đóng), nên `initial_state()` có `bridge_mask = 0`.
+- `Level.has_tile(x, y, mask)` với ô cầu: có sàn khi `mask & bridge_bits[(x, y)]` khác 0.
+- Mỗi công tắc có `switch.mask` = OR các bit ô cầu nó điều khiển (nhiều ô cầu → nhiều bit).
 
-### 3.3. Cơ chế Permanent Switch
-- **`toggle`**: 
-  $$\text{mask}_{\text{mới}} = \text{mask} \oplus (1 \ll \text{bit}_i)$$
-  Mỗi lần bước lên công tắc, bit trạng thái bị lật giữa 0 và 1.
-- **`permanent_on` / `permanent_off`**:
-  $$\text{mask}_{\text{mới}} = \text{mask} \lor (1 \ll \text{bit}_i)$$
-  Toán tử OR bit bảo đảm rằng: sau lần dẫm đầu tiên, bit luôn bằng 1. Những lần dẫm tiếp theo $\text{mask} \lor (1 \ll \text{bit}_i)$ không làm thay đổi mask, do đó cầu giữ nguyên trạng thái vĩnh viễn!
+### 3.2. Ba chế độ công tắc (`BloxorzProblem._activate_switch`)
+| Chế độ | Phép toán | Ý nghĩa, giống `Floor::*_bridge_toggle` |
+|---|---|---|
+| `toggle` | `mask ^ switch.mask` | đảo từng ô cầu |
+| `permanent_on` | `mask \| switch.mask` | tạo ô đang trống, ô đang có giữ nguyên |
+| `permanent_off` | `mask & ~switch.mask` | xóa ô đang có, ô đang trống giữ nguyên |
+
+Nhiều công tắc cùng điều khiển một ô cầu tương tác đúng: chúng cùng tác động lên **một** bit của ô đó.
 
 ---
 
@@ -75,7 +74,7 @@ Trong lớp `State(x, y, orientation, bridge_mask)`:
 | Cấu trúc dữ liệu | `Switch(kind, pos, targets, mode, bit)` trong [ai/level.py](../ai/level.py) | `normal_bridges`, `heavy_bridges`, `switch_modes` trong [code/tile.h](../code/tile.h) |
 | Đọc file `.data` | `Level.from_text()` phân tích token `ext 1` | `Floor::initialize()` phân tích token `ext 1` trong [code/tile.cpp](../code/tile.cpp) |
 | Kích hoạt công tắc | `BloxorzProblem._activate_switch()` trong [ai/problem.py](../ai/problem.py) | `Floor::normal_bridge_toggle()` và `heavy_bridge_toggle()` |
-| Kiểm tra sàn | `Level.has_tile()` dùng parity bitmask | `Floor::has_tile()` và `Floor::toggle()` cập nhật con trỏ `Tile*` |
+| Kiểm tra sàn | `Level.has_tile()` đọc bit của ô cầu | `Floor::has_tile()` và `Floor::toggle()` cập nhật con trỏ `Tile*` |
 
 ---
 
@@ -99,5 +98,5 @@ python -m pytest tests/test_v2_switches.py -v
 python -m pytest -q
 ```
 **Kết quả:**
-- `tests/test_v2_switches.py`: **5 passed** (kiểm thử đầy đủ multi-bridge toggle, permanent on, permanent off, và tương tác parity nhiều công tắc).
+- `tests/test_v2_switches.py`: **5 passed** (kiểm thử đầy đủ multi-bridge toggle, permanent on, permanent off, và nhiều công tắc cùng một ô cầu).
 - Toàn bộ repo: **93 passed, 14 skipped** (0 hồi quy, 100% tương thích ngược).
