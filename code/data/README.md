@@ -25,6 +25,8 @@ màn tương ứng. Bộ hiện tại bao phủ các cơ chế v1, chưa thay ch
 | [9](9.data) | G5 | Three chambers | 19×25 | 284 | 4 | 1/1 | 2 | 36 |
 | [10](10.data) | G6 | Open field | 20×30 | 415 | 0 | 0/0 | 0 | 27 |
 | [11](11.data) | G6 | Disconnected islands | 11×17 | 76 | 0 | 0/0 | 0 | Vô nghiệm |
+| [12](12.data) | G3 | Dual bridges crossing | 11×17 | 49 | 0 | 1/1 | 3 | 12 |
+| [13](13.data) | G4 | The great split | 12×20 | 36 | 2 | 1/0 | 1 | 21 |
 
 Ô có sàn là số ô khác 0 trong lưới ban đầu, gồm công tắc và ô dễ vỡ; không
 gồm lỗ đích hoặc cầu đang tắt. `catalog.json` là danh mục để test và công cụ
