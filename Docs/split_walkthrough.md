@@ -114,15 +114,20 @@ python -m pytest -q
 
 ## 8. Trải nghiệm trực quan trong OpenGL GUI (C++)
 
-Giao diện đồ họa OpenGL (`./a.out 13`) được trang bị đầy đủ tính năng hiển thị và hoạt họa cho cơ chế Split:
+Giao diện đồ họa OpenGL (`./a.out 13`) được trang bị đầy đủ tính năng hiển thị và hoạt họa vật lý cho cơ chế Split:
 1. **Phân biệt màu sắc trực quan**:
    - **Khối chưa được chọn (Inactive)**: Giữ nguyên màu đỏ gạch truyền thống của khối 1×1×2 ban đầu (`col(BLOCK_COLOR)`), giúp người chơi nhận biết đó là một phần của khối ban đầu và tương phản rõ nét với sàn chơi.
    - **Khối đang được chọn (Active)**: Phát sáng màu **vàng kim (Golden Amber: `rgb(1.0, 0.85, 0.20)`)** với hệ số phát sáng emissive cao (`0.35f`), giúp người chơi lập tức phân biệt cube đang nhận lệnh điều khiển.
    - **Chuyển đổi khối**: Nhấn phím `Space` để hoán đổi khối đang được điều khiển.
-2. **Animation lăn 90° chân thực (Rolling Physics Animation)**:
-   - Thay vì dịch chuyển tức thời, mỗi lần di chuyển mũi tên (hoặc autoplay), khối 1×1×1 sẽ thực hiện phép quay 90° quanh cạnh đáy tiếp xúc sàn theo đúng hướng lăn (`R, L, U, D`) kết hợp hàm easing `ease_in_out`.
-   - Bóng đổ mềm (`draw_shadow`) tự động co giãn và trượt theo hướng lăn dưới sàn.
-   - Khi hoàn tất bước lăn, hiệu ứng bụi chạm sàn (`land_dust`) được kích hoạt và kiểm tra tự động kích hoạt công tắc/gộp khối.
-3. **Camera tự động bám theo (Dynamic Camera Tracking)**:
-   - Ở góc nhìn bám (`Follow View`), camera tự động chuyển mục tiêu trơn tru theo cube đang được chọn khi người chơi nhấn `Space` đổi khối.
+2. **Animation lăn 90° & Điều khiển mượt mà (Input Buffer & Continuous Tracking)**:
+   - Khối lập phương 1×1×1 thực hiện phép quay 90° quanh cạnh đáy tiếp xúc sàn theo đúng hướng lăn (`R, L, U, D`) với hàm easing `ease_in_out`.
+   - **Khử giật lag (Input Buffering)**: Trang bị cơ chế đệm phím (`buffered_move`) — khi người chơi nhấn phím nhanh lúc khối đang hoàn tất vòng lăn, lệnh kế tiếp được tiếp nhận ngay lập tức, không bị nuốt phím.
+   - **Camera bám theo liên tục**: Tọa độ tâm thế giới 3D (`real_pos`) được cập nhật theo từng frame trong suốt quá trình quay, giúp camera bám mượt mà, loại bỏ hoàn toàn hiện tượng khựng/giật camera lúc bắt đầu hoặc kết thúc bước lăn.
+3. **Bóng đổ mềm 3D chân thực (Projected Soft Shadow)**:
+   - Sử dụng thuật toán chiếu 8 đỉnh hộp (`cube_model`) tương tự như khối nguyên: bóng mở rộng, thu hẹp và xoay tự nhiên theo góc nghiêng 3D của cube trên sàn, có độ mờ nhạt dần theo độ cao (`height-fading`) và viền lông mềm (`PAT_SHADOW`).
+4. **Hiệu ứng lộn nhào và rơi tự do vào vực thẳm (Tumbling Fall Physics)**:
+   - Khi một cube lăn ra ngoài rìa hoặc bước vào khoảng trống không có sàn, game xác định chính xác cube bị rơi (`falling_cube`).
+   - Khối rơi sẽ lộn nhào nghiêng theo hướng trượt (`drift` & `rotational tumble`) và gia tốc rơi tự do xuống vực thẳm (`dz -= 8.0f * t * t`).
+   - Bóng đổ mềm của khối rơi sẽ mờ dần và biến mất, trong khi khối còn lại trên sàn vẫn đứng vững vàng và hiển thị bóng bình thường.
+
 
