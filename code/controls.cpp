@@ -29,7 +29,10 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
         switch(key)
         {
             case GLFW_KEY_SPACE:
-                proj_type ^= 1;
+                if(superblock.is_split)
+                    superblock.switch_active_cube();
+                else
+                    proj_type ^= 1;
                 break;
             case GLFW_KEY_X:
             case GLFW_KEY_C:

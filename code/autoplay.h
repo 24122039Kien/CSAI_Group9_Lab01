@@ -8,7 +8,7 @@
 class AutoPlayer
 {
     private:
-        std::vector<char> moves;
+        std::vector<std::string> moves;
         size_t next_index;
         double rest_since;      // thời điểm khối bắt đầu đứng yên
         bool active;

@@ -6,7 +6,7 @@
 
 float tile_side_length = 1.0f;
 float tile_height = 0.2f;
-int normal=1, fragile=2, normal_bridge=3, heavy_bridge=4;
+int normal=1, fragile=2, normal_bridge=3, heavy_bridge=4, split_switch=5;
 
 static const float TILE_GAP = 0.015f;     // khe nhỏ giữa các ô để thấy rõ từng viên
 static const float BRIDGE_ANIM = 0.35f;   // thời gian ô cầu trồi lên
@@ -57,6 +57,7 @@ void Floor::clear()
     normal_bridges.clear();
     heavy_bridges.clear();
     switch_modes.clear();
+    split_switches.clear();
     bridge_cells.clear();
     appear_time.clear();
     hidden.clear();
@@ -161,6 +162,14 @@ void Floor::initialize(string filename)
                                 heavy_bridges[key] = targets;
                         }
                     }
+                    else if(cmd == "split")
+                    {
+                        int x, y, x1, y1, x2, y2;
+                        if(fin >> x >> y >> x1 >> y1 >> x2 >> y2)
+                        {
+                            split_switches[x*m+y] = {{x1, y1}, {x2, y2}};
+                        }
+                    }
                 }
             }
         }
@@ -187,6 +196,12 @@ BoxStyle Floor::tile_style(int i, int j)
     {
         s.pattern = PAT_HEAVY;
         s.accent = col(HEAVY_ACCENT);
+    }
+    else if(k==split_switch || split_switches.count(i*m+j))
+    {
+        s.pattern = PAT_SWITCH;
+        s.color = glm::vec3(0.20f, 0.70f, 0.95f);
+        s.accent = glm::vec3(1.0f, 1.0f, 1.0f);
     }
     else if(bridge_cells.count(i*m+j))
         s.color = col(BRIDGE_COLOR);

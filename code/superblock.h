@@ -21,6 +21,11 @@ class SuperBlock
         glm::mat4 model;             // ma trận vẽ của frame gần nhất (dùng cho bóng)
         void land_dust();
     public:
+        bool is_split;
+        int active_cube;
+        int cube_ix[2], cube_iy[2];
+        glm::vec3 cube_pos[2];
+
         friend class Game;
         SuperBlock();
         SuperBlock(glm::vec3 pos, glm::vec3 dim, Color c, int a);
@@ -36,6 +41,11 @@ class SuperBlock
         int get_iy() { return iy; }
         void start_sink(double now);
         void start_fall(double now);
+        void split(int x1, int y1, int x2, int y2);
+        void switch_active_cube();
+        bool check_recombine();
+        bool get_is_split() { return is_split; }
+        int get_active_cube() { return active_cube; }
         ~SuperBlock();
 };
 
