@@ -24,14 +24,23 @@ from pathlib import Path
 
 from .state import Orientation
 
-EMPTY, NORMAL, FRAGILE, NORMAL_SWITCH, HEAVY_SWITCH = 0, 1, 2, 3, 4
+EMPTY, NORMAL, FRAGILE, NORMAL_SWITCH, HEAVY_SWITCH, SPLIT_SWITCH = 0, 1, 2, 3, 4, 5
 TILE_NAMES = {
     EMPTY: "empty",
     NORMAL: "normal",
     FRAGILE: "fragile",
     NORMAL_SWITCH: "normal_switch",
     HEAVY_SWITCH: "heavy_switch",
+    SPLIT_SWITCH: "split_switch",
 }
+
+
+@dataclass(frozen=True, slots=True)
+class SplitSwitch:
+    """Một công tắc tách khối: đứng Z lên pos sẽ tách thành 2 cube tại targets."""
+
+    pos: tuple[int, int]
+    targets: tuple[tuple[int, int], tuple[int, int]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +77,7 @@ class Level:
         heavy_switches: list[tuple[int, int, int, int]] | None = None,
         name: str = "<level>",
         v2_switches: list[Switch] | None = None,
+        split_switches: dict[tuple[int, int], SplitSwitch] | None = None,
     ) -> None:
         self.name = name
         self.n = len(grid)
@@ -76,6 +86,7 @@ class Level:
         self.start = start
         self.start_orientation = start_orientation
         self.goal = goal
+        self.split_switches: dict[tuple[int, int], SplitSwitch] = split_switches or {}
 
         # Gộp công tắc: v1 map (pos -> target), v2 có thể ghi đè hoặc bổ sung
         switch_map: dict[tuple[str, tuple[int, int]], Switch] = {}
@@ -134,6 +145,7 @@ class Level:
         heavy = [(nint(), nint(), nint(), nint()) for _ in range(nint())]
 
         v2_switches: list[Switch] = []
+        split_switches: dict[tuple[int, int], SplitSwitch] = {}
         try:
             tok = next(tokens)
             if tok == "ext":
@@ -160,6 +172,11 @@ class Level:
                         count = int(next(tokens))
                         targets = tuple((int(next(tokens)), int(next(tokens))) for _ in range(count))
                         v2_switches.append(Switch(kind, (x, y), targets, mode))
+                    elif cmd == "split":
+                        x, y = int(next(tokens)), int(next(tokens))
+                        x1, y1 = int(next(tokens)), int(next(tokens))
+                        x2, y2 = int(next(tokens)), int(next(tokens))
+                        split_switches[(x, y)] = SplitSwitch((x, y), ((x1, y1), (x2, y2)))
         except StopIteration:
             pass
 
@@ -172,6 +189,7 @@ class Level:
             heavy,
             name=name,
             v2_switches=v2_switches,
+            split_switches=split_switches,
         )
 
     # ---------------------------------------------------------------- kiểm tra
@@ -203,6 +221,14 @@ class Level:
                     raise ValueError(f"{err} ô cầu {cell} không được trùng ô đích")
             if self.grid[s.pos[0]][s.pos[1]] != expected[s.kind]:
                 raise ValueError(f"{err} ô {s.pos} không phải công tắc {s.kind}")
+        for pos, sp in self.split_switches.items():
+            if not self.in_bounds(*sp.pos):
+                raise ValueError(f"{err} công tắc split {sp.pos} nằm ngoài lưới")
+            for target in sp.targets:
+                if not self.in_bounds(*target):
+                    raise ValueError(f"{err} điểm dịch chuyển split {target} nằm ngoài lưới")
+                if target == self.goal:
+                    raise ValueError(f"{err} điểm dịch chuyển split không được trùng ô đích")
         for x in range(self.n):
             for y in range(self.m):
                 v = self.grid[x][y]
@@ -210,6 +236,12 @@ class Level:
                     raise ValueError(f"{err} công tắc thường {(x, y)} thiếu dòng ánh xạ cầu")
                 if v == HEAVY_SWITCH and ("heavy", (x, y)) not in self._switch_at:
                     raise ValueError(f"{err} công tắc nặng {(x, y)} thiếu dòng ánh xạ cầu")
+                if v == SPLIT_SWITCH and (x, y) not in self.split_switches:
+                    raise ValueError(f"{err} ô split switch {(x, y)} thiếu khai báo trong ext")
+
+    # ------------------------------------------------------------ truy vấn ô
+    def split_switch_at(self, x: int, y: int) -> SplitSwitch | None:
+        return self.split_switches.get((x, y))
 
     # ------------------------------------------------------------ truy vấn ô
     def has_tile(self, x: int, y: int, mask: int) -> bool:
