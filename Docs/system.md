@@ -285,7 +285,7 @@ Mỗi màn là một file chữ trong `code/data/`. Cả game C++ và Python đ�
 10 6 5 6                        ←   công tắc ở (10,6) bật/tắt cầu (5,6)
 ```
 
-Hiện có **11 màn** (`1.data` … `11.data`). Danh mục, ảnh sơ đồ và lời giải tối ưu nằm trong `code/data/README.md`, `code/data/catalog.json`, `code/data/previews/`, `code/data/solutions/`. Màn 11 được thiết kế **vô nghiệm**, để kiểm tra thuật toán biết dừng và báo "không có lời giải".
+Hiện có **16 màn** (`1.data` … `16.data`; màn 15–16 dùng phần mở rộng v2: nhiều ô cầu, permanent, split). Danh mục, ảnh sơ đồ và lời giải tối ưu nằm trong `code/data/README.md`, `code/data/catalog.json`, `code/data/previews/`, `code/data/solutions/`. Màn 11 được thiết kế **vô nghiệm**, để kiểm tra thuật toán biết dừng và báo "không có lời giải".
 
 ---
 
@@ -395,7 +395,7 @@ Ngoài ra: `TRANSITIONS` (bảng chuyển 3.4), `check()` (thắng/thua), `unit_
 #### `ai/heuristics.py`: các hàm "ước đoán" cho A\*
 
 - `zero_heuristic`: luôn đoán 0. A\* với heuristic này chạy y hệt UCS (dùng để đối chứng).
-- `manhattan_heuristic`: **TODO của TV5** (Phần 10).
+- `manhattan_heuristic`: đã cài (TV5), có tính cổng split switch; xem Phần 10 và `Docs/report4.md` mục 4.
 - `HEURISTICS`: bảng tên → hàm, để `main.py --heuristic zero|manhattan` chọn.
 
 #### `ai/solvers/`: các thuật toán
@@ -403,7 +403,7 @@ Ngoài ra: `TRANSITIONS` (bảng chuyển 3.4), `check()` (thắng/thua), `unit_
 | File | Trạng thái | Người làm |
 |---|---|---|
 | `base_solver.py` | ✅ Khung chung: bấm giờ, đo bộ nhớ, đóng gói kết quả, truy ngược lời giải | (có sẵn) |
-| `bfs_solver.py` | ⏳ TODO | TV1 |
+| `bfs_solver.py` | ✅ Đã cài (Đạt), giải thích ở `Docs/bfs_walkthrough.md` | TV1 |
 | `dfs_solver.py` | ⏳ TODO | TV2 |
 | `ucs_solver.py` | ⏳ TODO | TV3 |
 | `astar_solver.py` | ✅ Đã cài (Sang), giải thích chi tiết ở `Docs/astar_walkthrough.md` | TV4 |
@@ -429,13 +429,13 @@ python main.py code/data/2.data --algo astar --out sol.txt  # ghi lời giải r
 
 #### `tests/`: kiểm tra tự động
 
-Chạy `python -m pytest -q`. Hiện tại: **88 passed, 14 skipped** (phần bị bỏ qua là test của BFS, DFS, UCS và heuristic Manhattan chưa cài).
+Chạy `python -m pytest -q`. Hiện tại: **162 passed, 5 skipped** (phần bị bỏ qua là test của DFS và UCS chưa cài).
 
 | File | Kiểm tra gì |
 |---|---|
 | `test_problem.py` | Luật Python có giống C++ không: 12 ô của bảng chuyển, rơi, ô cam, công tắc, cầu, lời giải đã biết |
 | `test_solvers.py` | Mỗi thuật toán có tìm được lời giải hợp lệ không; BFS/UCS/A\* có tìm được lời giải ngắn nhất không (màn 1: 10 bước, màn 2: 68 bước) |
-| `test_levels.py` | 11 màn: thông tin trong catalog đúng, lời giải tối ưu đúng, màn 11 vô nghiệm, công tắc nào cũng cần thiết… |
+| `test_levels.py` | 16 màn: thông tin trong catalog đúng, lời giải tối ưu đúng, màn 11 vô nghiệm, công tắc nào cũng cần thiết… |
 | `test_astar_solver.py`, `test_astar_integration.py` | A\* đúng trong các tình huống khó; heuristic không đoán quá trên **mọi** trạng thái của màn 1, 2 (tự chạy khi TV5 cài xong Manhattan) |
 | `helpers.py` | Hàm tiện ích: nạp màn, tạo màn nhỏ từ chuỗi để test |
 
@@ -485,7 +485,7 @@ Bạn **không cần hiểu hết** phần này để làm AI. Chỉ cần biế
 | `bloxorz.rc`, `assets/` | Icon và thông tin của file `.exe`; `make_icon.py` vẽ icon |
 | `glad.c`, `include/` | Thư viện nạp OpenGL |
 | `third_party/imgui/` | Thư viện Dear ImGui (vẽ menu) |
-| `data/` | 11 màn chơi + danh mục + ảnh + lời giải |
+| `data/` | 16 màn chơi + danh mục + ảnh + lời giải |
 | `a.out`, `a.exe`, `Bloxorz.exe` | File chạy đã build (không đưa lên git) |
 | `solution.txt`, `solver_log.txt` | File tạm: lời giải vừa tìm, nhật ký lần chạy solver gần nhất |
 | `readme.MD` | README của tác giả game gốc |
@@ -878,7 +878,9 @@ Heuristic phải không hứa quá **theo bảng giá đang dùng**:
 - **Cẩn thận:** nếu có loại nước rẻ hơn 1 (ví dụ bấm công tắc giá 0.5) thì phải nhân với 0.5. Nếu không, heuristic sẽ hứa quá.
 - **Tự kiểm tra:** cùng bảng giá thì A\* và UCS phải ra **cùng tổng giá**. Khác nhau nghĩa là heuristic đang hứa quá hoặc có lỗi.
 
-### 10.7. Kết quả A\* trên 11 màn thật (heuristic = 0, tức là chạy như UCS giá 1)
+### 10.7. Kết quả A\* trên 11 màn đầu (heuristic = 0, tức là chạy như UCS giá 1)
+
+> Bảng đầy đủ 16 màn, so sánh BFS / A\* h=0 / A\* Manhattan: `Docs/report4.md` mục 4.4.
 
 | Màn | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -927,7 +929,7 @@ Phần thực nghiệm chiếm **20 điểm** báo cáo. Đề (mục 3.6) yêu 
 | Số node mở rộng | `SearchResult.nodes_expanded` | Cả nhóm thống nhất cách đếm (mục 6.3) |
 | Độ dài lời giải | `SearchResult.solution_length` | Ghi thêm `cost` khi dùng bảng giá không đồng nhất |
 
-Bộ màn hiện có 11 màn, chia nhóm: G1 cơ bản (màn 3, 4), G2 có ô cam (5, 6), G3 có công tắc (1, 2, 7, 8), G5 kết hợp (9), G6 đặc biệt (10 sân rộng 20×30, 11 vô nghiệm).
+Bộ màn hiện có 16 màn, chia nhóm: G1 cơ bản (màn 3, 4), G2 có ô cam (5, 6, 14 với 200 ô cam), G3 có công tắc (1, 2, 7, 8, 15), G4 split (16), G5 kết hợp / kho công tắc (9, 12, 13), G6 đặc biệt (10 sân rộng 20×30, 11 vô nghiệm).
 
 Lệnh nhanh: `python main.py code/data/<n>.data --compare --memory`. Bản chính thức nên có script riêng (ví dụ `experiments/run_all.py`) chạy mọi màn × mọi thuật toán, ghi ra file CSV, rồi vẽ biểu đồ (trục số node nên dùng thang log).
 
@@ -941,13 +943,14 @@ Lệnh nhanh: `python main.py code/data/<n>.data --compare --memory`. Bản chí
 |---|---|---|---|
 | Game 3D, luật cơ bản, ô cam, công tắc thường/nặng, cầu bật/tắt | 3.1 | (đã có) | ✅ |
 | Menu: chọn màn, Restart, 4 nút thuật toán | 3.1 | (đã có) | ✅ |
-| Bộ ≥ 10 màn | Q&A | TV4 | ✅ 11 màn |
+| Bộ ≥ 10 màn | Q&A | TV4 | ✅ 16 màn |
 | A\* | 3.5 | TV4 | ✅ |
-| `manhattan_heuristic` + chứng minh | 3.5 | **TV5** | ⏳ |
-| BFS / DFS / UCS | 3.2–3.4 | TV1 / TV2 / TV3 | ⏳ |
+| `manhattan_heuristic` + chứng minh | 3.5 | **TV5** | ✅ (report4 mục 4) |
+| BFS | 3.2 | TV1 | ✅ (Đạt) |
+| DFS / UCS | 3.3–3.4 | TV2 / TV3 | ⏳ |
 | Bảng giá không đồng nhất + tùy chọn trong `main.py` | 3.4 | TV3 | ⏳ |
-| **Split switch** (tách khối thành 2 khối nhỏ), cầu **permanent**, một công tắc điều khiển **nhiều** cầu | 3.1 (10đ ô đặc biệt) | TV1 (+ TV2 phần vẽ) | ⏳ phải sửa **cả** C++ lẫn Python |
-| Thêm màn nhiều công tắc, nhiều ô cam (để thực nghiệm thấy rõ khác biệt) | 3.6 | TV4 | ⏳ gợi ý |
+| **Split switch** (tách khối thành 2 khối nhỏ), cầu **permanent**, một công tắc điều khiển **nhiều** cầu | 3.1 (10đ ô đặc biệt) | Đạt | ✅ cả C++ lẫn Python, đã đối chiếu (report4 mục 3) |
+| Thêm màn nhiều công tắc, nhiều ô cam (để thực nghiệm thấy rõ khác biệt) | 3.6 | TV4 | ✅ màn 12–14 |
 | Script thực nghiệm, CSV, biểu đồ | 3.6 | TV5 | ⏳ |
 | Báo cáo PDF, video YouTube | 3.6, 3.7 | Cả nhóm | ⏳ |
 
