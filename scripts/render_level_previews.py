@@ -60,10 +60,13 @@ def render(entry):
     for switch in level.switches:
         x, y = switch.pos
         draw.text((left + y * CELL + CELL / 2, top + x * CELL + CELL / 2), str(switch.bit + 1), anchor="mm", font=label, fill="#0F172A")
-        x, y = switch.target
-        x0, y0 = left + y * CELL + 3, top + x * CELL + 3
-        draw.rectangle((x0, y0, x0 + CELL - 6, y0 + CELL - 6), outline="#38BDF8", width=2)
-        draw.text((x0 + (CELL - 6) / 2, y0 + (CELL - 6) / 2), str(switch.bit + 1), anchor="mm", font=small, fill="#38BDF8")
+        for tx, ty in switch.targets:
+            x0, y0 = left + ty * CELL + 3, top + tx * CELL + 3
+            draw.rectangle((x0, y0, x0 + CELL - 6, y0 + CELL - 6), outline="#38BDF8", width=2)
+            draw.text((x0 + (CELL - 6) / 2, y0 + (CELL - 6) / 2), str(switch.bit + 1), anchor="mm", font=small, fill="#38BDF8")
+    for (sx, sy) in level.split_switches:
+        cx, cy = left + sy * CELL + CELL / 2, top + sx * CELL + CELL / 2
+        draw.text((cx, cy), "T", anchor="mm", font=label, fill="#0F172A")
     gx, gy = level.goal
     cx, cy = left + gy * CELL + CELL / 2, top + gx * CELL + CELL / 2
     draw.ellipse((cx - 12, cy - 12, cx + 12, cy + 12), fill="#111827", outline="#FB7185", width=3)
@@ -76,7 +79,7 @@ def render(entry):
     draw.text((left + sy * CELL + CELL / 2, top + sx * CELL + CELL / 2), "S", anchor="mm", font=label, fill="#0B1120")
 
     legend_y = top + level.n * CELL + 18
-    legend = [("Floor", COLORS[1]), ("Fragile", COLORS[2]), ("Soft switch", COLORS[3]), ("Heavy switch", COLORS[4]), ("Bridge off", "#38BDF8"), ("Start S", "#60A5FA"), ("Goal G", "#FB7185")]
+    legend = [("Floor", COLORS[1]), ("Fragile", COLORS[2]), ("Soft switch", COLORS[3]), ("Heavy switch", COLORS[4]), ("Split switch T", "#38BDF8"), ("Bridge off", "#38BDF8"), ("Start S", "#60A5FA"), ("Goal G", "#FB7185")]
     step = (width - 48) // 4
     for index, (text, color) in enumerate(legend):
         x0 = 24 + (index % 4) * step

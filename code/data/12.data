@@ -19,3 +19,6 @@
 2 14 6 8
 4 8 4 14
 0
+ext 1
+switch normal 2 14 permanent_on 1 6 8
+switch normal 4 8 toggle 2 4 14 5 14
