@@ -26,7 +26,7 @@ class _ReferenceGraph:
     optimal_length: int
 
 
-@pytest.fixture(scope="module", params=[1, 2], ids=["level1", "level2"])
+@pytest.fixture(scope="module", params=[1, 2, 15, 16], ids=["level1", "level2", "level15", "level16"])
 def reference_graph(request):
     problem = load_problem(request.param)
     start = problem.initial_state()
