@@ -147,6 +147,12 @@ void SuperBlock::update(float dt)
 void SuperBlock::land_dust()
 {
     float l = tile_side_length;
+    if(is_split)
+    {
+        glm::vec3 c(cube_ix[active_cube]*l + l/2.0f, cube_iy[active_cube]*l + l/2.0f, 0.0f);
+        effects.dust(c, glm::vec2(l/2.0f, l/2.0f));
+        return;
+    }
     glm::vec3 c(ix*l + l/2, iy*l + l/2, 0.0f);
     glm::vec2 half(l/2, l/2);
     if(along==X) { c.x += l/2; half.x = l; }
@@ -156,6 +162,20 @@ void SuperBlock::land_dust()
 
 void SuperBlock::draw(glm::mat4 M)
 {
+    if(is_split)
+    {
+        float l = tile_side_length;
+        glm::vec3 csize(l, l, l);
+        for(int k=0; k<2; k++)
+        {
+            glm::vec3 cpos(cube_ix[k] * l, cube_iy[k] * l, 0.0f);
+            glm::vec3 c_col = (k == active_cube) ? glm::vec3(1.0f, 0.60f, 0.15f) : glm::vec3(0.50f, 0.55f, 0.65f);
+            BoxStyle s(c_col, PAT_PLAIN, (k == active_cube) ? 0.35f : 0.04f);
+            renderer.draw_aabb(cpos, csize, s);
+        }
+        return;
+    }
+
     glm::mat4 translate = glm::translate (pos);
     glm::mat4 rev;
     M = M * translate;
@@ -282,21 +302,6 @@ void SuperBlock::draw(glm::mat4 M)
     }
 
 
-    if(is_split)
-    {
-        float l = tile_side_length;
-        glm::vec3 cdim(l, l, l);
-        for(int k=0; k<2; k++)
-        {
-            glm::mat4 cM = M * glm::translate(cube_pos[k]);
-            glm::mat4 box = cM * glm::translate(-cdim/2.0f) * glm::scale(cdim);
-            glm::vec3 c_col = (k == active_cube) ? glm::vec3(1.0f, 0.60f, 0.15f) : glm::vec3(color.r*0.65f, color.g*0.65f, color.b*0.65f);
-            BoxStyle s(c_col, PAT_PLAIN, 0.04f);
-            renderer.draw_box(box, cdim, s);
-        }
-        return;
-    }
-
     // Hộp đơn vị [0,1]^3 -> hộp tâm tại gốc, kích thước dim.
     glm::mat4 box = M * glm::translate(-dim/2.0f) * glm::scale(dim);
 
@@ -327,6 +332,18 @@ void SuperBlock::draw_shadow()
 {
     if(end_anim == END_FALL)
         return;
+    if(is_split)
+    {
+        float l = tile_side_length;
+        float pad = 0.15f;
+        BoxStyle s(glm::vec3(0.0f), PAT_SHADOW, 0.0f, 0.5f);
+        for(int k=0; k<2; k++)
+        {
+            renderer.draw_aabb(glm::vec3(cube_ix[k]*l - pad, cube_iy[k]*l - pad, 0.004f),
+                               glm::vec3(l + 2*pad, l + 2*pad, 0.001f), s);
+        }
+        return;
+    }
     glm::vec3 lo(1e9f), hi(-1e9f);
     for(int k=0; k<8; k++)
     {
