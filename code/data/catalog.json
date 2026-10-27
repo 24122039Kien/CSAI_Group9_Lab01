@@ -209,6 +209,42 @@
       "solution_file": null,
       "preview": "previews/11.png",
       "no_solution": true
+    },
+    {
+      "id": 12,
+      "file": "12.data",
+      "title": "Dual bridges crossing",
+      "group": "G3",
+      "description": "Một công tắc mở cùng lúc 2 ô cầu và một công tắc nặng permanent tạo đường một chiều.",
+      "rows": 11,
+      "columns": 17,
+      "tiles": 49,
+      "fragile_tiles": 0,
+      "normal_switches": 1,
+      "heavy_switches": 1,
+      "bridge_tiles": 3,
+      "optimal_length": 12,
+      "status": "solvable",
+      "solution_file": "solutions/12.txt",
+      "preview": "previews/12.png"
+    },
+    {
+      "id": 13,
+      "file": "13.data",
+      "title": "The great split",
+      "group": "G4",
+      "description": "Tách khối thành hai cube, một cube vượt hành lang ô cam mở cầu cho cube kia trước khi gộp lại.",
+      "rows": 12,
+      "columns": 20,
+      "tiles": 36,
+      "fragile_tiles": 2,
+      "normal_switches": 1,
+      "heavy_switches": 0,
+      "bridge_tiles": 1,
+      "optimal_length": 21,
+      "status": "solvable",
+      "solution_file": "solutions/13.txt",
+      "preview": "previews/13.png"
     }
   ]
 }

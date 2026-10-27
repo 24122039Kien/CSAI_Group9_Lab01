@@ -257,7 +257,8 @@ class BloxorzProblem:
         state, outcome = self.initial_state(), Outcome.CONTINUE
         steps = 0
         for steps, a in enumerate(moves, start=1):
-            if a not in ACTIONS:
+            valid_actions = SPLIT_ACTIONS if state.is_split else ACTIONS
+            if a not in valid_actions:
                 raise ValueError(f"Nước đi không hợp lệ: {a!r}")
             state, outcome = self.simulate(state, a)
             if outcome is not Outcome.CONTINUE:
