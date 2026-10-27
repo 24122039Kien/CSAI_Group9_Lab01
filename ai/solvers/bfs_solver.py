@@ -2,30 +2,52 @@
 
 from __future__ import annotations
 
-from .base_solver import BaseSolver, SearchResult
+from collections import deque
+
+from ..state import State
+from .base_solver import BaseSolver, ParentMap, SearchResult
 
 
 class BFSSolver(BaseSolver):
     """BFS: duyệt theo từng tầng, tối ưu theo SỐ NƯỚC ĐI.
 
-    TODO(TV1): cài đặt ``solve``.
-
-    Gợi ý:
-      * Frontier: ``collections.deque`` (FIFO).
-      * ``parent: dict[State, tuple[State, str] | None]`` vừa làm tập đã thăm,
-        vừa để truy vết bằng ``self.reconstruct_path(parent, goal_state)``.
-        Đánh dấu đã thăm KHI ĐẨY vào hàng đợi để tránh trùng trong frontier.
-      * Trạng thái gồm cả ``bridge_mask`` -> cùng vị trí nhưng khác cầu là
-        trạng thái khác (đã được State xử lý sẵn khi dùng làm khóa dict).
-      * Sinh con: ``for action, nxt, cost in self.problem.successors(state)``.
-      * Kiểm tra đích: ``self.problem.is_goal(state)`` (có thể kiểm tra ngay
-        khi sinh con - vẫn tối ưu với BFS; ghi rõ cách đếm node trong báo cáo).
-      * Cập nhật ``self.nodes_expanded``, ``self.nodes_generated``,
-        ``self.max_frontier``; trả về ``self.make_result(path)`` (path=None nếu
-        không có lời giải).
+    Sử dụng hàng đợi FIFO (collections.deque).
+    Tập parent vừa làm bảng visited (tránh chu trình và trạng thái trùng lặp),
+    vừa phục vụ truy vết đường đi nghiệm từ đích về gốc.
     """
 
     name = "bfs"
 
     def solve(self) -> SearchResult:
-        raise NotImplementedError("BFSSolver.solve chưa được cài (TODO)")
+        start = self.problem.initial_state()
+
+        # Trường hợp biên: Trạng thái bắt đầu đã là đích
+        if self.problem.is_goal(start):
+            self.max_frontier = 1
+            return self.make_result([])
+
+        # Hàng đợi FIFO và tập cha/đã thăm
+        frontier: deque[State] = deque([start])
+        parent: ParentMap = {start: None}
+        self.max_frontier = 1
+
+        while frontier:
+            state = frontier.popleft()
+            self.nodes_expanded += 1
+
+            for action, nxt, _cost in self.problem.successors(state):
+                self.nodes_generated += 1
+
+                if nxt not in parent:
+                    parent[nxt] = (state, action)
+
+                    # Kiểm tra đích sớm (Early Goal Test)
+                    if self.problem.is_goal(nxt):
+                        path = self.reconstruct_path(parent, nxt)
+                        return self.make_result(path)
+
+                    frontier.append(nxt)
+                    if len(frontier) > self.max_frontier:
+                        self.max_frontier = len(frontier)
+
+        return self.make_result(None)
