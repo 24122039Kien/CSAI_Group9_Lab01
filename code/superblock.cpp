@@ -21,6 +21,11 @@ SuperBlock::SuperBlock(glm::vec3 pos, glm::vec3 dim, Color c, int a)
 
 glm::vec3 SuperBlock::get_real_pos()
 {
+    if(is_split)
+    {
+        float l = tile_side_length;
+        return glm::vec3(cube_ix[active_cube] * l + l/2.0f, cube_iy[active_cube] * l + l/2.0f, l/2.0f);
+    }
     return real_pos;
 }
 
@@ -55,6 +60,24 @@ void SuperBlock::update(float dt)
     }
     if(rot_dir!=NO && rem_rotation<=0.0f)
     {
+        if(is_split)
+        {
+            if(rot_dir == R) cube_ix[active_cube]++;
+            else if(rot_dir == L) cube_ix[active_cube]--;
+            else if(rot_dir == U) cube_iy[active_cube]++;
+            else if(rot_dir == D) cube_iy[active_cube]--;
+
+            float l = tile_side_length;
+            cube_pos[active_cube] = glm::vec3(cube_ix[active_cube] * l + l/2.0f,
+                                              cube_iy[active_cube] * l + l/2.0f,
+                                              l/2.0f);
+
+            rot_dir = NO;
+            game.check_after_step();
+            land_dust();
+            return;
+        }
+
         float x = tile_side_length;
         if(along==X)
         {
@@ -165,13 +188,61 @@ void SuperBlock::draw(glm::mat4 M)
     if(is_split)
     {
         float l = tile_side_length;
+        float dr = 90.0f * ease_in_out(done_rotation / 90.0f);
         glm::vec3 csize(l, l, l);
+        glm::vec3 default_col = (color.r > 0.01f || color.g > 0.01f || color.b > 0.01f)
+                              ? glm::vec3(color.r, color.g, color.b)
+                              : col(BLOCK_COLOR);
+
         for(int k=0; k<2; k++)
         {
-            glm::vec3 cpos(cube_ix[k] * l, cube_iy[k] * l, 0.0f);
-            glm::vec3 c_col = (k == active_cube) ? glm::vec3(1.0f, 0.60f, 0.15f) : glm::vec3(0.50f, 0.55f, 0.65f);
-            BoxStyle s(c_col, PAT_PLAIN, (k == active_cube) ? 0.35f : 0.04f);
-            renderer.draw_aabb(cpos, csize, s);
+            bool is_active = (k == active_cube);
+            // Khối được chọn có màu vàng kim sáng (golden amber) nổi bật,
+            // khối chưa được chọn có màu đỏ gạch mặc định của khối 1x1x2 ban đầu.
+            glm::vec3 c_col = is_active ? glm::vec3(1.0f, 0.85f, 0.20f) : default_col;
+            BoxStyle s(c_col, PAT_PLAIN, is_active ? 0.35f : 0.04f);
+
+            glm::vec3 P0(cube_ix[k] * l, cube_iy[k] * l, 0.0f);
+            if(is_active && rot_dir != NO)
+            {
+                glm::vec3 pivot(0.0f);
+                glm::vec3 axis(0.0f);
+                float angle = dr;
+                if(rot_dir == R)
+                {
+                    pivot = glm::vec3(P0.x + l, P0.y + l/2.0f, 0.0f);
+                    axis = glm::vec3(0, 1, 0);
+                    angle = dr;
+                }
+                else if(rot_dir == L)
+                {
+                    pivot = glm::vec3(P0.x, P0.y + l/2.0f, 0.0f);
+                    axis = glm::vec3(0, 1, 0);
+                    angle = -dr;
+                }
+                else if(rot_dir == U)
+                {
+                    pivot = glm::vec3(P0.x + l/2.0f, P0.y + l, 0.0f);
+                    axis = glm::vec3(1, 0, 0);
+                    angle = -dr;
+                }
+                else if(rot_dir == D)
+                {
+                    pivot = glm::vec3(P0.x + l/2.0f, P0.y, 0.0f);
+                    axis = glm::vec3(1, 0, 0);
+                    angle = dr;
+                }
+
+                glm::mat4 T1 = glm::translate(pivot);
+                glm::mat4 Rmat = glm::rotate(glm::mat4(1.0f), float(angle * M_PI / 180.0f), axis);
+                glm::mat4 T2 = glm::translate(-pivot);
+                glm::mat4 box = T1 * Rmat * T2 * glm::translate(P0) * glm::scale(csize);
+                renderer.draw_box(box, csize, s);
+            }
+            else
+            {
+                renderer.draw_aabb(P0, csize, s);
+            }
         }
         return;
     }
@@ -339,8 +410,20 @@ void SuperBlock::draw_shadow()
         BoxStyle s(glm::vec3(0.0f), PAT_SHADOW, 0.0f, 0.5f);
         for(int k=0; k<2; k++)
         {
-            renderer.draw_aabb(glm::vec3(cube_ix[k]*l - pad, cube_iy[k]*l - pad, 0.004f),
-                               glm::vec3(l + 2*pad, l + 2*pad, 0.001f), s);
+            float x = cube_ix[k] * l;
+            float y = cube_iy[k] * l;
+            float sx = l;
+            float sy = l;
+            if(k == active_cube && rot_dir != NO)
+            {
+                float prog = done_rotation / 90.0f;
+                if(rot_dir == R) { sx = l * (1.0f + prog); }
+                else if(rot_dir == L) { x -= l * prog; sx = l * (1.0f + prog); }
+                else if(rot_dir == U) { sy = l * (1.0f + prog); }
+                else if(rot_dir == D) { y -= l * prog; sy = l * (1.0f + prog); }
+            }
+            renderer.draw_aabb(glm::vec3(x - pad, y - pad, 0.004f),
+                               glm::vec3(sx + 2*pad, sy + 2*pad, 0.001f), s);
         }
         return;
     }
@@ -405,27 +488,26 @@ void SuperBlock::move(int m)
 
     if(is_split)
     {
+        int dir = NO;
         int dx = 0, dy = 0;
-        if(m==GLFW_KEY_RIGHT) dx = 1;
-        else if(m==GLFW_KEY_LEFT) dx = -1;
-        else if(m==GLFW_KEY_UP) dy = 1;
-        else if(m==GLFW_KEY_DOWN) dy = -1;
+        if(m==GLFW_KEY_RIGHT) { dir = R; dx = 1; }
+        else if(m==GLFW_KEY_LEFT) { dir = L; dx = -1; }
+        else if(m==GLFW_KEY_UP) { dir = U; dy = 1; }
+        else if(m==GLFW_KEY_DOWN) { dir = D; dy = -1; }
 
-        if(dx != 0 || dy != 0)
+        if(dir != NO)
         {
             int nx = cube_ix[active_cube] + dx;
             int ny = cube_iy[active_cube] + dy;
             int other = 1 - active_cube;
+            // Hai khối không được đè lên cùng 1 ô
             if(nx == cube_ix[other] && ny == cube_iy[other])
                 return;
 
-            cube_ix[active_cube] = nx;
-            cube_iy[active_cube] = ny;
-            float l = tile_side_length;
-            cube_pos[active_cube] = glm::vec3(nx * l + l/2.0f, ny * l + l/2.0f, l/2.0f);
-
-            game.check_after_step();
-            land_dust();
+            rot_dir = dir;
+            rem_rotation = 90.0f;
+            done_rotation = 0.0f;
+            last_dir = rot_dir;
         }
         return;
     }
