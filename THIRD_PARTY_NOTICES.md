@@ -23,6 +23,13 @@
 - Font giao diện: game đọc font có sẵn của hệ điều hành lúc chạy (Segoe UI trên Windows, DejaVu Sans trên Linux), không đóng gói file font.
 - Icon `code/assets/bloxorz.ico` do nhóm tự sinh bằng `code/assets/make_icon.py`.
 
+## miniaudio (âm thanh)
+
+- Nguồn: https://github.com/mackron/miniaudio — bản phát hành `0.11.21` (2023-11-15)
+- File: `code/third_party/miniaudio/miniaudio.h` (nguyên vẹn) + `LICENSE`; `miniaudio_impl.c`, `miniaudio_config.h` do nhóm viết để biên dịch
+- License: Public Domain (Unlicense) hoặc MIT-0, tùy chọn — `code/third_party/miniaudio/LICENSE` (bản đóng gói chép vào `licenses/miniaudio_LICENSE.txt`)
+- Hiệu ứng âm thanh và nhạc nền được **tổng hợp bằng code** trong `code/audio.cpp`; không dùng file âm thanh của Bloxorz gốc (Coolmath Games) vì bản quyền.
+
 ## Thư viện liên kết khi build (không đi kèm trong repo)
 
 - GLFW — zlib/libpng License — https://www.glfw.org/
