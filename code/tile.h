@@ -57,6 +57,7 @@ class Floor
         map<int, double> appear_time;   // thời điểm ô cầu vừa hiện ra
         set<int> hidden;                // ô đã vỡ (chỉ ẩn khi vẽ)
         vector<GhostTile> ghosts;
+        double collapse_start;          // < 0: không sụp; >= 0: thời điểm bắt đầu sụp
         void clear();
         void make_ghost(int i, int j, float spin);
         void toggle(int a, int b);
@@ -69,6 +70,9 @@ class Floor
         void draw_transparent(double now);  // ô đang rơi, cột sáng ở đích
         BoxStyle tile_style(int i, int j);
         void break_tile(int i, int j);      // hiệu ứng ô cam vỡ khi thua
+        void collapse(double now);          // sàn sụp khi khối rơi (chỉ hình ảnh)
+        bool collapsing();
+        float collapse_offset(int i, int j, double now, float &spin);
         int get_along();
         glm::vec3 get_initial_pos();
         pair<int, int> get_initial_index();

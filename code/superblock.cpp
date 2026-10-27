@@ -4,6 +4,7 @@
 #include "game.h"
 #include "render.h"
 #include "effects.h"
+#include "audio.h"
 
 int X=0, Y=1, Z=2;
 int U=1, D=2, R=3, L=4, NO=0;
@@ -75,6 +76,7 @@ void SuperBlock::update(float dt)
                                  0.0f);
 
             rot_dir = NO;
+            audio_play(SFX_ROLL, 0.7f, 1.45f);   // khối nhỏ: tiếng lăn nhẹ và cao hơn
             game.check_after_step();
             land_dust();
 
@@ -170,6 +172,7 @@ void SuperBlock::update(float dt)
             }
         }
         rot_dir = NO;
+        audio_play(along == Z ? SFX_STAND : SFX_ROLL);
         game.check_after_step();
         land_dust();
 
@@ -216,6 +219,7 @@ void SuperBlock::draw(glm::mat4 M)
             bool is_active = (k == active_cube);
             glm::vec3 c_col = is_active ? glm::vec3(1.0f, 0.85f, 0.20f) : default_col;
             BoxStyle s(c_col, PAT_PLAIN, is_active ? 0.35f : 0.04f);
+            s.material = is_active ? MAT_GOLD : MAT_BLOCK;
 
             glm::vec3 P0(cube_ix[k] * l, cube_iy[k] * l, 0.0f);
             glm::mat4 box(1.0f);
@@ -436,6 +440,7 @@ void SuperBlock::draw(glm::mat4 M)
     model = glm::translate(glm::vec3(0, 0, dz)) * fx * box;
 
     BoxStyle s(glm::vec3(color.r, color.g, color.b), PAT_PLAIN, 0.04f);
+    s.material = MAT_BLOCK;
     renderer.draw_box(model, dim, s);
 }
 

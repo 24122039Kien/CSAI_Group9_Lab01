@@ -6,6 +6,7 @@
 #include "autoplay.h"
 #include "app.h"
 #include "hud.h"
+#include "viz.h"
 
 glm::mat4 ortho_fit(float aspect);
 
@@ -24,6 +25,13 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
     // Esc luôn xử lý (mở/đóng menu); các phím khác nhường cho menu ImGui khi nó đang nhận phím.
     if (key != GLFW_KEY_ESCAPE && hud_wants_keyboard())
         return;
+    if (action == GLFW_RELEASE && viz_is_open())
+    {
+        // Visualizer đang mở: mũi tên đi từng bước, Space chạy/dừng; các phím camera vẫn dùng được bên dưới.
+        if(key == GLFW_KEY_RIGHT) { viz_step(1); return; }
+        if(key == GLFW_KEY_LEFT) { viz_step(-1); return; }
+        if(key == GLFW_KEY_SPACE) { viz_toggle_play(); return; }
+    }
     if (action == GLFW_RELEASE)
     {
         switch(key)
@@ -76,12 +84,13 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
                 if(!cli_mode)
                     app_restart();
                 break;
+            case GLFW_KEY_P:
+                app_toggle_pause();
+                break;
             case GLFW_KEY_ENTER:
             case GLFW_KEY_KP_ENTER:
                 if(!cli_mode && game_result == 1)
                     app_next_level();
-                else if(!cli_mode && game_result == 0)
-                    app_restart();
                 break;
         	default:
         	    break;
@@ -94,8 +103,10 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
         	case GLFW_KEY_ESCAPE:
         	    if(cli_mode)
         	        quit(window);
+        	    else if(menu_open)
+        	        app_toggle_menu();      // đóng màn hình chọn màn, quay lại ván đang chơi
         	    else
-        	        app_toggle_menu();
+        	        app_toggle_pause();     // trong màn: Esc = Pause (đang mở Visualizer thì đóng nó)
         	    break;
             case GLFW_KEY_A:
             case GLFW_KEY_S:

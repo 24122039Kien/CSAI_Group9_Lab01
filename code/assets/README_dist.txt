@@ -4,15 +4,17 @@ BLOXORZ 3D - CSC14003 Group 9
 Chơi game
 ---------
 - Mở Bloxorz.exe (Windows) hoặc ./bloxorz (Linux). Không cần cài thêm gì để chơi.
-- Menu: chọn màn, bấm BFS / DFS / UCS / A* để AI giải màn hiện tại rồi tự phát lại lời giải.
+- Menu New Game: chọn màn. Trong màn: thanh New Game / Restart / Pause ở trên, bảng AI bên phải
+  (BFS / DFS / UCS / A*, Visualize search để xem cây tìm kiếm chạy từng bước).
+- Options: theme Classic / Minecraft, âm lượng nhạc nền và hiệu ứng (lưu ở settings.ini).
 
 Phím
 ----
-  Mũi tên          lăn khối
+  Mũi tên          lăn khối (Visualizer: lùi / tiến một bước)
+  Space            đổi khối nhỏ sau khi tách (Visualizer: chạy / dừng)
   R / Enter        chơi lại / sang màn tiếp (khi đã thắng)
-  Esc              mở / đóng menu
+  P / Esc          tạm dừng
   C V B X N M      đổi camera (theo khối, từ trên, từ tháp, trực thăng, kéo chuột, theo chuột)
-  Space            đổi phép chiếu phối cảnh / song song
   Tab              bật / tắt bản đồ nhỏ
   F1               ẩn / hiện bảng phím
   F12              chụp màn hình (screenshot_*.png cạnh file chạy)
@@ -32,6 +34,8 @@ Dòng lệnh (kiểm chứng lời giải)
   Mã thoát: 0 thắng, 1 thua.
 
 Thêm màn chơi: đặt file data/<số>.data (định dạng trong README của repo).
+Thay âm thanh: đặt sounds/<tên>.wav (roll, stand, switch, heavy, bridge_on, bridge_off, fall, win,
+split, merge, crack, click, start, collapse, music) cạnh file chạy.
 
-Ghi nguồn: game gốc chaitanya100100/Bloxorz (Chaitanya Patel); GLFW, GLM, GLAD, Dear ImGui -
+Ghi nguồn: game gốc chaitanya100100/Bloxorz (Chaitanya Patel); GLFW, GLM, GLAD, Dear ImGui, miniaudio -
 xem thư mục licenses/.

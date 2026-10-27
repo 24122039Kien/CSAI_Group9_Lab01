@@ -3,6 +3,7 @@
 #include "superblock.h"
 #include "controls.h"
 #include "game.h"
+#include "audio.h"
 
 Game::Game()
 {
@@ -71,11 +72,15 @@ void Game::check_after_step()
         int cx = superblock.cube_ix[superblock.active_cube];
         int cy = superblock.cube_iy[superblock.active_cube];
         if(stage.has_tile(cx, cy) && stage.tiles[cx][cy]->get_tile_type()==normal_bridge)
+        {
+            audio_play(SFX_SWITCH);
             stage.normal_bridge_toggle(cx, cy);
+        }
 
         // Gộp chỉ đổi hình dạng: công tắc dưới cube vừa lăn đã kích hoạt ở trên, cube kia đã nằm
         // sẵn, nên KHÔNG kích hoạt lại (trước đây ô vừa lăn bị đảo hai lần -> công tắc vô tác dụng).
-        superblock.check_recombine();
+        if(superblock.check_recombine())
+            audio_play(SFX_MERGE);
         return;
     }
 
@@ -86,21 +91,35 @@ void Game::check_after_step()
     {
         auto tg = stage.get_split_targets(sx, sy);
         superblock.split(tg.first.first, tg.first.second, tg.second.first, tg.second.second);
+        audio_play(SFX_SPLIT);
         check();
         return;
     }
 
+    // (Âm thanh chỉ để nghe; thứ tự kích hoạt giữ nguyên như luật.)
     if(stage.has_tile(sx, sy) && stage.tiles[sx][sy]->get_tile_type()==normal_bridge)
+    {
+        audio_play(SFX_SWITCH);
         stage.normal_bridge_toggle(sx, sy);
+    }
 
     if(along==X && stage.has_tile(sx+1, sy) && stage.tiles[sx+1][sy]->get_tile_type()==normal_bridge)
+    {
+        audio_play(SFX_SWITCH);
         stage.normal_bridge_toggle(sx+1, sy);
+    }
 
     if(along==Y && stage.has_tile(sx, sy+1) && stage.tiles[sx][sy+1]->get_tile_type()==normal_bridge)
+    {
+        audio_play(SFX_SWITCH);
         stage.normal_bridge_toggle(sx, sy+1);
+    }
 
     if(along==Z && stage.has_tile(sx, sy) && stage.tiles[sx][sy]->get_tile_type()==heavy_bridge)
+    {
+        audio_play(SFX_HEAVY);
         stage.heavy_bridge_toggle(sx, sy);
+    }
 }
 
 bool Game::is_gameover()

@@ -28,3 +28,8 @@ demo/
 
 # Hướng dẫn riêng cho Claude Code (chỉ giữ ở máy)
 CLAUDE.md
+
+# Cài đặt người chơi do game ghi (theme, âm lượng)
+code/settings.ini
+code/stats.txt
+code/trace.txt

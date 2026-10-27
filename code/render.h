@@ -5,6 +5,14 @@
 // draw_box() chỉ ghi hộp vào lô; flush() gửi cả lô lên GPU và vẽ bằng MỘT lệnh instanced.
 enum BoxPattern { PAT_PLAIN = 0, PAT_FRAGILE = 1, PAT_SWITCH = 2, PAT_HEAVY = 3, PAT_SHADOW = 4 };
 
+// Vật liệu chỉ dùng ở theme Minecraft (texture pixel sinh trong shader); theme Classic bỏ qua.
+enum BoxMaterial
+{
+    MAT_NONE = 0, MAT_FLOOR, MAT_FRAGILE, MAT_SWITCH, MAT_HEAVY, MAT_SPLIT, MAT_BRIDGE,
+    MAT_BLOCK, MAT_GOLD, MAT_GOAL
+};
+enum Theme { THEME_CLASSIC = 0, THEME_MINECRAFT = 1 };
+
 struct BoxStyle
 {
     glm::vec3 color;
@@ -13,8 +21,9 @@ struct BoxStyle
     float emissive;
     float alpha;
     bool unlit;
+    int material;
     BoxStyle(glm::vec3 c = glm::vec3(1.0f), int p = PAT_PLAIN, float e = 0.0f, float a = 1.0f)
-        : color(c), accent(c), pattern(p), emissive(e), alpha(a), unlit(false) {}
+        : color(c), accent(c), pattern(p), emissive(e), alpha(a), unlit(false), material(MAT_NONE) {}
 };
 
 // Dữ liệu một hộp gửi lên GPU (khớp với các attribute location 2..9 trong BOX_VERT).
@@ -24,7 +33,7 @@ struct BoxInstance
     glm::vec4 color;    // rgb + emissive
     glm::vec4 accent;   // rgb + alpha
     glm::vec4 scale;    // kích thước + pattern
-    glm::vec4 extra;    // x: unlit
+    glm::vec4 extra;    // x: unlit, y: vật liệu (BoxMaterial)
 };
 
 class Renderer
@@ -32,12 +41,13 @@ class Renderer
     private:
         GLuint box_prog, bg_prog;
         GLuint box_vao, box_vbo, inst_vbo, bg_vao;
-        GLint u_viewproj, u_time, u_eye, u_light, u_fogcolor, u_fogrange;
-        GLint ubg_time, ubg_res;
+        GLint u_viewproj, u_time, u_eye, u_light, u_fogcolor, u_fogrange, u_theme;
+        GLint ubg_time, ubg_res, ubg_theme;
         vector<BoxInstance> batch;
     public:
         int draw_calls;   // số lệnh vẽ trong frame (hiện trên HUD)
         int boxes;        // số hộp đã vẽ trong frame
+        int theme;        // THEME_CLASSIC / THEME_MINECRAFT (đổi trong menu Options)
         void init();
         void draw_background(int fbwidth, int fbheight, float time);
         // Bắt đầu vẽ cảnh 3D với camera cho trước.

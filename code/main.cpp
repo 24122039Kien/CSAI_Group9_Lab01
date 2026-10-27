@@ -18,9 +18,13 @@
 #include "effects.h"
 #include "hud.h"
 #include "screenshot.h"
+#include "audio.h"
+#include "viz.h"
 #include "app.h"
 
 #include <atomic>
+#include <cstring>
+#include <sstream>
 #include <thread>
 #include <ctime>
 #ifndef _WIN32
@@ -44,8 +48,15 @@ int level = 2;
 //  - tương tác (mở bằng double-click): có menu chọn màn, Restart, Solve chạy nền; không tự thoát.
 bool cli_mode = false;
 bool menu_open = false;
+bool paused = false;
+bool options_open = false;
 bool show_minimap = true;
 bool show_help = true;
+bool show_ai_panel = true;
+int fall_count = 0;
+float music_volume = 0.35f, sfx_volume = 0.8f;
+static double restart_at = -1.0;           // > 0: tự chơi lại màn lúc này (sau khi rơi, như game gốc)
+static const double FALL_RESTART_SECONDS = 1.6;
 
 // Kết quả ván: -1 đang chơi, 0 thua, 1 thắng.
 int game_result = -1;
@@ -60,7 +71,13 @@ string gpu_name;
 
 int solve_state = SOLVE_IDLE;
 string solve_algo, solve_message, replay_label;
+string solve_heuristic = "manhattan";
+SolverStats last_stats = {false, "", "", 0, 0.0, 0.0, 0.0, 0, 0, 0};
 static int solver_level = 0;
+enum SolveMode { MODE_REPLAY = 0, MODE_VISUALIZE = 1 };
+static int solve_mode = MODE_REPLAY;
+static int camera_before_viz = -1;
+static bool viz_autoplay = false;       // --visualize: tự bấm Play khi mở (ảnh chụp, demo)
 static std::atomic<bool> solver_done(false);
 static std::atomic<int> solver_status(0);
 static bool pending_autoplay = false;     // có lời giải chờ phát sau hiệu ứng mở màn
@@ -94,16 +111,53 @@ vector<int> available_levels()
     return cached;
 }
 
+// Tên / nhóm màn đọc từ data/catalog.json (chỉ cần "id", "title", "group"; thiếu file thì để trống).
+static map<int, pair<string, string> > &catalog()
+{
+    static map<int, pair<string, string> > cat;
+    static bool loaded = false;
+    if(loaded) return cat;
+    loaded = true;
+    string text;
+    if(!read_text_file("data/catalog.json", text)) return cat;
+    size_t pos = 0;
+    while((pos = text.find("\"id\":", pos)) != string::npos)
+    {
+        int id = atoi(text.c_str() + pos + 5);
+        size_t next = text.find("\"id\":", pos + 5);
+        string fields[2];
+        const char *keys[2] = {"\"title\":", "\"group\":"};
+        for(int k = 0; k < 2; k++)
+        {
+            size_t q = text.find(keys[k], pos);
+            if(q == string::npos || (next != string::npos && q > next)) continue;
+            size_t a = text.find('"', q + strlen(keys[k]));
+            size_t b = a == string::npos ? a : text.find('"', a + 1);
+            if(b != string::npos) fields[k] = text.substr(a + 1, b - a - 1);
+        }
+        cat[id] = make_pair(fields[0], fields[1]);
+        pos += 5;
+    }
+    return cat;
+}
+
+string level_title(int lv) { return catalog().count(lv) ? catalog()[lv].first : string(); }
+string level_group(int lv) { return catalog().count(lv) ? catalog()[lv].second : string(); }
+
 bool app_input_locked()
 {
     return autoplayer.is_active() || pending_autoplay || game_result != -1
-        || game.is_won() || game.is_gameover() || menu_open || solve_state == SOLVE_RUNNING
+        || game.is_won() || game.is_gameover() || menu_open || paused || viz_is_open()
+        || solve_state == SOLVE_RUNNING || restart_at > 0.0
         || effects.intro_active(glfwGetTime());
 }
 
 void app_start_level(int lv)
 {
+    if(lv != level) fall_count = 0;
     level = lv;
+    restart_at = -1.0;
+    paused = false;
     game.initialize(lv);
     game_result = -1;
     autoplayer.stop();
@@ -115,6 +169,7 @@ void app_start_level(int lv)
     reshapeWindow(window, w, h);                 // phép chiếu song song theo kích thước màn mới
     camera.change_view(camera.get_view_type());  // camera "tower" tính lại theo màn mới
     menu_open = false;
+    audio_play(SFX_START, 0.8f);
 }
 
 void app_restart()
@@ -136,27 +191,122 @@ void app_next_level()
     app_start_level(v[0]);
 }
 
+void app_open_menu()
+{
+    if(cli_mode) return;
+    menu_open = true;
+    paused = false;
+    options_open = false;
+}
+
 void app_toggle_menu()
 {
     if(!cli_mode)
         menu_open = !menu_open;
 }
 
-void app_solve(const string &algo)
+void app_toggle_pause()
+{
+    if(cli_mode || menu_open || game_result != -1) return;
+    if(viz_is_open()) { app_close_visualizer(); return; }
+    paused = !paused;
+    if(!paused) options_open = false;
+}
+
+static void start_solver(const string &algo, int mode)
 {
     if(solve_state == SOLVE_RUNNING)
         return;
     solve_algo = algo;
     solve_state = SOLVE_RUNNING;
+    solve_mode = mode;
     solver_level = level;
     solver_done = false;
     menu_open = false;
+    paused = false;
     // Solver Python có thể chạy lâu: chạy trong luồng riêng để cửa sổ không bị treo.
     int lv = level;
-    std::thread([algo, lv]() {
-        solver_status = run_solver(lv, algo, "solution.txt", true);
+    string heur = solve_heuristic;
+    string extra = mode == MODE_VISUALIZE ? "--stats stats.txt --trace trace.txt --trace-limit 4000"
+                                          : "--stats stats.txt";
+    remove("stats.txt");
+    std::thread([algo, lv, heur, extra]() {
+        solver_status = run_solver(lv, algo, "solution.txt", true, heur, extra);
         solver_done = true;
     }).detach();
+}
+
+void app_solve(const string &algo)
+{
+    start_solver(algo, MODE_REPLAY);
+}
+
+void app_visualize(const string &algo)
+{
+    start_solver(algo, MODE_VISUALIZE);
+}
+
+void app_close_visualizer()
+{
+    viz_close();
+    if(camera_before_viz >= 0)
+        camera.change_view(camera_before_viz);
+    camera_before_viz = -1;
+}
+
+void app_play_solution()
+{
+    app_close_visualizer();
+    if(autoplayer.load("solution.txt"))
+    {
+        app_start_level(level);
+        pending_autoplay = true;
+    }
+}
+
+// Cài đặt người chơi (theme, âm lượng, hiển thị) lưu ở settings.ini cạnh file chạy.
+static void load_settings()
+{
+    string text;
+    if(!read_text_file("settings.ini", text)) return;
+    istringstream in(text);
+    string key;
+    while(in >> key)
+    {
+        if(key == "theme") in >> renderer.theme;
+        else if(key == "music") in >> music_volume;
+        else if(key == "sfx") in >> sfx_volume;
+        else if(key == "minimap") in >> show_minimap;
+        else if(key == "hints") in >> show_help;
+        else if(key == "effects") in >> effects.enabled;
+        else if(key == "ai_panel") in >> show_ai_panel;
+        else if(key == "heuristic") in >> solve_heuristic;
+        else { string skip; getline(in, skip); }
+    }
+    if(renderer.theme != THEME_MINECRAFT) renderer.theme = THEME_CLASSIC;
+    if(solve_heuristic != "zero") solve_heuristic = "manhattan";
+}
+
+void app_save_settings()
+{
+    if(cli_mode) return;
+    FILE *f = utf8_fopen("settings.ini", "w");
+    if(!f) return;
+    fprintf(f, "theme %d\nmusic %.2f\nsfx %.2f\nminimap %d\nhints %d\neffects %d\nai_panel %d\nheuristic %s\n",
+            renderer.theme, music_volume, sfx_volume, (int)show_minimap, (int)show_help, (int)effects.enabled,
+            (int)show_ai_panel, solve_heuristic.c_str());
+    fclose(f);
+}
+
+void app_set_theme(int t)
+{
+    renderer.theme = t == THEME_MINECRAFT ? THEME_MINECRAFT : THEME_CLASSIC;
+    hud_apply_theme(renderer.theme);
+}
+
+void app_apply_volumes()
+{
+    audio_set_volumes(music_volume, sfx_volume);
 }
 
 void app_request_screenshot()
@@ -169,11 +319,53 @@ void app_quit()
     glfwSetWindowShouldClose(window, 1);
 }
 
+static void read_stats()
+{
+    string text;
+    last_stats.valid = false;
+    if(!read_text_file("stats.txt", text)) return;
+    istringstream in(text);
+    string key;
+    while(in >> key)
+    {
+        if(key == "algorithm") in >> last_stats.algorithm;
+        else if(key == "status") in >> last_stats.status;
+        else if(key == "length") in >> last_stats.length;
+        else if(key == "cost") in >> last_stats.cost;
+        else if(key == "expanded") in >> last_stats.expanded;
+        else if(key == "generated") in >> last_stats.generated;
+        else if(key == "frontier") in >> last_stats.frontier;
+        else if(key == "time_ms") in >> last_stats.time_ms;
+        else if(key == "memory_kb") in >> last_stats.memory_kb;
+    }
+    last_stats.valid = true;
+}
+
 static void poll_solver()
 {
     if(solve_state != SOLVE_RUNNING || !solver_done)
         return;
     int status = solver_status;
+    read_stats();
+    if(solve_mode == MODE_VISUALIZE)
+    {
+        string err;
+        if((status == SOLVER_OK || status == SOLVER_NO_SOLUTION) && solver_level == level && viz_load("trace.txt", err))
+        {
+            app_start_level(level);
+            if(camera_before_viz < 0) camera_before_viz = camera.get_view_type();
+            camera.change_view(GLFW_KEY_B);   // nhìn toàn màn từ trên cao để thấy bản đồ nhiệt
+            solve_state = SOLVE_IDLE;
+            if(viz_autoplay) { viz_toggle_play(); viz_autoplay = false; }
+        }
+        else
+        {
+            solve_message = status == SOLVER_OK || status == SOLVER_NO_SOLUTION ? "cannot read trace: " + err
+                                                                                  : solver_status_text(status);
+            solve_state = SOLVE_FAILED;
+        }
+        return;
+    }
     if(status == SOLVER_OK && solver_level == level && autoplayer.load("solution.txt"))
     {
         app_start_level(level);
@@ -201,6 +393,7 @@ static void on_game_end(int result, double now)
         superblock.start_sink(now);
         glm::vec3 goal(stage.tx*tile_side_length + 0.5f, stage.ty*tile_side_length + 0.5f, 0.2f);
         effects.burst(goal, col(GOAL_COLOR), 140, 2.6f);
+        audio_play(SFX_WIN);
     }
     else
     {
@@ -208,6 +401,15 @@ static void on_game_end(int result, double now)
         if(superblock.get_along() == Z && stage.has_tile(ix, iy) && stage.get_tile_type(ix, iy) == fragile)
             stage.break_tile(ix, iy);   // ô cam vỡ, rơi theo khối
         superblock.start_fall(now);
+        audio_play(SFX_FALL);
+        // Như Bloxorz gốc: rơi là cả sàn sụp theo rồi chơi lại ngay (chế độ CLI giữ GAME OVER để kiểm chứng).
+        stage.collapse(now + 0.25);
+        audio_play(SFX_COLLAPSE, 0.7f);
+        if(!cli_mode)
+        {
+            fall_count++;
+            restart_at = now + FALL_RESTART_SECONDS;
+        }
     }
 }
 
@@ -215,7 +417,18 @@ static void on_game_end(int result, double now)
 static void update_game(double now, float dt)
 {
     camera.update(dt);
+    viz_update(now);
+    if(paused)
+    {
+        poll_solver();
+        return;   // dừng khối, hiệu ứng và phát lại; HUD vẫn vẽ
+    }
     effects.update(dt);
+    if(restart_at > 0.0 && now >= restart_at)
+    {
+        app_restart();
+        return;
+    }
     if(game_result == -1)
     {
         if(pending_autoplay && !effects.intro_active(now))
@@ -255,7 +468,9 @@ static void render_scene(int x, int y, int w, int h, bool minimap, double now)
     }
     else
     {
-        P = proj_type ? Matrices.projectionP : Matrices.projectionO;
+        // Phép chiếu theo đúng tỉ lệ vùng vẽ (vùng 3D hẹp lại khi mở Visualizer).
+        float aspect = float(w) / float(h);
+        P = proj_type ? glm::perspective(glm::radians(75.0f), aspect, nearr, farr) : ortho_fit(aspect);
         V = camera.get_view();
         if(proj_type)
         {
@@ -267,16 +482,19 @@ static void render_scene(int x, int y, int w, int h, bool minimap, double now)
 
     renderer.begin(P * V, eye, float(now), fog_near, fog_far);
     stage.draw(now);
-    superblock.draw(world_model);
+    if(!viz_is_open())
+        superblock.draw(world_model);
     renderer.flush();
 
     // Lượt trong suốt: không ghi depth để các lớp mờ chồng lên nhau đúng.
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthMask(GL_FALSE);
-    superblock.draw_shadow();
+    if(!viz_is_open())
+        superblock.draw_shadow();
     stage.draw_transparent(now);
     effects.draw();
+    viz_draw_board();
     renderer.flush();   // thứ tự instance = thứ tự vẽ, nên các lớp mờ vẫn chồng đúng
     glDepthMask(GL_TRUE);
     glDisable(GL_BLEND);
@@ -295,9 +513,11 @@ static void render_frame(double now)
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     renderer.draw_background(fbw, fbh, float(now));
-    render_scene(0, 0, fbw, fbh, false, now);
+    bool viz = viz_is_open();
+    int scene_w = viz ? int(fbw * 0.52f) : fbw;   // Visualizer chiếm phần bên phải
+    render_scene(0, 0, scene_w, fbh, false, now);
 
-    if(show_minimap)
+    if(show_minimap && !viz)
     {
         // Bản đồ nhỏ góc dưới trái (bản gốc: luôn bật, chiếm 30% cửa sổ). Viền + nền riêng bằng scissor.
         int s = int(0.26f * min(fbw, fbh));
@@ -307,7 +527,10 @@ static void render_frame(double now)
         glClearColor(0.12f, 0.35f, 0.50f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         glScissor(x0, y0, s, s);
-        glClearColor(0.015f, 0.02f, 0.045f, 1.0f);
+        if(renderer.theme == THEME_MINECRAFT)
+            glClearColor(0.42f, 0.60f, 0.95f, 1.0f);   // bản đồ nhỏ: nền trời
+        else
+            glClearColor(0.015f, 0.02f, 0.045f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glDisable(GL_SCISSOR_TEST);
         render_scene(x0, y0, s, s, true, now);
@@ -414,6 +637,11 @@ static void usage(const char *prog)
          << "  --camera <c|v|b|x|n|m>  start with this camera view" << endl
          << "  --shot <sec> <file.png> save a screenshot at <sec> seconds (repeatable)" << endl
          << "  --quit-after <sec>      close the window after <sec> seconds" << endl
+         << "  --theme <classic|minecraft>  start with this visual theme" << endl
+         << "  --visualize <algo>      open the search visualizer for this algorithm at start" << endl
+         << "  --mute                  no sound" << endl
+         << "  --ui <menu|pause|options>  open this panel at start (screenshots)" << endl
+         << "  --keep-open             with --play: replay in normal game mode (falls restart, no exit)" << endl
          << "Python interpreter: $BLOXORZ_PYTHON (default python3, or python / py -3 on Windows)." << endl;
 }
 
@@ -452,8 +680,8 @@ int main (int argc, char** argv)
     }
 #endif
 
-    string solve_algo_arg, play_file, camera_arg;
-    bool level_given = false, vsync = true, no_menu = false;
+    string solve_algo_arg, play_file, camera_arg, theme_arg, visualize_arg, ui_arg;
+    bool level_given = false, vsync = true, no_menu = false, mute = false, keep_open = false;
     double quit_after = -1.0;
     vector<pair<double, string> > shots;
     for(int i=1; i<argc; i++)
@@ -477,6 +705,16 @@ int main (int argc, char** argv)
         }
         else if(arg=="--quit-after" && i+1<argc)
             quit_after = atof(argv[++i]);
+        else if(arg=="--theme" && i+1<argc)
+            theme_arg = argv[++i];
+        else if(arg=="--visualize" && i+1<argc)
+            visualize_arg = argv[++i];
+        else if(arg=="--mute")
+            mute = true;
+        else if(arg=="--ui" && i+1<argc)
+            ui_arg = argv[++i];
+        else if(arg=="--keep-open")
+            keep_open = true;
         else if(arg=="-h" || arg=="--help")
         {
             usage(argv[0]);
@@ -498,7 +736,7 @@ int main (int argc, char** argv)
         cerr << "Use either --solve or --play, not both." << endl;
         return 2;
     }
-    cli_mode = !solve_algo_arg.empty() || !play_file.empty();
+    cli_mode = (!solve_algo_arg.empty() || !play_file.empty()) && !keep_open;
     if(!cli_mode && !level_given)
         level = 1;   // mở như một game: bắt đầu từ màn 1
 
@@ -523,6 +761,13 @@ int main (int argc, char** argv)
         solve_algo = solve_algo_arg;
     }
 
+    if(!cli_mode)
+        load_settings();
+    if(theme_arg == "minecraft") renderer.theme = THEME_MINECRAFT;
+    else if(theme_arg == "classic") renderer.theme = THEME_CLASSIC;
+    audio_init(!mute);
+    app_apply_volumes();
+
     world_model = glm::mat4(1.0f);
     initialize_colors();
     camera.initialize_camera();
@@ -535,18 +780,26 @@ int main (int argc, char** argv)
     window = initGLFW(width, height, vsync);
     initGL (window, width, height);
     hud_init(window);   // sau khi đặt callback: ImGui gọi tiếp callback của game
+    hud_apply_theme(renderer.theme);
 
     if(!camera_arg.empty())
         camera.change_view(GLFW_KEY_A + (toupper(camera_arg[0]) - 'A'));
     effects.start_intro(glfwGetTime());
-    if(cli_mode)
+    if(cli_mode || keep_open)
     {
-        pending_autoplay = true;   // bắt đầu phát lại sau hiệu ứng mở màn
+        pending_autoplay = autoplayer.total() > 0;   // bắt đầu phát lại sau hiệu ứng mở màn
         if(!solve_algo.empty())
             replay_label = "(" + string(solve_algo == "astar" ? "A*" : solve_algo) + ")";
     }
     else
-        menu_open = !no_menu;
+        menu_open = !no_menu && visualize_arg.empty();
+    if(!visualize_arg.empty())
+    {
+        viz_autoplay = true;
+        app_visualize(visualize_arg);
+    }
+    if(!cli_mode && ui_arg == "menu") menu_open = true;
+    if(!cli_mode && (ui_arg == "pause" || ui_arg == "options")) { menu_open = false; paused = true; options_open = ui_arg == "options"; }
 
     double start_time = glfwGetTime();
     double prev_time = start_time, fps_time = start_time;
@@ -613,6 +866,7 @@ int main (int argc, char** argv)
     if(cli_mode || !vsync)
         cout << "GPU : " << gpu_name << endl << "Frames : " << total_frames << ", average FPS : " << int(total_frames / max(elapsed, 1e-6)) << endl;
     hud_shutdown();
+    audio_shutdown();
     glfwTerminate();
     return game_result == 0 ? 1 : 0;   // mã thoát 1 nếu thua
 }

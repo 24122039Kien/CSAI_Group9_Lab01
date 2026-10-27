@@ -21,7 +21,7 @@ ifeq ($(UNAME_S),Linux)
     EXEC     := a.out
     APP      := bloxorz
     PLATFORM := linux
-    LDLIBS   := -lglfw -lGL -ldl -lpthread
+    LDLIBS   := -lglfw -lGL -ldl -lpthread -lm
 else ifeq ($(UNAME_S),Darwin)
     EXEC     := a.out
     APP      := bloxorz
@@ -29,7 +29,7 @@ else ifeq ($(UNAME_S),Darwin)
     BREW     := $(shell brew --prefix 2>/dev/null)
     CPPFLAGS += -I$(BREW)/include
     LDFLAGS  += -L$(BREW)/lib
-    LDLIBS   := -lglfw -framework OpenGL
+    LDLIBS   := -lglfw -framework OpenGL -framework CoreFoundation -framework CoreAudio -framework AudioToolbox
 else
     # Windows: MSYS2/MinGW (uname = MINGW64_NT-..., MSYS_NT-...)
     EXEC     := a.exe
@@ -48,7 +48,7 @@ IMGUI_SRC := imgui.cpp imgui_draw.cpp imgui_tables.cpp imgui_widgets.cpp imgui_i
 IMGUI_OBJ := $(addprefix $(OBJDIR)/imgui/,$(IMGUI_SRC:.cpp=.o))
 
 SRC := $(wildcard *.cpp)
-OBJ := $(addprefix $(OBJDIR)/,$(SRC:.cpp=.o)) $(OBJDIR)/glad.o $(IMGUI_OBJ)
+OBJ := $(addprefix $(OBJDIR)/,$(SRC:.cpp=.o)) $(OBJDIR)/glad.o $(OBJDIR)/miniaudio.o $(IMGUI_OBJ)
 HDR := $(wildcard *.h)
 
 DIST_ROOT := ../dist
@@ -77,6 +77,11 @@ $(OBJDIR)/glad.o: glad.c
 	@mkdir -p $(@D)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
+# miniaudio (một header ~4 MB): biên dịch riêng một lần, không phụ thuộc header của game
+$(OBJDIR)/miniaudio.o: third_party/miniaudio/miniaudio_impl.c third_party/miniaudio/miniaudio_config.h
+	@mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
 build/win64/bloxorz.res.o: bloxorz.rc assets/bloxorz.ico
 	@mkdir -p $(@D)
 	windres $< -O coff -o $@
@@ -85,13 +90,14 @@ dist: $(APP)
 	rm -rf $(DIST) $(DIST_ROOT)/Bloxorz-$(PLATFORM).*
 	mkdir -p $(DIST)/data $(DIST)/solver $(DIST)/licenses
 	cp $(APP) $(DIST)/
-	cp data/*.data $(DIST)/data/
+	cp data/*.data data/catalog.json $(DIST)/data/
 	cp ../main.py $(DIST)/solver/
 	cp -r ../ai $(DIST)/solver/
 	find $(DIST)/solver -name __pycache__ -prune -exec rm -rf {} +
 	cp assets/README_dist.txt $(DIST)/README.txt
 	cp ../THIRD_PARTY_NOTICES.md $(DIST)/licenses/
 	cp $(IMGUI_DIR)/LICENSE.txt $(DIST)/licenses/imgui_LICENSE.txt
+	cp third_party/miniaudio/LICENSE $(DIST)/licenses/miniaudio_LICENSE.txt
 	cd $(DIST_ROOT)/$(PLATFORM) && if command -v zip >/dev/null 2>&1; then zip -qr ../Bloxorz-$(PLATFORM).zip Bloxorz; \
 	    else tar czf ../Bloxorz-$(PLATFORM).tar.gz Bloxorz; fi
 	@echo "Packaged $(DIST) -> $(DIST_ROOT)/Bloxorz-$(PLATFORM).*"

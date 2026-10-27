@@ -184,12 +184,18 @@ static int run_command(const string &cmd, bool quiet)
 #endif
 }
 
-int run_solver(int level, const string &algo, const string &out_path, bool quiet)
+int run_solver(int level, const string &algo, const string &out_path, bool quiet,
+               const string &heuristic, const string &extra)
 {
-    // Chỉ cho phép tên thuật toán đã biết -> không chèn được lệnh shell.
+    // Chỉ cho phép tên thuật toán / heuristic đã biết -> không chèn được lệnh shell.
     if(algo!="bfs" && algo!="dfs" && algo!="ucs" && algo!="astar")
     {
         cerr << "Unknown algorithm '" << algo << "' (use bfs, dfs, ucs or astar)" << endl;
+        return SOLVER_ERROR;
+    }
+    if(heuristic!="manhattan" && heuristic!="zero")
+    {
+        cerr << "Unknown heuristic '" << heuristic << "' (use manhattan or zero)" << endl;
         return SOLVER_ERROR;
     }
 
@@ -202,7 +208,8 @@ int run_solver(int level, const string &algo, const string &out_path, bool quiet
 
     // Bản đóng gói đặt solver ở solver/main.py cạnh file chạy; trong repo là ../main.py.
     string script = ifstream("solver/main.py") ? "solver/main.py" : "../main.py";
-    string args = " " + script + " data/" + to_string(level) + ".data --algo " + algo + " --out " + out_path;
+    string args = " " + script + " data/" + to_string(level) + ".data --algo " + algo
+                + " --heuristic " + heuristic + " --out " + out_path + (extra.empty() ? "" : " " + extra);
 
     const char *env = getenv("BLOXORZ_PYTHON");
     vector<string> pythons;

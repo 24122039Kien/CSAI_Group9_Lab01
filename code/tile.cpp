@@ -3,6 +3,7 @@
 #include "superblock.h"
 #include "controls.h"
 #include "effects.h"
+#include "audio.h"
 
 float tile_side_length = 1.0f;
 float tile_height = 0.2f;
@@ -29,12 +30,14 @@ Floor::Floor()
 {
     tiles = NULL;
     n = m = 0;
+    collapse_start = -1.0;
 }
 
 Floor::Floor(string filename)
 {
     tiles = NULL;
     n = m = 0;
+    collapse_start = -1.0;
     initialize(filename);
 }
 
@@ -62,6 +65,7 @@ void Floor::clear()
     appear_time.clear();
     hidden.clear();
     ghosts.clear();
+    collapse_start = -1.0;
 }
 
 void Floor::initialize(string filename)
@@ -182,29 +186,37 @@ BoxStyle Floor::tile_style(int i, int j)
 {
     int k = tiles[i][j]->get_tile_type();
     BoxStyle s(col(FLOOR_COLOR));
+    s.material = MAT_FLOOR;
     if(k==fragile)
     {
         s.color = col(FRAGILE_COLOR);
         s.pattern = PAT_FRAGILE;
+        s.material = MAT_FRAGILE;
     }
     else if(k==::normal_bridge)   // :: vì Floor có thành viên cùng tên (map công tắc)
     {
         s.pattern = PAT_SWITCH;
         s.accent = col(SWITCH_ACCENT);
+        s.material = MAT_SWITCH;
     }
     else if(k==::heavy_bridge)
     {
         s.pattern = PAT_HEAVY;
         s.accent = col(HEAVY_ACCENT);
+        s.material = MAT_HEAVY;
     }
     else if(k==split_switch || split_switches.count(i*m+j))
     {
         s.pattern = PAT_SWITCH;
         s.color = glm::vec3(0.20f, 0.70f, 0.95f);
         s.accent = glm::vec3(1.0f, 1.0f, 1.0f);
+        s.material = MAT_SPLIT;
     }
     else if(bridge_cells.count(i*m+j))
+    {
         s.color = col(BRIDGE_COLOR);
+        s.material = MAT_BRIDGE;
+    }
     else if((i+j)&1)
         s.color *= 0.92f;   // bàn cờ nhẹ để dễ đếm ô
     return s;
@@ -233,15 +245,29 @@ void Floor::draw(double now)
                 }
             }
             float side = (l - 2*TILE_GAP) * grow;
+            float spin = 0.0f;
+            dz += collapse_offset(i, j, now, spin);
             glm::vec3 pos(i*l + (l-side)/2, j*l + (l-side)/2, -tile_height + dz);
-            renderer.draw_aabb(pos, glm::vec3(side, side, tile_height), tile_style(i, j));
+            glm::vec3 size(side, side, tile_height);
+            if(spin == 0.0f)
+                renderer.draw_aabb(pos, size, tile_style(i, j));
+            else
+            {
+                // Ô đang sụp: lật nhẹ quanh tâm khi rơi.
+                glm::vec3 c = pos + size * 0.5f;
+                glm::vec3 axis = glm::normalize(glm::vec3(((i*7+j*3)&1) ? 1.0f : -0.6f, ((i+j*5)&1) ? 0.8f : -1.0f, 0.0f));
+                renderer.draw_box(glm::translate(c) * glm::rotate(spin, axis) * glm::translate(-size * 0.5f) * glm::scale(size),
+                                  size, tile_style(i, j));
+            }
         }
 
     // Ô đích: một lỗ vuông có thành tối và khung phát sáng nhấp nháy.
     float pulse = 0.6f + 0.4f*sin(float(now)*3.0f);
-    float gx = tx*l, gy = ty*l, dz = effects.tile_drop(tx, ty, n, m, now);
+    float goal_spin = 0.0f;
+    float gx = tx*l, gy = ty*l, dz = effects.tile_drop(tx, ty, n, m, now) + collapse_offset(tx, ty, now, goal_spin);
     float w = 0.07f, h = 0.03f;
     BoxStyle frame(col(GOAL_COLOR), PAT_PLAIN, 0.6f + 0.6f*pulse);
+    frame.material = MAT_GOAL;
     renderer.draw_aabb(glm::vec3(gx - w, gy - w, dz), glm::vec3(l + 2*w, w, h), frame);
     renderer.draw_aabb(glm::vec3(gx - w, gy + l, dz), glm::vec3(l + 2*w, w, h), frame);
     renderer.draw_aabb(glm::vec3(gx - w, gy, dz), glm::vec3(w, l, h), frame);
@@ -310,6 +336,33 @@ void Floor::break_tile(int i, int j)
         return;
     make_ghost(i, j, 2.5f);
     hidden.insert(i*m+j);
+    audio_play(SFX_CRACK);
+}
+
+// Sàn sụp khi khối rơi (giống Bloxorz gốc): mỗi ô rơi sau một độ trễ ngẫu nhiên nhỏ, vừa rơi vừa lật.
+void Floor::collapse(double now)
+{
+    if(collapse_start < 0.0)
+        collapse_start = now;
+}
+
+bool Floor::collapsing()
+{
+    return collapse_start >= 0.0;
+}
+
+float Floor::collapse_offset(int i, int j, double now, float &spin)
+{
+    spin = 0.0f;
+    if(collapse_start < 0.0)
+        return 0.0f;
+    unsigned h = unsigned(i) * 73856093u ^ unsigned(j) * 19349663u;
+    float delay = 0.05f + 0.45f * float(h % 1000u) / 1000.0f;
+    float t = float(now - collapse_start) - delay;
+    if(t <= 0.0f)
+        return 0.0f;
+    spin = min(t * 2.2f, 2.5f);
+    return -9.0f * t * t;
 }
 
 int Floor::get_along()
@@ -361,9 +414,11 @@ void Floor::toggle(int a, int b)
     {
         tiles[a][b] = new Tile(1);
         appear_time[a*m+b] = glfwGetTime();
+        audio_play(SFX_BRIDGE_ON);
     }
     else
     {
+        audio_play(SFX_BRIDGE_OFF);
         make_ghost(a, b, 1.5f);
         delete tiles[a][b];
         tiles[a][b] = NULL;

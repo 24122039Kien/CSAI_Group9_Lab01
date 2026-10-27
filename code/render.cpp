@@ -2,7 +2,7 @@
 #include "render.h"
 #include "shaders.h"
 
-Renderer renderer;
+Renderer renderer;   // theme = 0 (Classic) do biến toàn cục được khởi tạo 0
 
 static GLuint compile_shader(GLenum type, const char *src)
 {
@@ -93,10 +93,12 @@ void Renderer::init()
     u_light     = glGetUniformLocation(box_prog, "uLightDir");
     u_fogcolor  = glGetUniformLocation(box_prog, "uFogColor");
     u_fogrange  = glGetUniformLocation(box_prog, "uFogRange");
+    u_theme     = glGetUniformLocation(box_prog, "uTheme");
 
     bg_prog = compile_program(BG_VERT, BG_FRAG);
     ubg_time = glGetUniformLocation(bg_prog, "uTime");
     ubg_res  = glGetUniformLocation(bg_prog, "uRes");
+    ubg_theme = glGetUniformLocation(bg_prog, "uTheme");
     draw_calls = 0;
     boxes = 0;
 }
@@ -108,6 +110,7 @@ void Renderer::draw_background(int fbwidth, int fbheight, float time)
     glUseProgram(bg_prog);
     glUniform1f(ubg_time, time);
     glUniform2f(ubg_res, (float)fbwidth, (float)fbheight);
+    glUniform1i(ubg_theme, theme);
     glBindVertexArray(bg_vao);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glDepthMask(GL_TRUE);
@@ -123,7 +126,11 @@ void Renderer::begin(const glm::mat4 &view_proj, const glm::vec3 &eye, float tim
     glUniform3fv(u_eye, 1, &eye[0]);
     glm::vec3 light = glm::normalize(glm::vec3(-0.35f, 0.55f, -1.0f));
     glUniform3fv(u_light, 1, &light[0]);
-    glUniform3f(u_fogcolor, 0.01f, 0.012f, 0.03f);
+    if(theme == THEME_MINECRAFT)
+        glUniform3f(u_fogcolor, 0.72f, 0.84f, 1.0f);   // sương hòa vào bầu trời
+    else
+        glUniform3f(u_fogcolor, 0.01f, 0.012f, 0.03f);
+    glUniform1i(u_theme, theme);
     glUniform2f(u_fogrange, fog_near, fog_far);
     glUniform1f(u_time, time);
 }
@@ -135,7 +142,7 @@ void Renderer::draw_box(const glm::mat4 &model, const glm::vec3 &size, const Box
     b.color = glm::vec4(style.color, style.emissive);
     b.accent = glm::vec4(style.accent, style.alpha);
     b.scale = glm::vec4(glm::abs(size), float(style.pattern));
-    b.extra = glm::vec4(style.unlit ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f);
+    b.extra = glm::vec4(style.unlit ? 1.0f : 0.0f, float(style.material), 0.0f, 0.0f);
     batch.push_back(b);
 }
 
