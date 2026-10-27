@@ -1,14 +1,15 @@
 # Bộ màn chơi Bloxorz — TV4
 
-Bộ dữ liệu có **14 màn: 13 màn có lời giải và 1 màn vô nghiệm**. Các màn
-dùng định dạng `.data` v1 và các luật đang có: sàn, lỗ, ô dễ vỡ, công tắc
-thường/nặng và cầu toggle. Màn 1–2 giữ nguyên dữ liệu gốc; màn 3–14 bổ sung
-cho kiểm thử và thực nghiệm. Mỗi lời giải được phát lại trong mô phỏng Python
+Bộ dữ liệu có **16 màn: 15 màn có lời giải và 1 màn vô nghiệm**. Màn 1–14
+dùng định dạng `.data` v1 (sàn, lỗ, ô dễ vỡ, công tắc thường/nặng, cầu
+toggle); màn 15–16 (của Đạt) dùng phần mở rộng v2 `ext 1`: một công tắc
+điều khiển nhiều ô cầu, công tắc permanent và split switch. Màn 1–2 giữ
+nguyên dữ liệu gốc; màn 3–16 bổ sung cho kiểm thử và thực nghiệm. Mỗi lời giải được phát lại trong mô phỏng Python
 và đối chiếu độ dài với BFS độc lập trong bộ test.
 
-G1: cơ bản; G2: ô dễ vỡ; G3: công tắc/cầu; G5: màn lớn kết hợp; G6: đặc biệt.
-G4 (split) và permanent cần phần mở rộng luật của TV1/TV2 trước khi thêm
-màn tương ứng. Bộ hiện tại bao phủ các cơ chế v1, chưa thay cho bộ kiểm thử v2.
+G1: cơ bản; G2: ô dễ vỡ; G3: công tắc/cầu; G4: split switch; G5: màn lớn
+kết hợp; G6: đặc biệt. Cú pháp v2 xem `Docs/v2_walkthrough.md` và
+`Docs/split_walkthrough.md`.
 
 ## Danh mục
 
@@ -28,6 +29,8 @@ màn tương ứng. Bộ hiện tại bao phủ các cơ chế v1, chưa thay ch
 | [12](12.data) | G5 | 4-switch vault | 17×35 | 158 | 0 | 2/2 | 4 | 44 |
 | [13](13.data) | G5 | 6-switch vault | 21×49 | 278 | 0 | 3/3 | 6 | 66 |
 | [14](14.data) | G2 | Amber labyrinth | 21×29 | 363 | 200 | 0/0 | 0 | 36 |
+| [15](15.data) | G3 | Dual bridges crossing | 14×17 | 57 | 0 | 2/0 | 3 | 37 |
+| [16](16.data) | G4 | The great split | 14×18 | 48 | 0 | 2/0 | 6 | 49 |
 
 Ô có sàn là số ô khác 0 trong lưới ban đầu, gồm công tắc và ô dễ vỡ; không
 gồm lỗ đích hoặc cầu đang tắt. `catalog.json` là danh mục để test và công cụ
@@ -238,6 +241,24 @@ R U R U R R R U U L U L U U R U L U L U U R R U U U U U R U R U R R R R
 Có **200 ô dễ vỡ**; thay chúng bằng sàn thường làm tối ưu giảm từ **36** xuống **25 bước**. Lời giải thực sự đi qua nhiều ô cam ở tư thế nằm.
 
 ![Sơ đồ màn 14](previews/14.png)
+
+### Màn 15 — Dual bridges crossing
+
+Màn v2 của Đạt: công tắc thường `(4,8)` bật/tắt **hai** ô cầu `(4,14)`,
+`(5,14)` cùng lúc; công tắc `(2,14)` là **permanent on** (bấm lại không đóng
+cầu `(6,8)`). Lời giải tối ưu **37 bước**: [file phát lại](solutions/15.txt).
+
+![Sơ đồ màn 15](previews/15.png)
+
+### Màn 16 — The great split
+
+Màn v2 của Đạt dựng theo Stage 10 của Bloxorz gốc: đứng lên split switch
+`(3,14)` thì khối tách thành hai khối 1×1×1 ở `(3,11)` và `(3,14)`; điều
+khiển từng khối (`0U`… / `1R`… trong file lời giải, phím Space trong game)
+tới khi hai khối kề nhau thì tự gộp lại. Lời giải tối ưu **49 bước**:
+[file phát lại](solutions/16.txt).
+
+![Sơ đồ màn 16](previews/16.png)
 
 ## Kiểm chứng và dựng lại hình
 

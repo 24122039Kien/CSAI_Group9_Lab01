@@ -39,16 +39,19 @@ bool AutoPlayer::load(const string &path)
     string tok;
     while(fin >> tok)
     {
+        string u = "";
         for(size_t i=0; i<tok.size(); i++)
+            u += toupper(tok[i]);
+        if(u=="U" || u=="D" || u=="L" || u=="R" ||
+           u=="0U" || u=="0D" || u=="0L" || u=="0R" ||
+           u=="1U" || u=="1D" || u=="1L" || u=="1R")
         {
-            char c = toupper(tok[i]);
-            if(c=='U' || c=='D' || c=='L' || c=='R')
-                moves.push_back(c);
-            else
-            {
-                cerr << "Autoplay: invalid move '" << tok[i] << "' in " << path << endl;
-                return false;
-            }
+            moves.push_back(u);
+        }
+        else
+        {
+            cerr << "Autoplay: invalid move '" << tok << "' in " << path << endl;
+            return false;
         }
     }
     cout << "Autoplay: loaded " << moves.size() << " moves from " << path << endl;
@@ -80,12 +83,27 @@ void AutoPlayer::update(double now)
     if(now - rest_since < autoplay_delay)
         return;
 
-    char c = moves[next_index++];
+    string m = moves[next_index++];
+    char c = 'U';
+    if(m.size() == 2)
+    {
+        int target = m[0] - '0';
+        pair<int, int> c0 = {superblock.cube_ix[0], superblock.cube_iy[0]};
+        pair<int, int> c1 = {superblock.cube_ix[1], superblock.cube_iy[1]};
+        int smaller_cube = (c0 <= c1) ? 0 : 1;
+        superblock.active_cube = (target == 0) ? smaller_cube : (1 - smaller_cube);
+        c = m[1];
+    }
+    else
+    {
+        c = m[0];
+    }
+
     int key = GLFW_KEY_UP;
     if(c=='D') key = GLFW_KEY_DOWN;
     else if(c=='L') key = GLFW_KEY_LEFT;
     else if(c=='R') key = GLFW_KEY_RIGHT;
-    cout << "Autoplay: move " << next_index << "/" << moves.size() << " : " << c << endl;
+    cout << "Autoplay: move " << next_index << "/" << moves.size() << " : " << m << endl;
     superblock.move(key);
 }
 

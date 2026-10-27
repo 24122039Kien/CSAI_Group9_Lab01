@@ -46,6 +46,12 @@ class Floor
         int num_heavy_bridge;
         map<int, int> normal_bridge;
         map<int, int> heavy_bridge;
+        map<int, vector<int>> normal_bridges;
+        map<int, vector<int>> heavy_bridges;
+        map<int, string> switch_modes;
+        map<int, pair<pair<int, int>, pair<int, int>>> split_switches;
+        bool is_split_switch(int i, int j) { return split_switches.count(i*m+j); }
+        pair<pair<int, int>, pair<int, int>> get_split_targets(int i, int j) { return split_switches[i*m+j]; }
     private:
         set<int> bridge_cells;          // các ô do công tắc điều khiển (vẽ màu cầu)
         map<int, double> appear_time;   // thời điểm ô cầu vừa hiện ra
@@ -78,4 +84,4 @@ class Floor
 extern float tile_side_length;
 extern float tile_height;
 extern Floor stage;
-extern int normal, fragile, normal_bridge, heavy_bridge;
+extern int normal, fragile, normal_bridge, heavy_bridge, split_switch;

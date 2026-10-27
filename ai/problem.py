@@ -20,8 +20,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import Callable
 
-from .level import FRAGILE, HEAVY_SWITCH, NORMAL_SWITCH, Level
-from .state import ACTIONS, Orientation, State
+from .level import FRAGILE, HEAVY_SWITCH, NORMAL_SWITCH, SPLIT_SWITCH, Level
+from .state import ACTIONS, SPLIT_ACTIONS, Orientation, State
 
 X, Y, Z = Orientation.X, Orientation.Y, Orientation.Z
 
@@ -30,6 +30,13 @@ TRANSITIONS: dict[Orientation, dict[str, tuple[Orientation, int, int]]] = {
     X: {"L": (Z, -1, 0), "R": (Z, 2, 0), "U": (X, 0, 1), "D": (X, 0, -1)},
     Y: {"U": (Z, 0, 2), "D": (Z, 0, -1), "R": (Y, 1, 0), "L": (Y, -1, 0)},
     Z: {"L": (X, -2, 0), "R": (X, 1, 0), "U": (Y, 0, 1), "D": (Y, 0, -2)},
+}
+
+CUBE_DELTAS: dict[str, tuple[int, int]] = {
+    "U": (0, 1),
+    "D": (0, -1),
+    "L": (-1, 0),
+    "R": (1, 0),
 }
 
 
@@ -78,6 +85,16 @@ class BloxorzProblem:
     # ------------------------------------------------------------ luật game
     def check(self, state: State) -> Outcome:
         """Bản sao của ``Game::check`` (thua được ưu tiên hơn thắng)."""
+        if state.is_split:
+            assert state.cubes is not None
+            c1, c2 = state.cubes
+            lv, mask = self.level, state.bridge_mask
+            for cx, cy in (c1, c2):
+                if not lv.has_tile(cx, cy, mask) and (cx, cy) != lv.goal:
+                    return Outcome.LOST
+            # Khối tách: an toàn trên fragile, không bao giờ rơi qua goal nhưng không thắng
+            return Outcome.CONTINUE
+
         lv, (x, y), o, mask = self.level, (state.x, state.y), state.orientation, state.bridge_mask
         gameover = won = False
 
@@ -98,8 +115,17 @@ class BloxorzProblem:
             return Outcome.LOST
         return Outcome.WON if won else Outcome.CONTINUE
 
+    def _activate_switch(self, mask: int, kind: str, x: int, y: int) -> int:
+        switch = self.level.switch_at(kind, x, y)
+        if switch.mode == "toggle":
+            return mask ^ (1 << switch.bit)
+        elif switch.mode in ("on", "permanent_on", "off", "permanent_off"):
+            # Công tắc permanent: một khi kích hoạt thì giữ nguyên trạng thái
+            return mask | (1 << switch.bit)
+        return mask
+
     def _toggle(self, mask: int, kind: str, x: int, y: int) -> int:
-        return mask ^ (1 << self.level.switch_at(kind, x, y).bit)
+        return self._activate_switch(mask, kind, x, y)
 
     def simulate(self, state: State, action: str) -> tuple[State, Outcome]:
         """Thực hiện một nước đi, trả về (trạng thái mới, kết quả).
@@ -107,6 +133,59 @@ class BloxorzProblem:
         Thứ tự giống hệt C++: lăn -> ``check`` -> (nếu chưa thắng/thua) kích hoạt
         công tắc TUẦN TỰ trên cấu hình cầu đang thay đổi -> ``check`` lại.
         """
+        if state.is_split:
+            assert state.cubes is not None
+            c_idx = int(action[0])
+            direction = action[1:]
+            dx, dy = CUBE_DELTAS[direction]
+            c_old = state.cubes[c_idx]
+            c_other = state.cubes[1 - c_idx]
+            c_new = (c_old[0] + dx, c_old[1] + dy)
+
+            # Hai cube không được trùng ô
+            if c_new == c_other:
+                return state, Outcome.LOST
+
+            s = State(0, 0, Z, state.bridge_mask, cubes=(c_new, c_other))
+            outcome = self.check(s)
+            if outcome is not Outcome.CONTINUE:
+                return s, outcome
+
+            # Kích hoạt công tắc thường bởi cube
+            lv, mask = self.level, s.bridge_mask
+            if lv.tile_type(c_new[0], c_new[1], mask) == NORMAL_SWITCH:
+                mask = self._activate_switch(mask, "normal", c_new[0], c_new[1])
+
+            if mask != s.bridge_mask:
+                s = State(0, 0, Z, mask, cubes=s.cubes)
+                if self.check(s) is Outcome.LOST:
+                    return s, Outcome.LOST
+
+            # Tự động gộp khối (Recombination) nếu 4-kề
+            assert s.cubes is not None
+            c1, c2 = s.cubes
+            dist = abs(c1[0] - c2[0]) + abs(c1[1] - c2[1])
+            if dist == 1:
+                if abs(c1[0] - c2[0]) == 1 and c1[1] == c2[1]:
+                    # Kề dọc -> gộp thành khối nằm theo trục X
+                    s = State(min(c1[0], c2[0]), c1[1], X, s.bridge_mask)
+                elif c1[0] == c2[0] and abs(c1[1] - c2[1]) == 1:
+                    # Kề ngang -> gộp thành khối nằm theo trục Y
+                    s = State(c1[0], min(c1[1], c2[1]), Y, s.bridge_mask)
+
+                # Sau khi gộp, kiểm tra kích hoạt công tắc thường dưới khối mới
+                mask = s.bridge_mask
+                for cx, cy in s.cells():
+                    if lv.tile_type(cx, cy, mask) == NORMAL_SWITCH:
+                        mask = self._activate_switch(mask, "normal", cx, cy)
+                if mask != s.bridge_mask:
+                    s = State(s.x, s.y, s.orientation, mask)
+                    if self.check(s) is Outcome.LOST:
+                        return s, Outcome.LOST
+
+            return s, Outcome.CONTINUE
+
+        # Khối nguyên lăn 1 bước
         new_o, dx, dy = TRANSITIONS[state.orientation][action]
         s = State(state.x + dx, state.y + dy, new_o, state.bridge_mask)
 
@@ -114,15 +193,22 @@ class BloxorzProblem:
         if outcome is not Outcome.CONTINUE:
             return s, outcome  # nước thắng/thua: công tắc KHÔNG được kích hoạt
 
+        # Đứng Z trên ô split switch -> tách khối và dịch chuyển
+        if new_o is Z and self.level.split_switch_at(s.x, s.y) is not None:
+            sp = self.level.split_switch_at(s.x, s.y)
+            assert sp is not None
+            s = State(0, 0, Z, s.bridge_mask, cubes=sp.targets)
+            return s, self.check(s)
+
         lv, x, y, mask = self.level, s.x, s.y, s.bridge_mask
         if lv.tile_type(x, y, mask) == NORMAL_SWITCH:
-            mask = self._toggle(mask, "normal", x, y)
+            mask = self._activate_switch(mask, "normal", x, y)
         if new_o is X and lv.tile_type(x + 1, y, mask) == NORMAL_SWITCH:
-            mask = self._toggle(mask, "normal", x + 1, y)
+            mask = self._activate_switch(mask, "normal", x + 1, y)
         if new_o is Y and lv.tile_type(x, y + 1, mask) == NORMAL_SWITCH:
-            mask = self._toggle(mask, "normal", x, y + 1)
+            mask = self._activate_switch(mask, "normal", x, y + 1)
         if new_o is Z and lv.tile_type(x, y, mask) == HEAVY_SWITCH:
-            mask = self._toggle(mask, "heavy", x, y)
+            mask = self._activate_switch(mask, "heavy", x, y)
 
         if mask != s.bridge_mask:
             s = State(x, y, new_o, mask)
@@ -131,8 +217,9 @@ class BloxorzProblem:
 
     # ------------------------------------------------- giao diện tìm kiếm
     def actions(self, state: State) -> list[str]:
-        """Các hướng đi KHÔNG làm thua, theo thứ tự cố định U, D, L, R."""
-        return [a for a in ACTIONS if self.simulate(state, a)[1] is not Outcome.LOST]
+        """Các hướng đi KHÔNG làm thua, theo thứ tự cố định."""
+        candidates = SPLIT_ACTIONS if state.is_split else ACTIONS
+        return [a for a in candidates if self.simulate(state, a)[1] is not Outcome.LOST]
 
     def result(self, state: State, action: str) -> State:
         next_state, outcome = self.simulate(state, action)
@@ -143,13 +230,16 @@ class BloxorzProblem:
     def successors(self, state: State) -> list[tuple[str, State, float]]:
         """Danh sách ``(action, next_state, cost)`` của các nước hợp lệ."""
         out = []
-        for a in ACTIONS:
+        candidates = SPLIT_ACTIONS if state.is_split else ACTIONS
+        for a in candidates:
             next_state, outcome = self.simulate(state, a)
             if outcome is not Outcome.LOST:
                 out.append((a, next_state, self.step_cost(state, a, next_state)))
         return out
 
     def is_goal(self, state: State) -> bool:
+        if state.is_split:
+            return False
         return self.check(state) is Outcome.WON
 
     def step_cost(self, state: State, action: str, next_state: State) -> float:
@@ -167,7 +257,8 @@ class BloxorzProblem:
         state, outcome = self.initial_state(), Outcome.CONTINUE
         steps = 0
         for steps, a in enumerate(moves, start=1):
-            if a not in ACTIONS:
+            valid_actions = SPLIT_ACTIONS if state.is_split else ACTIONS
+            if a not in valid_actions:
                 raise ValueError(f"Nước đi không hợp lệ: {a!r}")
             state, outcome = self.simulate(state, a)
             if outcome is not Outcome.CONTINUE:

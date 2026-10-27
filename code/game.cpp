@@ -14,6 +14,20 @@ Game::Game()
 
 int Game::check()
 {
+    if(superblock.is_split)
+    {
+        for(int k=0; k<2; k++)
+        {
+            int cx = superblock.cube_ix[k], cy = superblock.cube_iy[k];
+            if(!stage.has_tile(cx, cy))
+            {
+                gameover = true;
+                return 0;
+            }
+        }
+        return -1;
+    }
+
     int sx = superblock.ix, sy = superblock.iy;
     int tx = stage.tx, ty = stage.ty;
     int along = superblock.along;
@@ -29,7 +43,7 @@ int Game::check()
     }
     else if(along==Z)
     {
-        if(stage.tiles[sx][sy]->tile_type==fragile)//stage.get_tile_type(superblock.ix, superblock.iy) == fragile)
+        if(stage.tiles[sx][sy]->get_tile_type()==fragile)
             gameover = true;
     }
 
@@ -51,19 +65,48 @@ void Game::check_after_step()
     int p = check();
     if(p!=-1)return;
 
+    if(superblock.is_split)
+    {
+        int cx = superblock.cube_ix[superblock.active_cube];
+        int cy = superblock.cube_iy[superblock.active_cube];
+        if(stage.has_tile(cx, cy) && stage.tiles[cx][cy]->get_tile_type()==normal_bridge)
+            stage.normal_bridge_toggle(cx, cy);
+
+        if(superblock.check_recombine())
+        {
+            int sx = superblock.ix, sy = superblock.iy;
+            int along = superblock.along;
+            if(stage.has_tile(sx, sy) && stage.tiles[sx][sy]->get_tile_type()==normal_bridge)
+                stage.normal_bridge_toggle(sx, sy);
+            if(along==X && stage.has_tile(sx+1, sy) && stage.tiles[sx+1][sy]->get_tile_type()==normal_bridge)
+                stage.normal_bridge_toggle(sx+1, sy);
+            if(along==Y && stage.has_tile(sx, sy+1) && stage.tiles[sx][sy+1]->get_tile_type()==normal_bridge)
+                stage.normal_bridge_toggle(sx, sy+1);
+        }
+        return;
+    }
+
     int sx = superblock.ix, sy = superblock.iy;
     int along = superblock.along;
 
-    if(stage.has_tile(sx, sy) && stage.tiles[sx][sy]->tile_type==normal_bridge)
+    if(along==Z && stage.is_split_switch(sx, sy))
+    {
+        auto tg = stage.get_split_targets(sx, sy);
+        superblock.split(tg.first.first, tg.first.second, tg.second.first, tg.second.second);
+        check();
+        return;
+    }
+
+    if(stage.has_tile(sx, sy) && stage.tiles[sx][sy]->get_tile_type()==normal_bridge)
         stage.normal_bridge_toggle(sx, sy);
 
-    if(along==X && stage.has_tile(sx+1, sy) && stage.tiles[sx+1][sy]->tile_type==normal_bridge)
+    if(along==X && stage.has_tile(sx+1, sy) && stage.tiles[sx+1][sy]->get_tile_type()==normal_bridge)
         stage.normal_bridge_toggle(sx+1, sy);
 
-    if(along==Y && stage.has_tile(sx, sy+1) && stage.tiles[sx][sy+1]->tile_type==normal_bridge)
+    if(along==Y && stage.has_tile(sx, sy+1) && stage.tiles[sx][sy+1]->get_tile_type()==normal_bridge)
         stage.normal_bridge_toggle(sx, sy+1);
 
-    if(along==Z && stage.has_tile(sx, sy) && stage.tiles[sx][sy]->tile_type==heavy_bridge)
+    if(along==Z && stage.has_tile(sx, sy) && stage.tiles[sx][sy]->get_tile_type()==heavy_bridge)
         stage.heavy_bridge_toggle(sx, sy);
 }
 
