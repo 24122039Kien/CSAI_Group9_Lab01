@@ -87,8 +87,11 @@ void AutoPlayer::update(double now)
     char c = 'U';
     if(m.size() == 2)
     {
-        int cube = m[0] - '0';
-        superblock.active_cube = cube;
+        int target = m[0] - '0';
+        pair<int, int> c0 = {superblock.cube_ix[0], superblock.cube_iy[0]};
+        pair<int, int> c1 = {superblock.cube_ix[1], superblock.cube_iy[1]};
+        int smaller_cube = (c0 <= c1) ? 0 : 1;
+        superblock.active_cube = (target == 0) ? smaller_cube : (1 - smaller_cube);
         c = m[1];
     }
     else
