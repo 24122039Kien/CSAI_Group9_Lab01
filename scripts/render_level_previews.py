@@ -21,7 +21,7 @@ from ai.state import State
 
 DATA = ROOT / "code" / "data"
 CELL = 32
-COLORS = {0: "#111827", 1: "#CBD5E1", 2: "#F59E0B", 3: "#34D399", 4: "#C4B5FD"}
+COLORS = {0: "#111827", 1: "#CBD5E1", 2: "#F59E0B", 3: "#34D399", 4: "#C4B5FD", 5: "#38BDF8"}
 
 
 def font(size):
