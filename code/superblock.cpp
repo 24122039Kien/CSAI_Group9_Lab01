@@ -21,11 +21,6 @@ SuperBlock::SuperBlock(glm::vec3 pos, glm::vec3 dim, Color c, int a)
 
 glm::vec3 SuperBlock::get_real_pos()
 {
-    if(is_split)
-    {
-        float l = tile_side_length;
-        return glm::vec3(cube_ix[active_cube] * l + l/2.0f, cube_iy[active_cube] * l + l/2.0f, l/2.0f);
-    }
     return real_pos;
 }
 
@@ -49,6 +44,10 @@ void SuperBlock::initialize(glm::vec3 pos, glm::vec3 dim, Color c, int a)
     model = glm::mat4(1.0f);
     is_split = false;
     active_cube = 0;
+    falling_cube = -1;
+    buffered_move = 0;
+    cube_model[0] = glm::mat4(1.0f);
+    cube_model[1] = glm::mat4(1.0f);
 }
 
 void SuperBlock::update(float dt)
@@ -71,10 +70,20 @@ void SuperBlock::update(float dt)
             cube_pos[active_cube] = glm::vec3(cube_ix[active_cube] * l + l/2.0f,
                                               cube_iy[active_cube] * l + l/2.0f,
                                               l/2.0f);
+            real_pos = glm::vec3(cube_ix[active_cube] * l + l/2.0f,
+                                 cube_iy[active_cube] * l + l/2.0f,
+                                 0.0f);
 
             rot_dir = NO;
             game.check_after_step();
             land_dust();
+
+            if(buffered_move != 0 && !game.is_gameover() && !game.is_won() && !is_moving())
+            {
+                int next_m = buffered_move;
+                buffered_move = 0;
+                move(next_m);
+            }
             return;
         }
 
@@ -163,6 +172,13 @@ void SuperBlock::update(float dt)
         rot_dir = NO;
         game.check_after_step();
         land_dust();
+
+        if(buffered_move != 0 && !game.is_gameover() && !game.is_won() && !is_moving())
+        {
+            int next_m = buffered_move;
+            buffered_move = 0;
+            move(next_m);
+        }
     }
 }
 
@@ -193,16 +209,17 @@ void SuperBlock::draw(glm::mat4 M)
         glm::vec3 default_col = (color.r > 0.01f || color.g > 0.01f || color.b > 0.01f)
                               ? glm::vec3(color.r, color.g, color.b)
                               : col(BLOCK_COLOR);
+        double now = glfwGetTime();
 
         for(int k=0; k<2; k++)
         {
             bool is_active = (k == active_cube);
-            // Khối được chọn có màu vàng kim sáng (golden amber) nổi bật,
-            // khối chưa được chọn có màu đỏ gạch mặc định của khối 1x1x2 ban đầu.
             glm::vec3 c_col = is_active ? glm::vec3(1.0f, 0.85f, 0.20f) : default_col;
             BoxStyle s(c_col, PAT_PLAIN, is_active ? 0.35f : 0.04f);
 
             glm::vec3 P0(cube_ix[k] * l, cube_iy[k] * l, 0.0f);
+            glm::mat4 box(1.0f);
+
             if(is_active && rot_dir != NO)
             {
                 glm::vec3 pivot(0.0f);
@@ -236,13 +253,37 @@ void SuperBlock::draw(glm::mat4 M)
                 glm::mat4 T1 = glm::translate(pivot);
                 glm::mat4 Rmat = glm::rotate(glm::mat4(1.0f), float(angle * M_PI / 180.0f), axis);
                 glm::mat4 T2 = glm::translate(-pivot);
-                glm::mat4 box = T1 * Rmat * T2 * glm::translate(P0) * glm::scale(csize);
-                renderer.draw_box(box, csize, s);
+                box = T1 * Rmat * T2 * glm::translate(P0) * glm::scale(csize);
+
+                glm::vec3 current_center = glm::vec3(box * glm::vec4(0.5f, 0.5f, 0.5f, 1.0f));
+                real_pos = current_center;
+                real_pos.z = 0.0f;
             }
             else
             {
-                renderer.draw_aabb(P0, csize, s);
+                box = glm::translate(P0) * glm::scale(csize);
+                if(is_active && rot_dir == NO && end_anim == END_NONE)
+                {
+                    real_pos = glm::vec3(P0.x + l/2.0f, P0.y + l/2.0f, 0.0f);
+                }
             }
+
+            // Hiệu ứng rơi khi thua (END_FALL)
+            glm::mat4 fx(1.0f);
+            float dz = 0.0f;
+            if(end_anim == END_FALL && k == falling_cube)
+            {
+                float t = float(now - end_start);
+                glm::vec3 c = glm::vec3(box * glm::vec4(0.5f, 0.5f, 0.5f, 1.0f));
+                glm::vec3 drift = glm::vec3(fall_dir * min(t, 1.5f) * 0.9f, 0.0f);
+                glm::vec3 axis = glm::cross(glm::vec3(0, 0, 1), glm::vec3(fall_dir, 0.0f));
+                float angle = min(t * 3.5f, 2.0f);
+                fx = glm::translate(c + drift) * glm::rotate(angle, axis) * glm::translate(-c);
+                dz -= 8.0f * t * t;
+            }
+
+            cube_model[k] = glm::translate(glm::vec3(0, 0, dz)) * fx * box;
+            renderer.draw_box(cube_model[k], csize, s);
         }
         return;
     }
@@ -401,29 +442,38 @@ void SuperBlock::draw(glm::mat4 M)
 // Bóng mềm dưới khối (vẽ trong lượt trong suốt, sau khi đã vẽ sàn).
 void SuperBlock::draw_shadow()
 {
-    if(end_anim == END_FALL)
+    if(end_anim == END_FALL && !is_split)
         return;
+
     if(is_split)
     {
-        float l = tile_side_length;
-        float pad = 0.15f;
-        BoxStyle s(glm::vec3(0.0f), PAT_SHADOW, 0.0f, 0.5f);
+        double now = glfwGetTime();
         for(int k=0; k<2; k++)
         {
-            float x = cube_ix[k] * l;
-            float y = cube_iy[k] * l;
-            float sx = l;
-            float sy = l;
-            if(k == active_cube && rot_dir != NO)
+            if(end_anim == END_FALL && k == falling_cube)
             {
-                float prog = done_rotation / 90.0f;
-                if(rot_dir == R) { sx = l * (1.0f + prog); }
-                else if(rot_dir == L) { x -= l * prog; sx = l * (1.0f + prog); }
-                else if(rot_dir == U) { sy = l * (1.0f + prog); }
-                else if(rot_dir == D) { y -= l * prog; sy = l * (1.0f + prog); }
+                float t = float(now - end_start);
+                if(t > 0.35f) continue;
             }
-            renderer.draw_aabb(glm::vec3(x - pad, y - pad, 0.004f),
-                               glm::vec3(sx + 2*pad, sy + 2*pad, 0.001f), s);
+            glm::vec3 lo(1e9f), hi(-1e9f);
+            for(int c=0; c<8; c++)
+            {
+                glm::vec4 p = cube_model[k] * glm::vec4(float(c&1), float((c>>1)&1), float((c>>2)&1), 1.0f);
+                lo = glm::min(lo, glm::vec3(p));
+                hi = glm::max(hi, glm::vec3(p));
+            }
+            float height = max(0.0f, lo.z);
+            float alpha = 0.6f * clamp01(1.0f - height / 6.0f);
+            if(end_anim == END_FALL && k == falling_cube)
+            {
+                alpha *= clamp01(1.0f - float(now - end_start) / 0.35f);
+            }
+            if(alpha <= 0.01f)
+                continue;
+            float pad = 0.15f + 0.05f * height;
+            BoxStyle s(glm::vec3(0.0f), PAT_SHADOW, 0.0f, alpha);
+            renderer.draw_aabb(glm::vec3(lo.x - pad, lo.y - pad, 0.004f),
+                               glm::vec3(hi.x - lo.x + 2*pad, hi.y - lo.y + 2*pad, 0.001f), s);
         }
         return;
     }
@@ -460,6 +510,24 @@ void SuperBlock::start_fall(double now)
     else if(last_dir==L) d = glm::vec2(-1, 0);
     else if(last_dir==U) d = glm::vec2(0, 1);
     else if(last_dir==D) d = glm::vec2(0, -1);
+
+    if(is_split)
+    {
+        falling_cube = active_cube;
+        for(int k=0; k<2; k++)
+        {
+            if(!stage.has_tile(cube_ix[k], cube_iy[k]))
+            {
+                falling_cube = k;
+                break;
+            }
+        }
+        fall_dir = d;
+        end_anim = END_FALL;
+        end_start = now;
+        return;
+    }
+
     if(along==X)
     {
         bool a = stage.has_tile(ix, iy), b = stage.has_tile(ix+1, iy);
@@ -484,7 +552,11 @@ bool SuperBlock::is_moving()
 
 void SuperBlock::move(int m)
 {
-    if(rot_dir!=NO)return;
+    if(rot_dir!=NO)
+    {
+        buffered_move = m;
+        return;
+    }
 
     if(is_split)
     {
@@ -544,18 +616,25 @@ void SuperBlock::split(int x1, int y1, int x2, int y2)
 {
     is_split = true;
     active_cube = 0;
+    falling_cube = -1;
+    buffered_move = 0;
     cube_ix[0] = x1; cube_iy[0] = y1;
     cube_ix[1] = x2; cube_iy[1] = y2;
     float l = tile_side_length;
     cube_pos[0] = glm::vec3(x1 * l + l/2.0f, y1 * l + l/2.0f, l/2.0f);
     cube_pos[1] = glm::vec3(x2 * l + l/2.0f, y2 * l + l/2.0f, l/2.0f);
+    cube_model[0] = glm::translate(glm::vec3(x1 * l, y1 * l, 0.0f)) * glm::scale(glm::vec3(l, l, l));
+    cube_model[1] = glm::translate(glm::vec3(x2 * l, y2 * l, 0.0f)) * glm::scale(glm::vec3(l, l, l));
+    real_pos = glm::vec3(x1 * l + l/2.0f, y1 * l + l/2.0f, 0.0f);
 }
 
 void SuperBlock::switch_active_cube()
 {
-    if(is_split && rot_dir == NO)
+    if(is_split && rot_dir == NO && end_anim == END_NONE)
     {
         active_cube = 1 - active_cube;
+        float l = tile_side_length;
+        real_pos = glm::vec3(cube_ix[active_cube] * l + l/2.0f, cube_iy[active_cube] * l + l/2.0f, 0.0f);
     }
 }
 

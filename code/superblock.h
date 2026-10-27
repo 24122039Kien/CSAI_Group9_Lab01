@@ -23,8 +23,11 @@ class SuperBlock
     public:
         bool is_split;
         int active_cube;
+        int falling_cube;
         int cube_ix[2], cube_iy[2];
         glm::vec3 cube_pos[2];
+        glm::mat4 cube_model[2];
+        int buffered_move;
 
         friend class Game;
         SuperBlock();
