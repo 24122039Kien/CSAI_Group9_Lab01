@@ -4,10 +4,12 @@ Ví dụ:
     python main.py code/data/1.data --algo astar
     python main.py code/data/2.data --algo bfs --out solution.txt
     python main.py code/data/1.data --compare --memory
+    python main.py code/data/5.data --algo bfs --trace trace.txt --stats stats.txt
 
 Mã thoát: 0 tìm được lời giải, 1 không có lời giải, 2 solver chưa cài,
 3 lời giải sai luật (bug), 4 lỗi đọc màn chơi.
-Game C++ (``code/autoplay.cpp``) gọi CLI này với ``--out`` rồi tự phát lại lời giải.
+Game C++ (``code/autoplay.cpp``) gọi CLI này với ``--out`` rồi tự phát lại lời giải;
+``--stats`` ghi 4 chỉ số cho bảng AI trong game, ``--trace`` ghi cây tìm kiếm cho nút Visualize.
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ from pathlib import Path
 from ai import BloxorzProblem, Level
 from ai.heuristics import HEURISTICS
 from ai.solvers import SOLVERS, SearchResult
+from ai.tracing import TracingProblem
 
 EXIT_OK, EXIT_NO_SOLUTION, EXIT_NOT_IMPLEMENTED, EXIT_INVALID, EXIT_BAD_LEVEL = 0, 1, 2, 3, 4
 
@@ -40,6 +43,36 @@ def run_one(name: str, problem: BloxorzProblem, heuristic: str, memory: bool) ->
     if result.found and not problem.is_valid_solution(result.path):
         result.status = "invalid"
     return result
+
+
+def run_traced(name: str, problem: BloxorzProblem, heuristic: str, path: str, limit: int) -> SearchResult:
+    """Chạy solver trên bài toán được bọc ``TracingProblem`` rồi ghi cây tìm kiếm ra ``path``."""
+    traced = TracingProblem(problem, heuristic=HEURISTICS[heuristic] if name == "astar" else None,
+                            relax=name in ("ucs", "astar"), limit=limit)
+    try:
+        result = make_solver(name, traced, heuristic).run()
+    except NotImplementedError as exc:
+        return SearchResult(algorithm=name, status="not_implemented", extra={"message": str(exc)})
+    if result.found and not problem.is_valid_solution(result.path):
+        result.status = "invalid"
+    traced.write(path, name, heuristic if name == "astar" else "-", result.path if result.found else None)
+    return result
+
+
+def write_stats(path: str, result: SearchResult) -> None:
+    """4 chỉ số đề yêu cầu (+ vài chỉ số phụ) dạng ``khóa giá_trị`` cho HUD của game."""
+    fields = {
+        "algorithm": result.algorithm,
+        "status": result.status,
+        "length": result.solution_length if result.found else -1,
+        "cost": f"{result.cost:g}" if result.cost is not None else -1,
+        "expanded": result.nodes_expanded,
+        "generated": result.nodes_generated,
+        "frontier": result.max_frontier,
+        "time_ms": f"{result.time_ms:.3f}",
+        "memory_kb": f"{result.peak_memory_kb:.1f}" if result.peak_memory_kb is not None else -1,
+    }
+    Path(path).write_text("".join(f"{k} {v}\n" for k, v in fields.items()), encoding="utf-8")
 
 
 def describe(result: SearchResult) -> str:
@@ -89,6 +122,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", help="ghi chuỗi nước đi (vd 'R U U R') ra file này")
     parser.add_argument("--compare", action="store_true", help="chạy tất cả thuật toán và in bảng so sánh")
     parser.add_argument("--memory", action="store_true", help="đo thêm bộ nhớ đỉnh (lượt chạy riêng)")
+    parser.add_argument("--stats", help="ghi các chỉ số (thời gian, bộ nhớ, node, độ dài) ra file này")
+    parser.add_argument("--trace", help="ghi cây tìm kiếm (thứ tự mở rộng) ra file này cho nút Visualize")
+    parser.add_argument("--trace-limit", type=int, default=3000, help="số lần mở rộng tối đa được ghi vào --trace")
     args = parser.parse_args(argv)
 
     try:
@@ -104,8 +140,13 @@ def main(argv: list[str] | None = None) -> int:
         print_table(results)
         return EXIT_OK
 
-    result = run_one(args.algo, problem, args.heuristic, args.memory)
+    if args.trace:
+        result = run_traced(args.algo, problem, args.heuristic, args.trace, args.trace_limit)
+    else:
+        result = run_one(args.algo, problem, args.heuristic, args.memory or bool(args.stats))
     print(describe(result))
+    if args.stats:
+        write_stats(args.stats, result)
     if result.status == "not_implemented":
         return EXIT_NOT_IMPLEMENTED
     if result.status == "invalid":
