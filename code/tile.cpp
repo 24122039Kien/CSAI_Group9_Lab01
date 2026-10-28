@@ -4,6 +4,7 @@
 #include "controls.h"
 #include "effects.h"
 #include "audio.h"
+#include "render.h"
 
 float tile_side_length = 1.0f;
 float tile_height = 0.2f;
@@ -232,6 +233,7 @@ void Floor::draw(double now)
                 continue;
             float dz = effects.tile_drop(i, j, n, m, now);
             float grow = 1.0f;
+            float flash = 0.0f;   // cầu vừa mở: nháy xanh (game gốc cho ô cầu nháy khi bật/tắt)
             map<int, double>::iterator it = appear_time.find(i*m+j);
             if(it != appear_time.end())
             {
@@ -242,6 +244,7 @@ void Floor::draw(double now)
                 {
                     grow = 0.3f + 0.7f*ease_out_bounce(t);
                     dz -= (1.0f - ease_out_cubic(t)) * 0.8f;
+                    flash = (1.0f - t) * (0.6f + 0.4f*cos(t * 18.0f));
                 }
             }
             float side = (l - 2*TILE_GAP) * grow;
@@ -249,15 +252,21 @@ void Floor::draw(double now)
             dz += collapse_offset(i, j, now, spin);
             glm::vec3 pos(i*l + (l-side)/2, j*l + (l-side)/2, -tile_height + dz);
             glm::vec3 size(side, side, tile_height);
+            BoxStyle st = tile_style(i, j);
+            if(flash > 0.0f)
+            {
+                st.color = glm::mix(st.color, glm::vec3(0.30f, 1.0f, 0.40f), 0.6f*flash);
+                st.emissive += 0.6f*flash;
+            }
             if(spin == 0.0f)
-                renderer.draw_aabb(pos, size, tile_style(i, j));
+                renderer.draw_aabb(pos, size, st);
             else
             {
                 // Ô đang sụp: lật nhẹ quanh tâm khi rơi.
                 glm::vec3 c = pos + size * 0.5f;
                 glm::vec3 axis = glm::normalize(glm::vec3(((i*7+j*3)&1) ? 1.0f : -0.6f, ((i+j*5)&1) ? 0.8f : -1.0f, 0.0f));
                 renderer.draw_box(glm::translate(c) * glm::rotate(spin, axis) * glm::translate(-size * 0.5f) * glm::scale(size),
-                                  size, tile_style(i, j));
+                                  size, st);
             }
         }
 
@@ -266,19 +275,20 @@ void Floor::draw(double now)
     float goal_spin = 0.0f;
     float gx = tx*l, gy = ty*l, dz = effects.tile_drop(tx, ty, n, m, now) + collapse_offset(tx, ty, now, goal_spin);
     float w = 0.07f, h = 0.03f;
-    BoxStyle frame(col(GOAL_COLOR), PAT_PLAIN, 0.6f + 0.6f*pulse);
+    bool orig = renderer.theme == THEME_ORIGINAL;   // game gốc: lỗ đích chỉ là một ô trống tối, không phát sáng
+    BoxStyle frame(orig ? glm::vec3(0.25f, 0.23f, 0.21f) : col(GOAL_COLOR), PAT_PLAIN, orig ? 0.0f : 0.6f + 0.6f*pulse);
     frame.material = MAT_GOAL;
     renderer.draw_aabb(glm::vec3(gx - w, gy - w, dz), glm::vec3(l + 2*w, w, h), frame);
     renderer.draw_aabb(glm::vec3(gx - w, gy + l, dz), glm::vec3(l + 2*w, w, h), frame);
     renderer.draw_aabb(glm::vec3(gx - w, gy, dz), glm::vec3(w, l, h), frame);
     renderer.draw_aabb(glm::vec3(gx + l, gy, dz), glm::vec3(w, l, h), frame);
-    BoxStyle pit(glm::vec3(0.03f, 0.05f, 0.08f));
+    BoxStyle pit(orig ? glm::vec3(0.16f, 0.13f, 0.09f) : glm::vec3(0.03f, 0.05f, 0.08f));
     float depth = 1.2f, t = 0.02f;
     renderer.draw_aabb(glm::vec3(gx - t, gy - t, -depth + dz), glm::vec3(l + 2*t, t, depth - 0.01f), pit);
     renderer.draw_aabb(glm::vec3(gx - t, gy + l, -depth + dz), glm::vec3(l + 2*t, t, depth - 0.01f), pit);
     renderer.draw_aabb(glm::vec3(gx - t, gy, -depth + dz), glm::vec3(t, l, depth - 0.01f), pit);
     renderer.draw_aabb(glm::vec3(gx + l, gy, -depth + dz), glm::vec3(t, l, depth - 0.01f), pit);
-    BoxStyle bottom(col(GOAL_COLOR) * 0.25f, PAT_PLAIN, 0.3f*pulse);
+    BoxStyle bottom(orig ? glm::vec3(0.07f, 0.05f, 0.03f) : col(GOAL_COLOR) * 0.25f, PAT_PLAIN, orig ? 0.0f : 0.3f*pulse);
     renderer.draw_aabb(glm::vec3(gx, gy, -depth + dz), glm::vec3(l, l, 0.05f), bottom);
 }
 
@@ -302,11 +312,14 @@ void Floor::draw_transparent(double now)
         renderer.draw_box(model, glm::vec3(l, l, tile_height), s);
     }
 
-    // Cột sáng mờ phía trên lỗ đích để nhìn thấy mục tiêu từ xa.
-    float pulse = 0.5f + 0.5f*sin(float(now)*2.0f);
-    BoxStyle beam(col(GOAL_COLOR), PAT_PLAIN, 0.8f, 0.05f + 0.04f*pulse);
-    beam.unlit = true;
-    renderer.draw_aabb(glm::vec3(tx*l + 0.1f, ty*l + 0.1f, 0.0f), glm::vec3(l - 0.2f, l - 0.2f, 3.0f), beam);
+    // Cột sáng mờ phía trên lỗ đích để nhìn thấy mục tiêu từ xa (theme Original: không có, như game gốc).
+    if(renderer.theme != THEME_ORIGINAL)
+    {
+        float pulse = 0.5f + 0.5f*sin(float(now)*2.0f);
+        BoxStyle beam(col(GOAL_COLOR), PAT_PLAIN, 0.8f, 0.05f + 0.04f*pulse);
+        beam.unlit = true;
+        renderer.draw_aabb(glm::vec3(tx*l + 0.1f, ty*l + 0.1f, 0.0f), glm::vec3(l - 0.2f, l - 0.2f, 3.0f), beam);
+    }
 
     // Bỏ các ô đã rơi xong.
     for(size_t k=0; k<ghosts.size(); )
@@ -420,6 +433,8 @@ void Floor::toggle(int a, int b)
     {
         audio_play(SFX_BRIDGE_OFF);
         make_ghost(a, b, 1.5f);
+        ghosts.back().style.color = glm::mix(ghosts.back().style.color, glm::vec3(1.0f, 0.25f, 0.15f), 0.6f);   // nháy đỏ khi đóng
+        ghosts.back().style.emissive += 0.4f;
         delete tiles[a][b];
         tiles[a][b] = NULL;
         appear_time.erase(a*m+b);

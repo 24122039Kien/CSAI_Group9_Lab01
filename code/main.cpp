@@ -54,6 +54,8 @@ bool show_minimap = true;
 bool show_help = true;
 bool show_ai_panel = true;
 int fall_count = 0;
+double level_started_at = 0.0;
+map<int, int> best_moves;
 float music_volume = 0.35f, sfx_volume = 0.8f;
 static double restart_at = -1.0;           // > 0: tự chơi lại màn lúc này (sau khi rơi, như game gốc)
 static const double FALL_RESTART_SECONDS = 1.6;
@@ -82,6 +84,7 @@ static std::atomic<bool> solver_done(false);
 static std::atomic<int> solver_status(0);
 static bool pending_autoplay = false;     // có lời giải chờ phát sau hiệu ứng mở màn
 static bool screenshot_requested = false;
+static bool gfx_in_settings = false;      // settings.ini đã ghi rõ bật/tắt bóng đổ + bloom
 
 struct GLMatrices Matrices;
 GLFWwindow* window;
@@ -164,10 +167,11 @@ void app_start_level(int lv)
     pending_autoplay = false;
     replay_label = "";
     effects.start_intro(glfwGetTime());
+    level_started_at = glfwGetTime();
     int w, h;
     glfwGetFramebufferSize(window, &w, &h);
     reshapeWindow(window, w, h);                 // phép chiếu song song theo kích thước màn mới
-    camera.change_view(camera.get_view_type());  // camera "tower" tính lại theo màn mới
+    camera.level_loaded();                       // camera tower/bám khối tính lại theo màn mới
     menu_open = false;
     audio_play(SFX_START, 0.8f);
 }
@@ -281,9 +285,16 @@ static void load_settings()
         else if(key == "effects") in >> effects.enabled;
         else if(key == "ai_panel") in >> show_ai_panel;
         else if(key == "heuristic") in >> solve_heuristic;
+        else if(key == "shadows") { in >> renderer.shadows; gfx_in_settings = true; }
+        else if(key == "bloom") { in >> renderer.bloom; gfx_in_settings = true; }
+        else if(key == "best")
+        {
+            int lv = 0, mv = 0;
+            if(in >> lv >> mv) best_moves[lv] = mv;
+        }
         else { string skip; getline(in, skip); }
     }
-    if(renderer.theme != THEME_MINECRAFT) renderer.theme = THEME_CLASSIC;
+    if(renderer.theme < 0 || renderer.theme >= THEME_COUNT) renderer.theme = THEME_CLASSIC;
     if(solve_heuristic != "zero") solve_heuristic = "manhattan";
 }
 
@@ -295,12 +306,15 @@ void app_save_settings()
     fprintf(f, "theme %d\nmusic %.2f\nsfx %.2f\nminimap %d\nhints %d\neffects %d\nai_panel %d\nheuristic %s\n",
             renderer.theme, music_volume, sfx_volume, (int)show_minimap, (int)show_help, (int)effects.enabled,
             (int)show_ai_panel, solve_heuristic.c_str());
+    fprintf(f, "shadows %d\nbloom %d\n", (int)renderer.shadows, (int)renderer.bloom);
+    for(map<int, int>::iterator it = best_moves.begin(); it != best_moves.end(); ++it)
+        fprintf(f, "best %d %d\n", it->first, it->second);   // kỷ lục số bước khi tự chơi thắng
     fclose(f);
 }
 
 void app_set_theme(int t)
 {
-    renderer.theme = t == THEME_MINECRAFT ? THEME_MINECRAFT : THEME_CLASSIC;
+    renderer.theme = (t >= 0 && t < THEME_COUNT) ? t : THEME_CLASSIC;
     hud_apply_theme(renderer.theme);
 }
 
@@ -392,8 +406,17 @@ static void on_game_end(int result, double now)
     {
         superblock.start_sink(now);
         glm::vec3 goal(stage.tx*tile_side_length + 0.5f, stage.ty*tile_side_length + 0.5f, 0.2f);
-        effects.burst(goal, col(GOAL_COLOR), 140, 2.6f);
+        glm::vec3 spark = renderer.theme == THEME_ORIGINAL ? glm::vec3(1.0f, 0.62f, 0.20f) : col(GOAL_COLOR);
+        effects.burst(goal, spark, 140, 2.6f);
         audio_play(SFX_WIN);
+        // Kỷ lục chỉ tính khi người chơi tự thắng (không phải solver phát lại).
+        if(!cli_mode && autoplayer.played() == 0)
+        {
+            map<int, int>::iterator it = best_moves.find(level);
+            if(it == best_moves.end() || game.get_steps() < it->second)
+                best_moves[level] = game.get_steps();
+            app_save_settings();
+        }
     }
     else
     {
@@ -416,6 +439,7 @@ static void on_game_end(int result, double now)
 // Logic mỗi frame (thứ tự giữ như bản gốc: camera -> autoplay -> lăn khối -> kiểm tra thắng/thua).
 static void update_game(double now, float dt)
 {
+    camera.set_cinematic(menu_open && !cli_mode);   // màn hình chính: camera quay chậm quanh màn
     camera.update(dt);
     viz_update(now);
     if(paused)
@@ -470,9 +494,11 @@ static void render_scene(int x, int y, int w, int h, bool minimap, double now)
     {
         // Phép chiếu theo đúng tỉ lệ vùng vẽ (vùng 3D hẹp lại khi mở Visualizer).
         float aspect = float(w) / float(h);
-        P = proj_type ? glm::perspective(glm::radians(75.0f), aspect, nearr, farr) : ortho_fit(aspect);
+        bool persp = proj_type || (menu_open && !cli_mode);
+        P = persp ? glm::perspective(glm::radians(menu_open ? 60.0f : 75.0f), aspect, nearr, farr)
+                  : ortho_fit(aspect, camera.get_ortho_zoom());
         V = camera.get_view();
-        if(proj_type)
+        if(persp)
         {
             eye = camera.get_eye();
             fog_near = 14.0f;
@@ -480,18 +506,18 @@ static void render_scene(int x, int y, int w, int h, bool minimap, double now)
         }
     }
 
-    renderer.begin(P * V, eye, float(now), fog_near, fog_far);
+    renderer.begin(P * V, eye, float(now), fog_near, fog_far, !minimap);
     stage.draw(now);
     if(!viz_is_open())
         superblock.draw(world_model);
-    renderer.flush();
+    renderer.flush_opaque();   // cảnh chính: ghi shadow map từ chính lô này rồi vẽ có bóng
 
     // Lượt trong suốt: không ghi depth để các lớp mờ chồng lên nhau đúng.
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthMask(GL_FALSE);
-    if(!viz_is_open())
-        superblock.draw_shadow();
+    if(!viz_is_open() && !renderer.shadows_active())
+        superblock.draw_shadow();   // bóng mềm giả chỉ dùng khi tắt bóng đổ thật (và ở bản đồ nhỏ)
     stage.draw_transparent(now);
     effects.draw();
     viz_draw_board();
@@ -509,6 +535,7 @@ static void render_frame(double now)
 
     renderer.draw_calls = 0;
     renderer.boxes = 0;
+    renderer.begin_frame(fbw, fbh);   // bật bloom: vẽ cảnh vào framebuffer HDR riêng
     glViewport(0, 0, fbw, fbh);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -517,18 +544,25 @@ static void render_frame(double now)
     int scene_w = viz ? int(fbw * 0.52f) : fbw;   // Visualizer chiếm phần bên phải
     render_scene(0, 0, scene_w, fbh, false, now);
 
-    if(show_minimap && !viz)
+    if(show_minimap && !viz && !menu_open)
     {
         // Bản đồ nhỏ góc dưới trái (bản gốc: luôn bật, chiếm 30% cửa sổ). Viền + nền riêng bằng scissor.
         int s = int(0.26f * min(fbw, fbh));
         int x0 = 14, y0 = 14, b = 2;
         glEnable(GL_SCISSOR_TEST);
         glScissor(x0 - b, y0 - b, s + 2*b, s + 2*b);
-        glClearColor(0.12f, 0.35f, 0.50f, 1.0f);
+        if(renderer.theme == THEME_ORIGINAL)
+            glClearColor(0.85f, 0.45f, 0.15f, 1.0f);   // viền cam như bảng HUD
+        else if(renderer.theme == THEME_MINECRAFT)
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        else
+            glClearColor(0.12f, 0.35f, 0.50f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         glScissor(x0, y0, s, s);
         if(renderer.theme == THEME_MINECRAFT)
             glClearColor(0.42f, 0.60f, 0.95f, 1.0f);   // bản đồ nhỏ: nền trời
+        else if(renderer.theme == THEME_ORIGINAL)
+            glClearColor(0.30f, 0.05f, 0.02f, 1.0f);
         else
             glClearColor(0.015f, 0.02f, 0.045f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -536,6 +570,7 @@ static void render_frame(double now)
         render_scene(x0, y0, s, s, true, now);
     }
 
+    renderer.end_frame(fbw, fbh);     // bloom + ghép ra màn hình (HUD vẽ đè sau)
     glViewport(0, 0, fbw, fbh);
     last_draw_calls = renderer.draw_calls;
     last_boxes = renderer.boxes;
@@ -637,10 +672,11 @@ static void usage(const char *prog)
          << "  --camera <c|v|b|x|n|m>  start with this camera view" << endl
          << "  --shot <sec> <file.png> save a screenshot at <sec> seconds (repeatable)" << endl
          << "  --quit-after <sec>      close the window after <sec> seconds" << endl
-         << "  --theme <classic|minecraft>  start with this visual theme" << endl
+         << "  --theme <classic|original|minecraft>  start with this visual theme" << endl
+         << "  --no-shadows / --no-bloom  turn off real shadows / bloom post-processing" << endl
          << "  --visualize <algo>      open the search visualizer for this algorithm at start" << endl
          << "  --mute                  no sound" << endl
-         << "  --ui <menu|pause|options>  open this panel at start (screenshots)" << endl
+         << "  --ui <menu|levels|settings|howto|credits|pause|options>  open this panel at start (screenshots)" << endl
          << "  --keep-open             with --play: replay in normal game mode (falls restart, no exit)" << endl
          << "Python interpreter: $BLOXORZ_PYTHON (default python3, or python / py -3 on Windows)." << endl;
 }
@@ -682,6 +718,7 @@ int main (int argc, char** argv)
 
     string solve_algo_arg, play_file, camera_arg, theme_arg, visualize_arg, ui_arg;
     bool level_given = false, vsync = true, no_menu = false, mute = false, keep_open = false;
+    bool no_shadows = false, no_bloom = false;
     double quit_after = -1.0;
     vector<pair<double, string> > shots;
     for(int i=1; i<argc; i++)
@@ -711,6 +748,10 @@ int main (int argc, char** argv)
             visualize_arg = argv[++i];
         else if(arg=="--mute")
             mute = true;
+        else if(arg=="--no-shadows")
+            no_shadows = true;
+        else if(arg=="--no-bloom")
+            no_bloom = true;
         else if(arg=="--ui" && i+1<argc)
             ui_arg = argv[++i];
         else if(arg=="--keep-open")
@@ -761,10 +802,15 @@ int main (int argc, char** argv)
         solve_algo = solve_algo_arg;
     }
 
+    renderer.shadows = true;
+    renderer.bloom = true;
     if(!cli_mode)
         load_settings();
     if(theme_arg == "minecraft") renderer.theme = THEME_MINECRAFT;
     else if(theme_arg == "classic") renderer.theme = THEME_CLASSIC;
+    else if(theme_arg == "original") renderer.theme = THEME_ORIGINAL;
+    if(no_shadows) renderer.shadows = false;
+    if(no_bloom) renderer.bloom = false;
     audio_init(!mute);
     app_apply_volumes();
 
@@ -778,9 +824,22 @@ int main (int argc, char** argv)
     proj_type = 1;
 
     window = initGLFW(width, height, vsync);
+    // Driver vẽ bằng CPU (WSLg llvmpipe, máy ảo...): mặc định tắt bóng đổ + bloom để giữ FPS,
+    // trừ khi người chơi đã tự bật trong Options (settings.ini).
+    string gpu_lower = gpu_name;
+    for(size_t k=0; k<gpu_lower.size(); k++) gpu_lower[k] = (char)tolower((unsigned char)gpu_lower[k]);
+    bool software_gl = gpu_lower.find("llvmpipe") != string::npos || gpu_lower.find("softpipe") != string::npos
+                    || gpu_lower.find("swiftshader") != string::npos || gpu_lower.find("software") != string::npos;
+    if(software_gl && !gfx_in_settings)
+    {
+        renderer.shadows = false;
+        renderer.bloom = false;
+    }
     initGL (window, width, height);
     hud_init(window);   // sau khi đặt callback: ImGui gọi tiếp callback của game
     hud_apply_theme(renderer.theme);
+    camera.level_loaded();
+    level_started_at = glfwGetTime();
 
     if(!camera_arg.empty())
         camera.change_view(GLFW_KEY_A + (toupper(camera_arg[0]) - 'A'));
@@ -799,6 +858,11 @@ int main (int argc, char** argv)
         app_visualize(visualize_arg);
     }
     if(!cli_mode && ui_arg == "menu") menu_open = true;
+    if(!cli_mode && (ui_arg == "levels" || ui_arg == "settings" || ui_arg == "howto" || ui_arg == "credits"))
+    {
+        menu_open = true;
+        hud_open_page(ui_arg);
+    }
     if(!cli_mode && (ui_arg == "pause" || ui_arg == "options")) { menu_open = false; paused = true; options_open = ui_arg == "options"; }
 
     double start_time = glfwGetTime();

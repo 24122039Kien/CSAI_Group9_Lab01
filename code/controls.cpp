@@ -8,7 +8,7 @@
 #include "hud.h"
 #include "viz.h"
 
-glm::mat4 ortho_fit(float aspect);
+glm::mat4 ortho_fit(float aspect, float zoom = 1.0f);
 
 int proj_type;
 float nearr = 0.1f;
@@ -89,7 +89,7 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
                 break;
             case GLFW_KEY_ENTER:
             case GLFW_KEY_KP_ENTER:
-                if(!cli_mode && game_result == 1)
+                if(!cli_mode && !menu_open && game_result == 1)
                     app_next_level();
                 break;
         	default:
@@ -104,7 +104,10 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
         	    if(cli_mode)
         	        quit(window);
         	    else if(menu_open)
-        	        app_toggle_menu();      // đóng màn hình chọn màn, quay lại ván đang chơi
+        	    {
+        	        if(!hud_menu_back())    // đang ở trang con (chọn màn, Options...): về trang đầu
+        	            app_toggle_menu();  // đóng màn hình chính, quay lại ván đang chơi
+        	    }
         	    else
         	        app_toggle_pause();     // trong màn: Esc = Pause (đang mở Visualizer thì đóng nó)
         	    break;
@@ -145,38 +148,11 @@ void keyboardChar (GLFWwindow* window, unsigned int key)
 /* Executed when a mouse button is pressed/released */
 void mouseButton (GLFWwindow* window, int button, int action, int mods)
 {
-    if (hud_wants_mouse())
+    // Nhả nút luôn chuyển cho camera (kể cả khi đang ở trên bảng ImGui) để không bị kẹt chế độ kéo.
+    if (action == GLFW_PRESS && hud_wants_mouse())
         return;
-
-	if(action == GLFW_RELEASE)
-    {
-        switch (button)
-        {
-            case GLFW_MOUSE_BUTTON_LEFT:
-            camera.left_button_release();
-               break;
-            case GLFW_MOUSE_BUTTON_RIGHT:
-                break;
-
-            default:
-                break;
-        }
-    }
-	else if(action == GLFW_PRESS)
-    {
-        switch (button)
-        {
-            case GLFW_MOUSE_BUTTON_LEFT:
-                camera.left_button_press();
-               break;
-            case GLFW_MOUSE_BUTTON_RIGHT:
-                break;
-
-            default:
-                break;
-        }
-    }
-
+    if (button == GLFW_MOUSE_BUTTON_LEFT || button == GLFW_MOUSE_BUTTON_RIGHT || button == GLFW_MOUSE_BUTTON_MIDDLE)
+        camera.mouse_button(button, action);
 }
 
 /*
@@ -224,10 +200,10 @@ void reshapeWindow (GLFWwindow* window, int width, int height)
 
 }
 
-glm::mat4 ortho_fit(float aspect)
+glm::mat4 ortho_fit(float aspect, float zoom)
 {
     float cx = (leftt + rightt) / 2, cy = (bottomm + topp) / 2;
-    float half = max(rightt - leftt, topp - bottomm) / 2;
+    float half = max(rightt - leftt, topp - bottomm) / 2 / zoom;
     if(aspect >= 1.0f)
         return glm::ortho(cx - half*aspect, cx + half*aspect, cy - half, cy + half, nearr, farr);
     return glm::ortho(cx - half, cx + half, cy - half/aspect, cy + half/aspect, nearr, farr);
@@ -236,32 +212,5 @@ glm::mat4 ortho_fit(float aspect)
 void scroll(GLFWwindow* window, double x, double y)
 {
     if(hud_wants_mouse())return;
-    int i = camera.get_view_type();
-    if(i!=drag_view && i!= mouse_view)return;
-
-    x = int(x);
-    y = int(y);
-    if(x==0)camera.zoom_change(-y);
-}
-
-
-void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
-{
-    int i = camera.get_view_type();
-    if(i!=helicopter)return;
-
-	int _w, _h;
-    double x, y, w, h;
-    glfwGetCursorPos (window, &x, &y);
-    glfwGetWindowSize(window, &_w, &_h);
-
-    w = _w;
-    h = _h;
-    x -= w/2;
-    y -= h/2;
-    y = -y;
-
-    x = 2.0f*x/w;
-    y = 2.0f*y/h;
-    camera.dir_change(x, y);
+    camera.scroll(y);   // zoom camera (mọi góc nhìn)
 }

@@ -1,6 +1,7 @@
 #ifndef APP
 #define APP
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -28,6 +29,8 @@ extern bool show_help;
 extern bool show_ai_panel;
 extern int game_result;      // -1 đang chơi, 0 thua, 1 thắng
 extern int fall_count;       // số lần rơi ở màn hiện tại (tự chơi lại như game gốc)
+extern double level_started_at;          // lúc bắt đầu màn (HUD hiện tên màn như game gốc)
+extern std::map<int, int> best_moves;    // kỷ lục số bước của từng màn (lưu trong settings.ini)
 extern float current_fps;
 extern float current_frame_ms;
 extern int last_draw_calls;       // số lệnh vẽ của frame trước
