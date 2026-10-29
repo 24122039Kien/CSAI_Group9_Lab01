@@ -9,17 +9,17 @@ from .base_solver import BaseSolver, ParentMap, SearchResult
 class DFSSolver(BaseSolver):
     """DFS: đi sâu trước, KHÔNG đảm bảo tối ưu.
 
-    TODO(TV2): cài đặt ``solve``.
+    Sử dụng ngăn xếp tường minh (list + ``pop()``), không đệ quy -> không bị
+    RecursionError trên màn lớn.
+    Tập parent vừa làm bảng visited (chống chu trình, đề yêu cầu), vừa phục vụ
+    truy vết đường đi nghiệm từ đích về gốc.
 
-    Gợi ý:
-      * Dùng stack tường minh (list + ``pop()``), KHÔNG đệ quy (tránh
-        RecursionError trên màn lớn).
-      * Bắt buộc chống lặp (đề yêu cầu): tập/dict đã thăm theo ``State``.
-      * Thứ tự đẩy vào stack quyết định hướng duyệt: nếu muốn duyệt theo thứ
-        tự U, D, L, R thì đẩy theo thứ tự NGƯỢC lại. Ghi rõ trong báo cáo.
-      * Nếu nhóm chọn IDS thay cho DFS: tạo ``ids_solver.py`` riêng và ghi rõ
-        trong báo cáo (đề cho phép).
-      * Cập nhật bộ đếm và trả về ``self.make_result(path)``.
+    Quy ước (ghi trong báo cáo):
+      * Đánh dấu đã thăm khi ĐẨY vào stack: mỗi trạng thái vào stack tối đa một
+        lần, cha là node đầu tiên sinh ra nó (khớp cây của Search Visualizer).
+      * Kiểm tra đích khi LẤY RA khỏi stack (mã giả ``Docs/system.md`` mục 8.1).
+      * Đẩy con theo thứ tự NGƯỢC để lấy ra theo thứ tự U, D, L, R
+        (0U … 1R khi khối đã tách).
     """
 
     name = "dfs"
