@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from .base_solver import BaseSolver, SearchResult
+from ..state import State
+from .base_solver import BaseSolver, ParentMap, SearchResult
 
 
 class DFSSolver(BaseSolver):
@@ -24,4 +25,32 @@ class DFSSolver(BaseSolver):
     name = "dfs"
 
     def solve(self) -> SearchResult:
-        raise NotImplementedError("DFSSolver.solve chưa được cài (TODO)")
+        # 1. Khởi tạo: ngăn xếp chứa trạng thái đầu.
+        start = self.problem.initial_state()
+        stack: list[State] = [start]
+        parent: ParentMap = {start: None}
+        self.max_frontier = 1
+
+        while stack:
+            # 2. Lấy trạng thái vào SAU CÙNG (đỉnh ngăn xếp) -> đi sâu trước.
+            state = stack.pop()
+
+            # 3. Kiểm tra đích khi lấy ra.
+            if self.problem.is_goal(state):
+                path = self.reconstruct_path(parent, state)
+                return self.make_result(path)
+
+            # 4. Mở rộng: đẩy con chưa thăm, theo thứ tự ngược của successors().
+            self.nodes_expanded += 1
+            for action, nxt, _cost in reversed(self.problem.successors(state)):
+                self.nodes_generated += 1
+
+                if nxt not in parent:
+                    parent[nxt] = (state, action)
+                    stack.append(nxt)
+
+            if len(stack) > self.max_frontier:
+                self.max_frontier = len(stack)
+
+        # 5. Đã xét hết các trạng thái tới được mà không gặp đích.
+        return self.make_result(None)
