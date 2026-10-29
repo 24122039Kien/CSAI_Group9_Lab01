@@ -3,7 +3,7 @@
 Đồ án Project 1 môn **CSC14003 – Cơ sở Trí tuệ Nhân tạo** (Khoa CNTT, ĐH KHTN – ĐHQG-HCM), nhóm 9.
 
 - **Game 3D (C++/OpenGL 3.3)** trong `code/`, dựa trên [chaitanya100100/Bloxorz](https://github.com/chaitanya100100/Bloxorz) @ `c0ccb55` (tác giả Chaitanya Patel; dùng theo sự cho phép của giảng viên — xem [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)). Nhóm đã bổ sung: tự phát lại lời giải, gọi solver Python, kiểm tra biên, build đa nền tảng, **giao diện mới** (nền tối, ánh sáng, hiệu ứng, menu/HUD bằng Dear ImGui), **build Windows native** và **đóng gói `Bloxorz.exe`** — xem [Docs/report2.md](Docs/report2.md); cơ chế v2 (nhiều ô cầu, permanent, split), **thanh New Game / Restart / Pause**, **bảng AI trong màn**, **Search Visualizer**, **âm thanh + nhạc nền**, **sàn sụp và tự chơi lại khi rơi**, **theme Minecraft** — xem [Docs/report4.md](Docs/report4.md); **bóng đổ thật + bloom**, **theme Original** kiểu game gốc, **màn hình chính mới** (chọn màn có bản đồ xem trước, kỷ lục), **camera xoay/zoom bằng chuột** — xem [Docs/report5.md](Docs/report5.md).
-- **Phần AI (Python)** trong `ai/`: mô phỏng chính xác luật của game, thuật toán **BFS, DFS, A\*** (UCS đang làm), heuristic Manhattan và ghi vết tìm kiếm cho Visualizer.
+- **Phần AI (Python)** trong `ai/`: mô phỏng chính xác luật của game, thuật toán **BFS, DFS, UCS, A\***, heuristic Manhattan và ghi vết tìm kiếm cho Visualizer.
 
 Tài liệu nội bộ: **[Docs/report1.md](Docs/report1.md) (bắt đầu từ đây — việc còn lại của từng thành viên)**, [Docs/play.md](Docs/play.md) (cách chạy game trong VS Code trên Windows), [Docs/report5.md](Docs/report5.md) (camera mới, bóng đổ + bloom, theme Original, màn hình chính mới), [Docs/report4.md](Docs/report4.md) (merge v2 + màn khó, sửa luật, heuristic, nâng cấp giao diện), [Docs/report3.md](Docs/report3.md) (review + merge bộ màn v1 và A\*), [Docs/system.md](Docs/system.md) (giải thích toàn bộ hệ thống và thuật toán), [Docs/report2.md](Docs/report2.md) (nâng cấp GUI + đóng gói), [Docs/report0.md](Docs/report0.md) (phân tích đề), [Docs/task.md](Docs/task.md) (phân công), [Docs/implementation_plan.md](Docs/implementation_plan.md) (kế hoạch kỹ thuật).
 
@@ -16,8 +16,9 @@ Tài liệu nội bộ: **[Docs/report1.md](Docs/report1.md) (bắt đầu từ 
 | `BFSSolver` | ✅ Đã cài (Đạt, [Docs/bfs_walkthrough.md](Docs/bfs_walkthrough.md)) |
 | `AStarSolver` | ✅ Đã cài (Sang, [Docs/astar_walkthrough.md](Docs/astar_walkthrough.md)) |
 | `manhattan_heuristic` | ✅ Đã cài (TV5): Manhattan có tính cổng split, admissible + consistent, kiểm chứng trên mọi trạng thái của 16 màn |
-| `DFSSolver` | ✅ Đã cài: ngăn xếp tường minh, đánh dấu đã thăm khi đẩy, kiểm tra đích khi lấy ra, thứ tự U, D, L, R |
-| `UCSSolver` | ⏳ **TODO** |
+| `DFSSolver` | ✅ Đã cài (Phát): ngăn xếp tường minh, đánh dấu đã thăm khi đẩy, kiểm tra đích khi lấy ra, thứ tự U, D, L, R |
+| `UCSSolver` | ✅ Đã cài (Hải Đăng, [Docs/ucs_walkthrough.md](Docs/ucs_walkthrough.md)): hàng đợi ưu tiên theo g, bỏ qua bản ghi cũ, kiểm tra đích khi lấy ra; với chi phí 1 cho cùng độ dài với BFS trên cả 16 màn |
+| Hàm chi phí không đồng nhất | ⏳ **TODO** (TV3): UCS/A\* đã nhận `cost_fn` và đã được test với chi phí không đồng nhất; hiện vẫn dùng `unit_cost` |
 | Giao diện: New Game / Restart / Pause, bảng AI trong màn, Search Visualizer, âm thanh, theme Minecraft | ✅ Xong — xem [Docs/report4.md](Docs/report4.md) |
 | Bộ màn | ✅ 16 màn (15 có lời giải, 1 vô nghiệm): màn 4/6 công tắc, 200 ô dễ vỡ, màn v2 nhiều cầu/permanent (15) và split (16) — xem [code/data/README.md](code/data/README.md) |
 
@@ -106,7 +107,7 @@ Solver chưa cài sẽ được báo **"chưa cài"** (không crash). Mã thoát
 ## Chạy test
 
 ```bash
-python -m pytest -q        # hiện tại: 188 passed, 3 skipped (UCS chưa cài)
+python -m pytest -q        # hiện tại: 220 passed, 1 skipped (test của khung cũ khi BFS chưa cài)
 ```
 
 - `tests/test_problem.py`: luật game (bảng chuyển, rơi, ô cam, công tắc, cầu, lời giải đã biết của màn 1 và 2).
@@ -117,6 +118,7 @@ python -m pytest -q        # hiện tại: 188 passed, 3 skipped (UCS chưa cài
 - `tests/test_heuristics.py`: giá trị Manhattan trên màn đồ chơi của `Docs/system.md`, phản ví dụ "+1 khi nằm", màn có cổng split.
 - `tests/test_v2_switches.py`, `tests/test_split.py`, `tests/test_bfs_solver.py`: cơ chế v2 và BFS (Đạt), kèm các ca lệch C++ ↔ Python đã sửa ở report4.
 - `tests/test_dfs_solver.py`: DFS đi sâu theo thứ tự U, D, L, R, chống lặp, khớp bảng chạy tay ở `Docs/system.md` mục 8.2 (22 node), giải mọi màn có lời giải, duyệt hết màn vô nghiệm, lời giải khớp cây của Search Visualizer.
+- `tests/test_ucs_solver.py`: UCS chọn đường rẻ thay vì đường ngắn, kiểm tra đích khi lấy ra, bỏ qua bản ghi cũ mà không tính là mở rộng, phá hòa không so sánh `State`, tối ưu trên mọi màn, tổng chi phí khớp A\* (h = 0) khi chi phí không đồng nhất, lời giải khớp cây của Search Visualizer.
 - `tests/test_tracing.py`: vết tìm kiếm cho Visualizer đúng thứ tự mở rộng và không làm đổi kết quả solver.
 
 ## Mô hình trạng thái

@@ -89,7 +89,7 @@ make              # build a.exe: cần khi mới clone, vừa pull, hoặc vừa
 | `.\a.exe` | Mở **màn hình chính**: Play / Select Stage / Options / How to Play / Credits |
 | `.\a.exe 5` | Vào thẳng màn 5 để chơi bằng tay |
 | `.\a.exe 1 --play data/solutions/1.txt` | Khối **tự lăn** theo file lời giải |
-| `.\a.exe 15 --solve astar` | Gọi solver Python (`bfs`, `astar`; `dfs`, `ucs` đang làm) rồi khối tự lăn tới đích |
+| `.\a.exe 15 --solve astar` | Gọi solver Python (`bfs`, `dfs`, `ucs`, `astar`) rồi khối tự lăn tới đích |
 | `.\a.exe 5 --visualize bfs` | Mở thẳng **Search Visualizer** của BFS ở màn 5 |
 | `.\a.exe 1 --theme original` | Mở với theme Original (kiểu game gốc); còn `classic`, `minecraft`. Đổi được trong Options |
 | `.\a.exe 1 --no-shadows --no-bloom` | Tắt bóng đổ thật / bloom (máy yếu) |
@@ -171,12 +171,12 @@ python main.py code/data/15.data --algo astar --out sol.txt         # A* + Manha
 python main.py code/data/15.data --algo astar --heuristic zero      # A* với h = 0 để so sánh
 python main.py code/data/1.data --compare --memory                  # bảng so sánh các thuật toán
 python main.py code/data/5.data --algo bfs --trace trace.txt --stats stats.txt   # vết tìm kiếm + chỉ số (game dùng)
-python -m pytest -q                                                 # chạy test: 162 passed, 5 skipped
+python -m pytest -q                                                 # chạy test: 220 passed, 1 skipped
 ```
 
 Muốn xem lời giải đó trong game: chép `sol.txt` vào thư mục `code` rồi `.\a.exe 15 --play sol.txt`.
 
-`DFS` và `UCS` sẽ báo **"chưa cài"** cho tới khi TV2 và TV3 làm xong. Đây là bình thường, và 5 test bị skip cũng là của hai thuật toán này.
+Cả 4 thuật toán đã được cài. `DFS` cho lời giải hợp lệ nhưng thường dài hơn nhiều (ví dụ màn 15: 81 bước so với 37), vì DFS không đảm bảo tối ưu. `UCS` cho cùng độ dài với `BFS` và `A*`, vì chi phí mỗi bước hiện là 1. Test duy nhất bị skip là test dành cho khung cũ khi BFS chưa cài.
 
 ---
 
@@ -215,6 +215,5 @@ Giải nén `dist/Bloxorz-win64.zip` rồi mở `Bloxorz/Bloxorz.exe`. Các nút
 | `undefined reference to audio_...` / `viz_...` sau khi pull | Thiếu object của file mới | `make` lại; nếu vẫn lỗi thì `make clean` rồi `make` |
 | `Cannot open data/1.data (run the game from the code/ directory)` | Không đứng trong thư mục `code` | `cd` vào `code` rồi chạy lại |
 | Nút Solve báo `Python not found` | Game không tìm thấy Python | Cài Python ≥ 3.10 có PATH, hoặc đặt `BLOXORZ_PYTHON` |
-| `--solve dfs` / `ucs` báo "chưa cài (TODO)" | Thuật toán chưa được nhóm cài | Bình thường; dùng `bfs`, `astar` hoặc `--play` với lời giải có sẵn |
 | Không có tiếng | Máy không có thiết bị âm thanh, hoặc âm lượng bằng 0 | Kiểm tra Pause → Options; game vẫn chạy bình thường khi không có âm thanh |
 | `cd : Cannot find path 'D:\mnt\d\...'` | Gõ đường dẫn Linux (`/mnt/d/...`) trong PowerShell | Dùng đường dẫn Windows `cd "D:\..."` |

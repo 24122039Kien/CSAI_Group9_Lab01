@@ -4,6 +4,12 @@
 > **File đã sửa:** `ai/solvers/ucs_solver.py`  
 > **Trạng thái:** ✅ Hoàn thành — 164 test passed, 3 skipped (chỉ DFS chưa cài)
 
+> **Ghi chú khi merge vào `main` (29/10/2026):** file được chuyển từ `haidang.md` ở gốc repo vào
+> `Docs/ucs_walkthrough.md` cho cùng chỗ với `bfs_walkthrough.md`, `astar_walkthrough.md`. DFS được
+> merge cùng lúc, nên số liệu test bên dưới là tại thời điểm viết; hiện tại `python -m pytest -q`
+> cho 220 passed, 1 skipped (thêm `tests/test_ucs_solver.py`). Bảng ở mục 3 nay có thể chạy lại
+> đủ 4 thuật toán bằng `python main.py code/data/1.data --compare --memory`.
+
 ---
 
 ## 1. Phân tích cấu trúc repository
