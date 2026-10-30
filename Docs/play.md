@@ -8,6 +8,7 @@
 >
 > Các tính năng mới (Pause, bảng AI, Search Visualizer, âm thanh, theme Minecraft): xem [report4.md](report4.md).
 > Đợt nâng cấp đồ họa (bóng đổ thật, bloom, theme **Original** kiểu game gốc, menu chính mới, camera xoay/zoom bằng chuột): xem mục "Trong màn chơi" và "Phím điều khiển" bên dưới.
+> Mới (report7): **bảng so sánh 4 thuật toán** cho từng màn (phím `Q`), theme **Minecraft** làm lại kiểu "có shader", hướng nắng mới để thấy rõ bóng đổ ở góc nhìn mặc định — xem [report7.md](report7.md).
 
 ---
 
@@ -91,6 +92,7 @@ make              # build a.exe: cần khi mới clone, vừa pull, hoặc vừa
 | `.\a.exe 1 --play data/solutions/1.txt` | Khối **tự lăn** theo file lời giải |
 | `.\a.exe 15 --solve astar` | Gọi solver Python (`bfs`, `dfs`, `ucs`, `astar`) rồi khối tự lăn tới đích |
 | `.\a.exe 5 --visualize bfs` | Mở thẳng **Search Visualizer** của BFS ở màn 5 |
+| `.\a.exe 16 --ui compare` | Mở thẳng **bảng so sánh 4 thuật toán** ở màn 16 (tự chạy cả 4) |
 | `.\a.exe 1 --theme original` | Mở với theme Original (kiểu game gốc); còn `classic`, `minecraft`. Đổi được trong Options |
 | `.\a.exe 1 --no-shadows --no-bloom` | Tắt bóng đổ thật / bloom (máy yếu) |
 | `.\a.exe 1 --mute` | Tắt âm thanh |
@@ -114,11 +116,18 @@ make              # build a.exe: cần khi mới clone, vừa pull, hoặc vừa
   - Nút **BFS / DFS / UCS / A\***: chạy solver nền rồi khối tự lăn.
   - Ô chọn heuristic cho A\* (`manhattan` hoặc `zero`).
   - Nút **Visualize search**.
+  - Nút **Compare all 4 algorithms** (phím `Q`): mở bảng so sánh (xem dưới).
   - 4 chỉ số của lần chạy gần nhất: thời gian, bộ nhớ, số node mở rộng, độ dài lời giải.
+- **Bảng so sánh thuật toán** (`Q`): chạy lần lượt BFS, DFS, UCS, A\* trên màn hiện tại trong luồng nền (cửa sổ không bị treo), rồi hiện:
+  - bảng 9 chỉ số (kết quả, số bước, chi phí, node mở rộng, node sinh ra, frontier lớn nhất, thời gian, bộ nhớ); giá trị tốt nhất mỗi cột tô xanh;
+  - biểu đồ cột chọn được chỉ số, có thang log;
+  - vài dòng nhận xét tự sinh (lời giải tối ưu, DFS dài hơn bao nhiêu, A\* cắt tỉa được bao nhiêu so với UCS...);
+  - nút **Replay** cho từng thuật toán, chọn heuristic cho A\*, **Run again**, **Save CSV** (ghi `compare_stage_<n>.csv` cạnh file chạy, dùng cho phần thực nghiệm của báo cáo).
+  - Kết quả được giữ theo từng màn trong lúc chơi. `Q` hoặc `Esc` để đóng.
 - **Search Visualizer:** xem cây tìm kiếm hoặc đồ thị trạng thái chạy từng bước, kèm g/h/f. Trên bàn chơi 3D có bản đồ nhiệt và khối mờ. Màn lớn chỉ ghi 4000 bước mở rộng đầu tiên.
 - **Rơi khỏi sàn:** sàn sụp theo, khoảng 1,6 giây sau màn tự chơi lại (như Bloxorz gốc). Bảng góc trái đếm số lần rơi (FALLS).
-- **Theme:** **Classic** (nền không gian tối), **Original** (trời đỏ cam có khói, ô đá xám, khối sắt gỉ, công tắc kim loại nổi O / X / ( ), như Bloxorz gốc nhưng vẽ hoàn toàn bằng shader) và **Minecraft**.
-- **Đồ họa:** bóng đổ thật (shadow map), cạnh vát bắt sáng, phản chiếu bầu trời trên khối, bloom (vùng sáng tỏa quầng). Cầu nháy xanh khi mở, nháy đỏ khi đóng. Máy dùng driver vẽ bằng CPU (WSLg) tự tắt bóng đổ và bloom để giữ FPS.
+- **Theme:** **Classic** (nền không gian tối), **Original** (trời đỏ cam có khói, ô đá xám, khối sắt gỉ, công tắc kim loại nổi O / X / ( ), như Bloxorz gốc nhưng vẽ hoàn toàn bằng shader) và **Minecraft** (khối cỏ, đất nung, đá cuội, obsidian, gỗ sồi, TNT, khối vàng, cổng Nether; texture 16x16 nổi khối từng texel, đảo khối nổi trên biển phản chiếu trời, mặt trời vuông và mây khối, tone mapping kiểu phim như các gói shader).
+- **Đồ họa:** bóng đổ thật (shadow map; nắng chiếu chéo từ phía sau bên trái camera nên bóng hiện rõ ở các góc nhìn mặc định C / B / X), cạnh vát bắt sáng, phản chiếu bầu trời trên khối, bloom (vùng sáng tỏa quầng). Cầu nháy xanh khi mở, nháy đỏ khi đóng. Máy dùng driver vẽ bằng CPU (WSLg) tự tắt bóng đổ và bloom để giữ FPS.
 - **Pause → Options:** đổi theme, bật/tắt bóng đổ, bloom, hiệu ứng, chỉnh âm lượng. Cài đặt và kỷ lục lưu vào `settings.ini`.
 - **Âm thanh:** tổng hợp bằng code. Muốn thay thì đặt `sounds/<tên>.wav|.mp3|.flac` trong thư mục chạy game (bản dev: `code/sounds/`, bản đóng gói: cạnh `Bloxorz.exe`; tên: `roll stand switch heavy bridge_on bridge_off fall win split merge crack click start collapse music`).
 
@@ -129,7 +138,8 @@ make              # build a.exe: cần khi mới clone, vừa pull, hoặc vừa
 | ↑ ↓ ← → | Lăn khối (bị khóa khi đang tự phát lại) |
 | `Space` | Sau khi tách (split): đổi khối nhỏ đang điều khiển. Chưa tách: đổi phép chiếu |
 | `R` | Chơi lại |
-| `P` / `Esc` | Tạm dừng (`Esc` cũng đóng màn hình chính / Visualizer; ở chế độ `--play`/`--solve` thì thoát) |
+| `Q` | Mở/đóng bảng so sánh 4 thuật toán của màn hiện tại |
+| `P` / `Esc` | Tạm dừng (`Esc` cũng đóng màn hình chính / Visualizer / bảng so sánh; ở chế độ `--play`/`--solve` thì thoát) |
 | `Enter` | Sang màn tiếp (chỉ sau khi thắng) |
 | `C` | Camera bám khối (mặc định): chỉ trượt theo khối, hướng nhìn giữ nguyên nên không lắc |
 | `B` | Nhìn toàn màn từ trên cao, lăn chuột để zoom gần / xa |
@@ -171,7 +181,7 @@ python main.py code/data/15.data --algo astar --out sol.txt         # A* + Manha
 python main.py code/data/15.data --algo astar --heuristic zero      # A* với h = 0 để so sánh
 python main.py code/data/1.data --compare --memory                  # bảng so sánh các thuật toán
 python main.py code/data/5.data --algo bfs --trace trace.txt --stats stats.txt   # vết tìm kiếm + chỉ số (game dùng)
-python -m pytest -q                                                 # chạy test: 220 passed, 1 skipped
+python -m pytest -q                                                 # chạy test: 357 passed, 1 skipped
 ```
 
 Muốn xem lời giải đó trong game: chép `sol.txt` vào thư mục `code` rồi `.\a.exe 15 --play sol.txt`.
