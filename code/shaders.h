@@ -465,7 +465,7 @@ void main()
             if (still && face == 0) ao = mix(0.80, 1.0, smoothstep(0.0, 0.10, edge));
             col = tex * (amb * ao + sunC * ndl * sh * mix(0.85, 1.0, ao));
             col += sunC * pow(max(dot(N, H), 0.0), shn) * spc * sh;
-            float fres = pow(1.0 - max(dot(N, V), 0.0), 5.0);
+            float fres = pow(clamp(1.0 - dot(N, V), 0.0, 1.0), 5.0);
             col += skyColor(reflect(-V, N)) * spc * (0.25 + 0.75 * fres);
         }
         col += tex * (g2 + (mat > 0 ? 0.0 : uEmissive)) + uColor * uEmissive * (mat > 0 ? 0.35 : 0.0);
@@ -503,7 +503,7 @@ void main()
             vec3 H = normalize(L + V);
             float diff = max(dot(N, L), 0.0) * sh;
             float spec = pow(max(dot(N, H), 0.0), shin) * specK * sh;
-            float fres = pow(1.0 - max(dot(N, V), 0.0), 4.0);
+            float fres = pow(clamp(1.0 - dot(N, V), 0.0, 1.0), 4.0);
             vec3 amb = mix(vec3(0.14, 0.10, 0.10), vec3(0.36, 0.37, 0.41), 0.5 + 0.5 * N.z);
             color = alb * (amb + vec3(1.0, 0.95, 0.90) * 0.80 * diff) * occl;
             color += vec3(1.0, 0.85, 0.70) * spec;
@@ -540,7 +540,7 @@ void main()
             vec3 H = normalize(L + V);
             float diff = max(dot(N, L), 0.0) * sh;
             float spec = pow(max(dot(N, H), 0.0), shiny ? 80.0 : 48.0) * (shiny ? 0.9 : 0.24) * sh;
-            float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0);
+            float fres = pow(clamp(1.0 - dot(N, V), 0.0, 1.0), 3.0);
             float sky = 0.5 + 0.5 * N.z;                      // ánh sáng môi trường: trên sáng, dưới tối
             color = base * (0.22 + 0.18 * sky + 0.70 * diff) + vec3(spec) + vec3(fres * (shiny ? 0.12 : 0.06));
             color += skyColor(reflect(-V, N)) * (shiny ? 0.10 + 0.45 * fres : 0.03 + 0.08 * fres);
@@ -658,7 +658,7 @@ void main()
                         + 0.08 * (vnoise(p.xy * 1.4 + 7.0 - tt) - 0.5),
                     1.0));
                 vec3 r = reflect(rd, n);
-                float fres = 0.04 + 0.96 * pow(1.0 - max(dot(-rd, n), 0.0), 5.0);
+                float fres = 0.04 + 0.96 * pow(clamp(1.0 - dot(-rd, n), 0.0, 1.0), 5.0);
                 vec3 refl = mcSky(r) + vec3(3.0, 2.6, 1.9) * pow(max(dot(r, normalize(uSunDir)), 0.0), 400.0);
                 col = mix(vec3(0.04, 0.20, 0.36), refl, fres);
                 col = mix(col, vec3(0.72, 0.84, 1.0), 1.0 - exp(-t * 0.010));
@@ -729,6 +729,8 @@ void main()
     vec2 t = 1.0 / vec2(textureSize(uTex, 0));
     vec3 c = 0.25 * (texture(uTex, vUV + t * vec2(-0.5, -0.5)).rgb + texture(uTex, vUV + t * vec2(0.5, -0.5)).rgb
                    + texture(uTex, vUV + t * vec2(-0.5, 0.5)).rgb + texture(uTex, vUV + t * vec2(0.5, 0.5)).rgb);
+    // Chặn NaN/Inf: chỉ một điểm ảnh lỗi cũng bị các lượt làm nhòe thổi thành ô vuông đen nhấp nháy.
+    if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
     float l = max(c.r, max(c.g, c.b));
     float k = smoothstep(0.80, 1.35, l);
     outColor = vec4(c * k, 1.0);
@@ -766,6 +768,7 @@ float shoulder(float x) { return x < 0.8 ? x : 0.8 + 0.2 * (1.0 - exp(-(x - 0.8)
 void main()
 {
     vec3 c = texture(uScene, vUV).rgb;
+    if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
     vec3 b = texture(uBloom1, vUV).rgb * 0.65 + texture(uBloom2, vUV).rgb * 0.55;
     c += b * uBloomStrength;
     if (uTheme == 1) {
