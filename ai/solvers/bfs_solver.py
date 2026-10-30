@@ -35,9 +35,12 @@ class BFSSolver(BaseSolver):
             state = frontier.popleft()
             self.nodes_expanded += 1
 
-            for action, nxt, _cost in self.problem.successors(state):
-                self.nodes_generated += 1
+            # Đếm đủ mọi con đã sinh, kể cả các con đứng sau đích khi
+            # Early Goal Test trả về giữa vòng lặp (cùng quy ước với DFS/UCS/A*).
+            children = self.problem.successors(state)
+            self.nodes_generated += len(children)
 
+            for action, nxt, _cost in children:
                 if nxt not in parent:
                     parent[nxt] = (state, action)
 

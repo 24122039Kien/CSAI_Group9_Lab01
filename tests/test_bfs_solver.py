@@ -106,6 +106,22 @@ def test_bfs_finds_optimal_path_by_step_count():
     assert result.solution_length == 2
 
 
+def test_bfs_counts_siblings_generated_after_early_goal():
+    """Early Goal Test trả về ngay khi gặp đích, nhưng các con đứng sau đích đã được
+    ``successors()`` sinh ra nên vẫn phải được tính vào ``nodes_generated``."""
+    start = State(0, 0, Orientation.Z)
+    goal = State(1, 0, Orientation.Z)
+    b = State(2, 0, Orientation.Z)
+    c = State(3, 0, Orientation.Z)
+    graph = {start: [("to_goal", goal, 1.0), ("to_b", b, 1.0), ("to_c", c, 1.0)]}
+    problem = _GraphProblem(graph, start, goal)
+    result = BFSSolver(problem).run()
+
+    assert result.path == ["to_goal"]
+    assert result.nodes_expanded == 1
+    assert result.nodes_generated == 3
+
+
 @pytest.mark.parametrize("level", [1, 2])
 def test_bfs_solves_standard_levels_optimally(level: int):
     """BFS giải thành công các màn cơ bản 1 và 2 với số bước tối ưu tuyệt đối."""
