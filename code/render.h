@@ -9,7 +9,7 @@ enum BoxPattern { PAT_PLAIN = 0, PAT_FRAGILE = 1, PAT_SWITCH = 2, PAT_HEAVY = 3,
 enum BoxMaterial
 {
     MAT_NONE = 0, MAT_FLOOR, MAT_FRAGILE, MAT_SWITCH, MAT_HEAVY, MAT_SPLIT, MAT_BRIDGE,
-    MAT_BLOCK, MAT_GOLD, MAT_GOAL
+    MAT_BLOCK, MAT_GOLD, MAT_GOAL, MAT_PORTAL
 };
 enum Theme { THEME_CLASSIC = 0, THEME_MINECRAFT = 1, THEME_ORIGINAL = 2, THEME_COUNT = 3 };
 
@@ -43,7 +43,7 @@ class Renderer
         GLuint box_vao, box_vbo, inst_vbo, bg_vao;
         GLint u_viewproj, u_time, u_eye, u_light, u_fogcolor, u_fogrange, u_theme;
         GLint u_lightvp, u_shadowon;
-        GLint ubg_time, ubg_res, ubg_theme;
+        GLint ubg_time, ubg_res, ubg_theme, ubg_invvp, ubg_sky3d, ubg_sun;
         vector<BoxInstance> batch;
         // Bóng đổ: shadow map độ sâu nhìn từ nguồn sáng (chiếu song song phủ cả màn).
         GLuint shadow_prog, shadow_fbo, shadow_tex;
@@ -70,6 +70,8 @@ class Renderer
         bool bloom;       // hậu kỳ bloom + vignette
         void init();
         void draw_background(int fbwidth, int fbheight, float time);
+        // Theme Minecraft: trời + biển 3D theo camera của cảnh chính (gọi trong vùng vẽ, trước begin()).
+        void draw_sky(const glm::mat4 &view_proj, float time);
         // Đầu/cuối frame: chuyển sang framebuffer hậu kỳ (nếu bật bloom) rồi ghép kết quả ra màn hình.
         void begin_frame(int fbwidth, int fbheight);
         void end_frame(int fbwidth, int fbheight);

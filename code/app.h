@@ -27,6 +27,7 @@ extern bool options_open;    // khung Options (theme, âm lượng...)
 extern bool show_minimap;
 extern bool show_help;
 extern bool show_ai_panel;
+extern bool compare_open;    // bảng so sánh 4 thuật toán của màn hiện tại
 extern int game_result;      // -1 đang chơi, 0 thua, 1 thắng
 extern int fall_count;       // số lần rơi ở màn hiện tại (tự chơi lại như game gốc)
 extern double level_started_at;          // lúc bắt đầu màn (HUD hiện tên màn như game gốc)
@@ -58,6 +59,9 @@ void app_solve(const std::string &algo);
 void app_visualize(const std::string &algo);
 void app_close_visualizer();
 void app_play_solution();            // phát lại lời giải của lần Visualize
+void app_toggle_compare();           // mở/đóng bảng so sánh (lần đầu mở ở một màn: tự chạy cả 4 thuật toán)
+void app_compare_rerun();            // chạy lại so sánh cho màn hiện tại (vd sau khi đổi heuristic)
+void app_replay_compare(const std::string &algo);   // phát lại lời giải của một thuật toán trong bảng
 void app_set_theme(int theme);
 void app_apply_volumes();
 void app_save_settings();

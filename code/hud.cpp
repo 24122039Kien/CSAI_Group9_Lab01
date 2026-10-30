@@ -7,12 +7,15 @@
 #include "render.h"
 #include "audio.h"
 #include "viz.h"
+#include "compare.h"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
 #include <cfloat>
+#include <cmath>
+#include <cstring>
 
 static const float HUD_PI = 3.14159265f;
 
@@ -304,7 +307,7 @@ static void stats_original(double now)
 
 static void stats_panel(double now)
 {
-    if(menu_open && !cli_mode) return;
+    if((menu_open && !cli_mode) || compare_open) return;
     if(renderer.theme == THEME_ORIGINAL)
     {
         stats_original(now);
@@ -406,7 +409,7 @@ static void stat_row(const char *name, const char *fmt, double v)
 // Bảng AI bên phải: chạy 4 thuật toán ngay trong màn, chọn heuristic cho A*, mở Visualizer, xem 4 chỉ số.
 static void ai_panel(ImVec2 disp)
 {
-    if(!in_level_ui() || viz_is_open() || paused) return;
+    if(!in_level_ui() || viz_is_open() || paused || compare_open) return;
     ImGui::SetNextWindowPos(ImVec2(disp.x - 16, 16), 0, ImVec2(1, 0));
     ImGui::SetNextWindowSize(ImVec2(300, 0));
     ImGui::SetNextWindowBgAlpha(0.78f);
@@ -416,7 +419,7 @@ static void ai_panel(ImVec2 disp)
     if(ImGui::SmallButton(show_ai_panel ? "hide" : "show")) { show_ai_panel = !show_ai_panel; app_save_settings(); }
     if(!show_ai_panel) { ImGui::End(); return; }
 
-    bool idle = solve_state != SOLVE_RUNNING;
+    bool idle = solve_state != SOLVE_RUNNING && !compare_running();   // một lần gọi Python tại một thời điểm
     float full = ImGui::GetContentRegionAvail().x;
     float bw = (full - 3 * ImGui::GetStyle().ItemSpacing.x) / 4;
     static const char *algos[4] = {"bfs", "dfs", "ucs", "astar"};
@@ -438,6 +441,11 @@ static void ai_panel(ImVec2 disp)
     if(wide_button("Visualize search  >", full, idle)) app_visualize(solve_algo.empty() ? "bfs" : solve_algo);
     if(ImGui::IsItemHovered())
         ImGui::SetTooltip("Shows the search tree step by step and a heat map of the explored cells.");
+    if(wide_button(compare_running() ? "Comparing algorithms..." : "Compare all 4 algorithms  [Q]", full,
+                   solve_state != SOLVE_RUNNING))
+        app_toggle_compare();
+    if(ImGui::IsItemHovered())
+        ImGui::SetTooltip("Runs BFS, DFS, UCS and A* on this stage and compares them in a table and a chart.");
 
     if(last_stats.valid)
     {
@@ -455,9 +463,315 @@ static void ai_panel(ImVec2 disp)
     ImGui::End();
 }
 
+/********************************
+ *  Bảng so sánh 4 thuật toán   *
+ ********************************/
+
+static const ImVec4 ALGO_COLORS[COMPARE_ALGOS] = {
+    ImVec4(0.32f, 0.66f, 1.00f, 1.0f),   // BFS
+    ImVec4(1.00f, 0.56f, 0.22f, 1.0f),   // DFS
+    ImVec4(0.42f, 0.86f, 0.46f, 1.0f),   // UCS
+    ImVec4(0.86f, 0.48f, 1.00f, 1.0f),   // A*
+};
+enum CompareMetric { MET_EXPANDED = 0, MET_GENERATED, MET_FRONTIER, MET_TIME, MET_MEMORY, MET_LENGTH, MET_COUNT };
+static const char *METRIC_NAMES[MET_COUNT] = {"Expanded", "Generated", "Max frontier", "Time (ms)", "Memory (KB)", "Moves"};
+static int compare_metric = MET_EXPANDED;
+static bool compare_log = false;
+static string compare_note;          // thông báo ngắn (vd đã lưu CSV)
+static double compare_note_at = -1.0;
+
+static bool row_ok(const CompareRow &r)
+{
+    return r.state == ROW_DONE && r.stats.valid && r.stats.status == "ok";
+}
+
+static double metric_value(const SolverStats &s, int m)
+{
+    switch(m)
+    {
+        case MET_EXPANDED:  return (double)s.expanded;
+        case MET_GENERATED: return (double)s.generated;
+        case MET_FRONTIER:  return (double)s.frontier;
+        case MET_TIME:      return s.time_ms;
+        case MET_MEMORY:    return s.memory_kb;
+        default:            return (double)s.length;
+    }
+}
+
+static const char *fmt_count(char *buf, size_t n, double v)   // 47673 -> "47,673"
+{
+    char raw[32];
+    snprintf(raw, sizeof(raw), "%.0f", v);
+    int len = (int)strlen(raw), o = 0;
+    for(int i = 0; i < len && o < (int)n - 1; i++)
+    {
+        if(i > 0 && (len - i) % 3 == 0 && o < (int)n - 1) buf[o++] = ',';
+        buf[o++] = raw[i];
+    }
+    buf[o] = 0;
+    return buf;
+}
+
+static const char *fmt_metric(char *buf, size_t n, double v, int m)
+{
+    if(m == MET_TIME || m == MET_MEMORY) snprintf(buf, n, v < 100 ? "%.2f" : "%.1f", v);
+    else fmt_count(buf, n, v);
+    return buf;
+}
+
+// Nhận xét tự sinh từ số liệu (ý chính của Docs/report6.md mục 6, áp vào màn đang xem).
+static void compare_insights(const CompareResult &r)
+{
+    const CompareRow *bfs = &r.rows[0], *dfs = &r.rows[1], *ucs = &r.rows[2], *ast = &r.rows[3];
+    char a[32], b[32];
+    int best = -1;
+    for(int k = 0; k < COMPARE_ALGOS; k++)
+        if(row_ok(r.rows[k]) && (best < 0 || r.rows[k].stats.length < best)) best = r.rows[k].stats.length;
+    if(best < 0)
+    {
+        bool none = true;
+        for(int k = 0; k < COMPARE_ALGOS; k++)
+            if(!(r.rows[k].state == ROW_DONE && r.rows[k].status == SOLVER_NO_SOLUTION)) none = false;
+        if(none)
+            ImGui::BulletText("No algorithm found a solution: every reachable state was explored, so the level is unsolvable.");
+        return;
+    }
+    string opt;
+    for(int k = 0; k < COMPARE_ALGOS; k++)
+        if(row_ok(r.rows[k]) && r.rows[k].stats.length == best)
+            opt += string(opt.empty() ? "" : ", ") + algo_label(r.rows[k].algo);
+    ImGui::BulletText("Optimal solution: %d moves (%s).", best, opt.c_str());
+    if(row_ok(*dfs) && dfs->stats.length > best)
+        ImGui::BulletText("DFS is not optimal: %d moves (+%d), but it expanded only %s nodes.", dfs->stats.length,
+                          dfs->stats.length - best, fmt_count(a, sizeof(a), (double)dfs->stats.expanded));
+    if(row_ok(*ucs) && row_ok(*ast) && ucs->stats.expanded > 0)
+    {
+        double cut = 100.0 * (1.0 - (double)ast->stats.expanded / (double)ucs->stats.expanded);
+        if(cut >= 5.0)
+            ImGui::BulletText("A* expanded %.0f%% fewer nodes than UCS (%s vs %s): the heuristic prunes the search.", cut,
+                              fmt_count(a, sizeof(a), (double)ast->stats.expanded), fmt_count(b, sizeof(b), (double)ucs->stats.expanded));
+        else
+            ImGui::BulletText("A* barely prunes here (%.1f%% fewer nodes than UCS): most reachable states are closer to the start\n"
+                              "than the goal, so any optimal search must expand them (see Docs/report6.md, 6.3).", cut);
+    }
+    if(row_ok(*bfs) && row_ok(*ucs) && ucs->stats.expanded > bfs->stats.expanded)
+        ImGui::BulletText("UCS expands %ld more nodes than BFS only because it tests the goal when popping, not when generating.",
+                          ucs->stats.expanded - bfs->stats.expanded);
+}
+
+static void compare_chart(const CompareResult &r, float w, float h)
+{
+    ImDrawList *dl = ImGui::GetWindowDrawList();
+    ImVec2 p0 = ImGui::GetCursorScreenPos();
+    ImGui::Dummy(ImVec2(w, h));
+    double vmax = 0.0;
+    for(int k = 0; k < COMPARE_ALGOS; k++)
+        if(row_ok(r.rows[k])) vmax = max(vmax, metric_value(r.rows[k].stats, compare_metric));
+    float label_w = 54.0f, value_w = 96.0f;
+    float bar_w = w - label_w - value_w;
+    float row_h = h / COMPARE_ALGOS;
+    for(int k = 0; k < COMPARE_ALGOS; k++)
+    {
+        const CompareRow &row = r.rows[k];
+        float y = p0.y + k * row_h;
+        dl->AddText(ImVec2(p0.x, y + row_h * 0.5f - 9), rgba(ALGO_COLORS[k]), algo_label(row.algo));
+        ImVec2 b0(p0.x + label_w, y + row_h * 0.18f), b1(b0.x + bar_w, y + row_h * 0.82f);
+        dl->AddRectFilled(b0, b1, IM_COL32(255, 255, 255, 18), 3.0f);
+        char buf[32];
+        if(row_ok(row) && vmax > 0.0)
+        {
+            double v = metric_value(row.stats, compare_metric);
+            double f = compare_log ? log10(1.0 + v) / log10(1.0 + vmax) : v / vmax;
+            float fw = max(2.0f, bar_w * (float)f);
+            dl->AddRectFilledMultiColor(b0, ImVec2(b0.x + fw, b1.y), rgba(ALGO_COLORS[k], 0.95f), rgba(ALGO_COLORS[k], 0.65f),
+                                        rgba(ALGO_COLORS[k], 0.65f), rgba(ALGO_COLORS[k], 0.95f));
+            dl->AddText(ImVec2(b1.x + 8, y + row_h * 0.5f - 9), IM_COL32(255, 255, 255, 230), fmt_metric(buf, sizeof(buf), v, compare_metric));
+        }
+        else
+        {
+            const char *t = row.state == ROW_DONE ? (row.status == SOLVER_NO_SOLUTION ? "no solution" : "failed")
+                                                  : (row.state == ROW_RUNNING ? "running..." : "waiting");
+            dl->AddText(ImVec2(b0.x + 8, y + row_h * 0.5f - 9), rgba(DIM), t);
+        }
+    }
+}
+
+static void compare_window(ImVec2 disp, double now)
+{
+    if(!compare_open || !in_level_ui()) return;
+    CompareResult r = compare_get(level);
+    ImVec2 size(min(disp.x - 32.0f, 980.0f), min(disp.y - 96.0f, 640.0f));
+    ImGui::SetNextWindowPos(ImVec2(disp.x * 0.5f, disp.y * 0.5f + 24.0f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(size);
+    ImGui::SetNextWindowBgAlpha(0.93f);
+    ImGui::Begin("##compare", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove);
+    float full = ImGui::GetContentRegionAvail().x;
+
+    // Tiêu đề + nút đóng
+    ImGui::PushFont(font_big);
+    ImGui::TextColored(ACCENT, "ALGORITHM COMPARISON");
+    ImGui::PopFont();
+    ImGui::SameLine(full - 110);
+    if(wide_button("Close  [Q]", 110)) { compare_open = false; ImGui::End(); return; }
+    string title = level_title(level);
+    ImGui::Text("Stage %02d%s%s", level, title.empty() ? "" : "  -  ", title.c_str());
+    ImGui::SameLine();
+    ImGui::TextColored(DIM, "   BFS, DFS, UCS and A* run one after another on the Python solver.");
+
+    // Điều khiển: heuristic của A*, chạy lại, xuất CSV
+    bool busy = compare_running() || solve_state == SOLVE_RUNNING;
+    ImGui::TextColored(DIM, "A* heuristic");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(220);
+    int h = solve_heuristic == "zero" ? 1 : 0;
+    if(ImGui::Combo("##cmpheur", &h, "Manhattan (split-aware)\0Zero (= UCS)\0"))
+    {
+        solve_heuristic = h == 1 ? "zero" : "manhattan";
+        app_save_settings();
+    }
+    ImGui::SameLine();
+    if(wide_button(r.level < 0 ? "Run comparison" : "Run again", 150, !busy)) app_compare_rerun();
+    ImGui::SameLine();
+    bool can_csv = r.level >= 0 && !r.running;
+    if(wide_button("Save CSV", 110, can_csv))
+    {
+        string path;
+        compare_note = compare_export_csv(level, path) ? "Saved " + path + " (next to the game)" : "Could not write the CSV file";
+        compare_note_at = now;
+    }
+    if(compare_note_at > 0 && now - compare_note_at < 5.0)
+    {
+        ImGui::SameLine();
+        ImGui::TextColored(GOOD, "%s", compare_note.c_str());
+    }
+    if(r.level >= 0 && r.heuristic != solve_heuristic && !r.running)
+        ImGui::TextColored(DIM, "Results below use the %s heuristic for A*. Press \"Run again\" to use the new one.", r.heuristic.c_str());
+
+    if(r.level < 0)
+    {
+        ImGui::Separator();
+        ImGui::TextColored(DIM, busy ? "Waiting for the current solver to finish..." : "Press \"Run comparison\" to run all four algorithms on this stage.");
+        ImGui::End();
+        return;
+    }
+
+    // Tiến độ
+    int done = 0;
+    const char *current = "";
+    for(int k = 0; k < COMPARE_ALGOS; k++)
+    {
+        if(r.rows[k].state == ROW_DONE) done++;
+        if(r.rows[k].state == ROW_RUNNING) current = algo_label(r.rows[k].algo);
+    }
+    if(r.running)
+    {
+        char over[64];
+        snprintf(over, sizeof(over), "Running %s  (%d/%d)  %.1f s", current, done, COMPARE_ALGOS, now - r.started_at);
+        ImGui::ProgressBar((done + 0.5f) / COMPARE_ALGOS, ImVec2(-1, 0), over);
+    }
+    ImGui::Separator();
+
+    // Bảng số liệu: giá trị tốt nhất của mỗi cột (trong các lần chạy thành công) tô xanh.
+    double best[MET_COUNT];
+    for(int m = 0; m < MET_COUNT; m++)
+    {
+        best[m] = -1.0;
+        for(int k = 0; k < COMPARE_ALGOS; k++)
+            if(row_ok(r.rows[k]))
+            {
+                double v = metric_value(r.rows[k].stats, m);
+                if(best[m] < 0 || v < best[m]) best[m] = v;
+            }
+    }
+    ImGuiTableFlags tf = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingStretchProp
+                       | ImGuiTableFlags_PadOuterX;
+    if(ImGui::BeginTable("##cmptable", 10, tf))
+    {
+        const char *heads[10] = {"Algorithm", "Result", "Moves", "Cost", "Expanded", "Generated", "Max frontier", "Time (ms)", "Memory (KB)", ""};
+        float weights[10] = {1.0f, 1.2f, 0.8f, 0.7f, 1.0f, 1.0f, 1.0f, 0.9f, 1.0f, 0.8f};
+        for(int c = 0; c < 10; c++) ImGui::TableSetupColumn(heads[c], 0, weights[c]);
+        ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+        for(int c = 0; c < 10; c++) { ImGui::TableSetColumnIndex(c); ImGui::TextColored(DIM, "%s", heads[c]); }
+        static const int col_metric[5] = {MET_EXPANDED, MET_GENERATED, MET_FRONTIER, MET_TIME, MET_MEMORY};
+        for(int k = 0; k < COMPARE_ALGOS; k++)
+        {
+            const CompareRow &row = r.rows[k];
+            const SolverStats &s = row.stats;
+            char buf[32];
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImVec2 cp = ImGui::GetCursorScreenPos();
+            ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(cp.x, cp.y + 4), ImVec2(cp.x + 10, cp.y + 14), rgba(ALGO_COLORS[k]), 2.0f);
+            ImGui::Dummy(ImVec2(14, 0));
+            ImGui::SameLine();
+            ImGui::Text("%s", row.algo == "astar" ? (r.heuristic == "zero" ? "A* (h=0)" : "A*") : algo_label(row.algo));
+            ImGui::TableSetColumnIndex(1);
+            if(row.state == ROW_WAITING) ImGui::TextColored(DIM, "waiting");
+            else if(row.state == ROW_RUNNING) ImGui::TextColored(ACCENT, "running%s", string(int(now * 3.0) % 4, '.').c_str());
+            else if(row_ok(row)) ImGui::TextColored(GOOD, s.length == (int)best[MET_LENGTH] ? "optimal" : "found");
+            else if(row.status == SOLVER_NO_SOLUTION) ImGui::TextColored(DIM, "no solution");
+            else
+            {
+                ImGui::TextColored(BAD, "failed");
+                if(ImGui::IsItemHovered()) ImGui::SetTooltip("%s", solver_status_text(row.status));
+            }
+            if(!row_ok(row) && !(row.state == ROW_DONE && s.valid)) { for(int c = 2; c < 10; c++) { ImGui::TableSetColumnIndex(c); ImGui::TextDisabled("-"); } continue; }
+            ImGui::TableSetColumnIndex(2);
+            if(row_ok(row))
+            {
+                if(s.length == (int)best[MET_LENGTH]) ImGui::TextColored(GOOD, "%d", s.length);
+                else { ImGui::Text("%d", s.length); ImGui::SameLine(0, 4); ImGui::TextColored(DIM, "+%d", s.length - (int)best[MET_LENGTH]); }
+            }
+            else ImGui::TextDisabled("-");
+            ImGui::TableSetColumnIndex(3);
+            if(row_ok(row)) ImGui::Text("%g", s.cost); else ImGui::TextDisabled("-");
+            for(int c = 0; c < 5; c++)
+            {
+                ImGui::TableSetColumnIndex(4 + c);
+                double v = metric_value(s, col_metric[c]);
+                bool is_best = row_ok(row) && v <= best[col_metric[c]] + 1e-9;
+                if(is_best) ImGui::TextColored(GOOD, "%s", fmt_metric(buf, sizeof(buf), v, col_metric[c]));
+                else ImGui::Text("%s", fmt_metric(buf, sizeof(buf), v, col_metric[c]));
+            }
+            ImGui::TableSetColumnIndex(9);
+            ImGui::PushID(k);
+            bool can_play = row_ok(row) && !compare_solution_file(level, row.algo).empty();
+            if(!can_play) ImGui::BeginDisabled();
+            if(ImGui::SmallButton("Replay")) { audio_play(SFX_CLICK); app_replay_compare(row.algo); }
+            if(!can_play) ImGui::EndDisabled();
+            if(can_play && ImGui::IsItemHovered()) ImGui::SetTooltip("Watch the block follow this algorithm's solution.");
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+
+    // Biểu đồ cột theo chỉ số đang chọn
+    ImGui::Spacing();
+    ImGui::TextColored(ACCENT, "CHART");
+    ImGui::SameLine();
+    for(int m = 0; m < MET_COUNT; m++)
+    {
+        ImGui::SameLine();
+        if(ImGui::RadioButton(METRIC_NAMES[m], compare_metric == m)) compare_metric = m;
+    }
+    ImGui::SameLine();
+    ImGui::Checkbox("Log scale", &compare_log);
+    float chart_h = max(110.0f, min(170.0f, ImGui::GetContentRegionAvail().y - 120.0f));
+    compare_chart(r, full, chart_h);
+
+    // Nhận xét
+    if(!r.running)
+    {
+        ImGui::Separator();
+        compare_insights(r);
+        ImGui::TextColored(DIM, "Time and memory are measured inside Python for the search only. Lower is better; green = best in column.");
+    }
+    ImGui::End();
+}
+
 static void hint_bar(ImVec2 disp)
 {
-    if(!show_help || viz_is_open() || (menu_open && !cli_mode))
+    if(!show_help || viz_is_open() || compare_open || (menu_open && !cli_mode))
         return;
     ImGui::SetNextWindowPos(ImVec2(disp.x - 16, disp.y - 16), 0, ImVec2(1, 1));
     ImGui::SetNextWindowBgAlpha(0.6f);
@@ -466,6 +780,7 @@ static void hint_bar(ImVec2 disp)
         {"Arrows", "roll the block"},
         {"Space", "switch cube (after split)"},
         {"R / P", "restart / pause"},
+        {"Q", "compare algorithms"},
         {"C B N M X V", "camera views"},
         {"Drag / Wheel", "rotate / zoom camera"},
         {"Tab", "mini-map"},
@@ -474,7 +789,7 @@ static void hint_bar(ImVec2 disp)
     };
     for(size_t k=0; k<sizeof(rows)/sizeof(rows[0]); k++)
     {
-        if(cli_mode && k==2) continue;
+        if(cli_mode && (k==2 || k==3)) continue;
         ImGui::TextColored(ACCENT, "%s", rows[k][0]);
         ImGui::SameLine(130);
         ImGui::TextColored(DIM, "%s", rows[k][1]);
@@ -1207,6 +1522,7 @@ static void page_howto(ImVec2 p, ImVec2 s)
         {"Arrow keys", "roll the block"},
         {"Space", "switch cube after a split"},
         {"R", "restart the stage"},
+        {"Q", "compare the 4 algorithms"},
         {"P / Esc", "pause"},
         {"Enter", "next stage after a win"},
         {"Mouse drag", "rotate the camera"},
@@ -1225,7 +1541,8 @@ static void page_howto(ImVec2 p, ImVec2 s)
     }
     ImGui::SeparatorText("AI");
     ImGui::TextWrapped("Inside a stage, the AI panel solves it with BFS, DFS, UCS or A* and replays the moves. "
-                       "Visualize search shows the search tree step by step.");
+                       "Visualize search shows the search tree step by step. Compare (Q) runs all four on the stage "
+                       "and shows their moves, nodes, time and memory side by side.");
     ImGui::EndChild();
     ImGui::SameLine(0, 20);
     ImGui::BeginChild("##tiles", ImVec2(0, 0), ImGuiChildFlags_None);
@@ -1301,9 +1618,22 @@ static void main_menu(ImVec2 disp, double now)
     float lx = max(36.0f, disp.x * 0.05f);
     float logo_y = max(30.0f, disp.y * 0.08f);
     draw_logo(dl, ImVec2(lx, logo_y), now, t_open);
-    const char *tag = "The block-rolling puzzle  -  AI edition";
-    dl->AddText(font_menu, font_menu->FontSize * 0.75f, ImVec2(lx + 6, logo_y + font_logo->FontSize + 8),
-                rgba(ImVec4(1, 1, 1, 0.75f * clamp01(t_open * 2.0f))), tag);
+    // Phụ đề: một dòng nếu đủ chỗ trước bảng nội dung bên phải, không thì tách hai dòng (thu nhỏ nếu vẫn chật).
+    const char *tag_a = "The block-rolling puzzle", *tag_b = "AI Search Algorithms implement edition";
+    char tag_line[128];
+    snprintf(tag_line, sizeof(tag_line), "%s  -  %s", tag_a, tag_b);
+    float tag_fs = font_menu->FontSize * 0.75f;
+    float tag_room = max(lx + 380.0f + 40.0f, disp.x * 0.40f) - lx - 30.0f;
+    ImU32 tag_col = rgba(ImVec4(1, 1, 1, 0.75f * clamp01(t_open * 2.0f)));
+    ImVec2 tag_pos(lx + 6, logo_y + font_logo->FontSize + 8);
+    if(text_size(font_menu, tag_fs, tag_line).x <= tag_room)
+        dl->AddText(font_menu, tag_fs, tag_pos, tag_col, tag_line);
+    else
+    {
+        float fs = min(tag_fs, tag_fs * tag_room / max(1.0f, text_size(font_menu, tag_fs, tag_b).x));
+        dl->AddText(font_menu, fs, tag_pos, tag_col, tag_a);
+        dl->AddText(font_menu, fs, ImVec2(tag_pos.x, tag_pos.y + fs + 4), rgba(ACCENT, 0.9f * clamp01(t_open * 2.0f)), tag_b);
+    }
 
     bool can_continue = game_result == -1 && game.get_steps() > 0;
     char play_hint[32] = "";
@@ -1403,6 +1733,8 @@ void hud_frame(double now)
         stage_banner(disp, now);
     }
     solver_toast(disp, now);
+    if(!menu_open)
+        compare_window(disp, now);
     if(viz_is_open() && !menu_open)
         viz_draw_window(disp.x * 0.52f + 8, 12, disp.x * 0.48f - 20, disp.y - 24);
     pause_menu(disp);

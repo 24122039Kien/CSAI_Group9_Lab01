@@ -21,6 +21,7 @@
 #include "audio.h"
 #include "viz.h"
 #include "app.h"
+#include "compare.h"
 
 #include <atomic>
 #include <cstring>
@@ -53,6 +54,7 @@ bool options_open = false;
 bool show_minimap = true;
 bool show_help = true;
 bool show_ai_panel = true;
+bool compare_open = false;
 int fall_count = 0;
 double level_started_at = 0.0;
 map<int, int> best_moves;
@@ -151,13 +153,13 @@ bool app_input_locked()
 {
     return autoplayer.is_active() || pending_autoplay || game_result != -1
         || game.is_won() || game.is_gameover() || menu_open || paused || viz_is_open()
-        || solve_state == SOLVE_RUNNING || restart_at > 0.0
+        || solve_state == SOLVE_RUNNING || restart_at > 0.0 || compare_open
         || effects.intro_active(glfwGetTime());
 }
 
 void app_start_level(int lv)
 {
-    if(lv != level) fall_count = 0;
+    if(lv != level) { fall_count = 0; compare_open = false; }
     level = lv;
     restart_at = -1.0;
     paused = false;
@@ -219,8 +221,9 @@ void app_toggle_pause()
 
 static void start_solver(const string &algo, int mode)
 {
-    if(solve_state == SOLVE_RUNNING)
+    if(solve_state == SOLVE_RUNNING || compare_running())   // hai lần gọi Python cùng lúc sẽ tranh solver_log.txt
         return;
+    compare_open = false;
     solve_algo = algo;
     solve_state = SOLVE_RUNNING;
     solve_mode = mode;
@@ -238,6 +241,36 @@ static void start_solver(const string &algo, int mode)
         solver_status = run_solver(lv, algo, "solution.txt", true, heur, extra);
         solver_done = true;
     }).detach();
+}
+
+void app_toggle_compare()
+{
+    if(cli_mode || menu_open) return;
+    if(compare_open) { compare_open = false; return; }
+    if(viz_is_open()) app_close_visualizer();
+    compare_open = true;
+    paused = false;
+    if(!compare_has(level) && solve_state != SOLVE_RUNNING)
+        compare_start(level, solve_heuristic, glfwGetTime());
+}
+
+void app_compare_rerun()
+{
+    if(solve_state != SOLVE_RUNNING)
+        compare_start(level, solve_heuristic, glfwGetTime());
+}
+
+void app_replay_compare(const string &algo)
+{
+    string file = compare_solution_file(level, algo);
+    if(file.empty() || !autoplayer.load(file))
+        return;
+    compare_open = false;
+    app_start_level(level);
+    pending_autoplay = true;
+    string a = algo == "astar" ? "A*" : algo;
+    for(size_t k=0; k<a.size(); k++) a[k] = toupper(a[k]);
+    replay_label = "(" + a + ")";
 }
 
 void app_solve(const string &algo)
@@ -335,24 +368,7 @@ void app_quit()
 
 static void read_stats()
 {
-    string text;
-    last_stats.valid = false;
-    if(!read_text_file("stats.txt", text)) return;
-    istringstream in(text);
-    string key;
-    while(in >> key)
-    {
-        if(key == "algorithm") in >> last_stats.algorithm;
-        else if(key == "status") in >> last_stats.status;
-        else if(key == "length") in >> last_stats.length;
-        else if(key == "cost") in >> last_stats.cost;
-        else if(key == "expanded") in >> last_stats.expanded;
-        else if(key == "generated") in >> last_stats.generated;
-        else if(key == "frontier") in >> last_stats.frontier;
-        else if(key == "time_ms") in >> last_stats.time_ms;
-        else if(key == "memory_kb") in >> last_stats.memory_kb;
-    }
-    last_stats.valid = true;
+    read_solver_stats("stats.txt", last_stats);
 }
 
 static void poll_solver()
@@ -506,6 +522,8 @@ static void render_scene(int x, int y, int w, int h, bool minimap, double now)
         }
     }
 
+    if(!minimap && renderer.theme == THEME_MINECRAFT)
+        renderer.draw_sky(P * V, float(now));   // trời + biển 3D đi theo camera
     renderer.begin(P * V, eye, float(now), fog_near, fog_far, !minimap);
     stage.draw(now);
     if(!viz_is_open())
@@ -676,7 +694,7 @@ static void usage(const char *prog)
          << "  --no-shadows / --no-bloom  turn off real shadows / bloom post-processing" << endl
          << "  --visualize <algo>      open the search visualizer for this algorithm at start" << endl
          << "  --mute                  no sound" << endl
-         << "  --ui <menu|levels|settings|howto|credits|pause|options>  open this panel at start (screenshots)" << endl
+         << "  --ui <menu|levels|settings|howto|credits|pause|options|compare>  open this panel at start (screenshots)" << endl
          << "  --keep-open             with --play: replay in normal game mode (falls restart, no exit)" << endl
          << "Python interpreter: $BLOXORZ_PYTHON (default python3, or python / py -3 on Windows)." << endl;
 }
@@ -864,6 +882,7 @@ int main (int argc, char** argv)
         hud_open_page(ui_arg);
     }
     if(!cli_mode && (ui_arg == "pause" || ui_arg == "options")) { menu_open = false; paused = true; options_open = ui_arg == "options"; }
+    if(!cli_mode && ui_arg == "compare") { menu_open = false; app_toggle_compare(); }
 
     double start_time = glfwGetTime();
     double prev_time = start_time, fps_time = start_time;

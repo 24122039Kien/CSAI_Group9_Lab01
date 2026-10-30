@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include "app.h"
 
 // Phát lại lời giải: đọc chuỗi U/D/L/R và tự gọi superblock.move() từng nước.
 class AutoPlayer
@@ -39,6 +40,8 @@ enum SolverStatus
 int run_solver(int level, const std::string &algo, const std::string &out_path, bool quiet = false,
                const std::string &heuristic = "manhattan", const std::string &extra = "");
 const char *solver_status_text(int status);
+// Đọc file `khóa giá_trị` do `main.py --stats` ghi (bảng AI, bảng so sánh). false nếu không đọc được.
+bool read_solver_stats(const std::string &path, SolverStats &out);
 
 extern AutoPlayer autoplayer;
 extern double autoplay_delay;   // giây chờ giữa hai nước (mặc định 0.25)

@@ -142,6 +142,33 @@ const char *solver_status_text(int status)
     }
 }
 
+bool read_solver_stats(const string &path, SolverStats &out)
+{
+    out.valid = false;
+    out.algorithm = out.status = "";
+    out.length = -1;
+    out.cost = out.time_ms = out.memory_kb = -1.0;
+    out.expanded = out.generated = out.frontier = 0;
+    string text;
+    if(!read_text_file(path, text)) return false;
+    istringstream in(text);
+    string key;
+    while(in >> key)
+    {
+        if(key == "algorithm") in >> out.algorithm;
+        else if(key == "status") in >> out.status;
+        else if(key == "length") in >> out.length;
+        else if(key == "cost") in >> out.cost;
+        else if(key == "expanded") in >> out.expanded;
+        else if(key == "generated") in >> out.generated;
+        else if(key == "frontier") in >> out.frontier;
+        else if(key == "time_ms") in >> out.time_ms;
+        else if(key == "memory_kb") in >> out.memory_kb;
+    }
+    out.valid = true;
+    return true;
+}
+
 #ifdef _WIN32
 static std::wstring widen(const string &s)
 {

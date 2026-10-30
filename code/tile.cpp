@@ -223,9 +223,21 @@ BoxStyle Floor::tile_style(int i, int j)
     return s;
 }
 
+// Theme Minecraft: mỗi ô là một khối đầy 1x1x1 (đảo khối nổi trên biển), khe giữa các khối rất mảnh.
+static float tile_thickness()
+{
+    return renderer.theme == THEME_MINECRAFT ? 1.0f : tile_height;
+}
+
+static float tile_gap()
+{
+    return renderer.theme == THEME_MINECRAFT ? 0.004f : TILE_GAP;
+}
+
 void Floor::draw(double now)
 {
     float l = tile_side_length;
+    float th = tile_thickness();
     for(int i=0; i<n; i++)
         for(int j=0; j<m; j++)
         {
@@ -247,11 +259,11 @@ void Floor::draw(double now)
                     flash = (1.0f - t) * (0.6f + 0.4f*cos(t * 18.0f));
                 }
             }
-            float side = (l - 2*TILE_GAP) * grow;
+            float side = (l - 2*tile_gap()) * grow;
             float spin = 0.0f;
             dz += collapse_offset(i, j, now, spin);
-            glm::vec3 pos(i*l + (l-side)/2, j*l + (l-side)/2, -tile_height + dz);
-            glm::vec3 size(side, side, tile_height);
+            glm::vec3 pos(i*l + (l-side)/2, j*l + (l-side)/2, -th + dz);
+            glm::vec3 size(side, side, th);
             BoxStyle st = tile_style(i, j);
             if(flash > 0.0f)
             {
@@ -276,19 +288,23 @@ void Floor::draw(double now)
     float gx = tx*l, gy = ty*l, dz = effects.tile_drop(tx, ty, n, m, now) + collapse_offset(tx, ty, now, goal_spin);
     float w = 0.07f, h = 0.03f;
     bool orig = renderer.theme == THEME_ORIGINAL;   // game gốc: lỗ đích chỉ là một ô trống tối, không phát sáng
-    BoxStyle frame(orig ? glm::vec3(0.25f, 0.23f, 0.21f) : col(GOAL_COLOR), PAT_PLAIN, orig ? 0.0f : 0.6f + 0.6f*pulse);
+    bool mc = renderer.theme == THEME_MINECRAFT;     // Minecraft: cổng Nether (khung obsidian, đáy xoáy tím)
+    glm::vec3 frame_col = orig ? glm::vec3(0.25f, 0.23f, 0.21f) : (mc ? glm::vec3(0.62f, 0.25f, 1.0f) : col(GOAL_COLOR));
+    BoxStyle frame(frame_col, PAT_PLAIN, orig ? 0.0f : (mc ? 0.25f + 0.25f*pulse : 0.6f + 0.6f*pulse));
     frame.material = MAT_GOAL;
     renderer.draw_aabb(glm::vec3(gx - w, gy - w, dz), glm::vec3(l + 2*w, w, h), frame);
     renderer.draw_aabb(glm::vec3(gx - w, gy + l, dz), glm::vec3(l + 2*w, w, h), frame);
     renderer.draw_aabb(glm::vec3(gx - w, gy, dz), glm::vec3(w, l, h), frame);
     renderer.draw_aabb(glm::vec3(gx + l, gy, dz), glm::vec3(w, l, h), frame);
     BoxStyle pit(orig ? glm::vec3(0.16f, 0.13f, 0.09f) : glm::vec3(0.03f, 0.05f, 0.08f));
+    if(mc) pit.material = MAT_GOAL;
     float depth = 1.2f, t = 0.02f;
     renderer.draw_aabb(glm::vec3(gx - t, gy - t, -depth + dz), glm::vec3(l + 2*t, t, depth - 0.01f), pit);
     renderer.draw_aabb(glm::vec3(gx - t, gy + l, -depth + dz), glm::vec3(l + 2*t, t, depth - 0.01f), pit);
     renderer.draw_aabb(glm::vec3(gx - t, gy, -depth + dz), glm::vec3(t, l, depth - 0.01f), pit);
     renderer.draw_aabb(glm::vec3(gx + l, gy, -depth + dz), glm::vec3(t, l, depth - 0.01f), pit);
     BoxStyle bottom(orig ? glm::vec3(0.07f, 0.05f, 0.03f) : col(GOAL_COLOR) * 0.25f, PAT_PLAIN, orig ? 0.0f : 0.3f*pulse);
+    if(mc) bottom.material = MAT_PORTAL;
     renderer.draw_aabb(glm::vec3(gx, gy, -depth + dz), glm::vec3(l, l, 0.05f), bottom);
 }
 
@@ -302,14 +318,15 @@ void Floor::draw_transparent(double now)
         float a = 1.0f - t / GHOST_LIFE;
         if(a <= 0.0f)
             continue;
-        glm::vec3 c(g.i*l + l/2, g.j*l + l/2, -tile_height/2 - 4.0f*t*t);
+        float th = tile_thickness();
+        glm::vec3 c(g.i*l + l/2, g.j*l + l/2, -th/2 - 4.0f*t*t);
         glm::mat4 model = glm::translate(c)
                         * glm::rotate(g.spin * t, glm::normalize(glm::vec3(1.0f, 0.6f, 0.0f)))
-                        * glm::translate(glm::vec3(-l/2, -l/2, -tile_height/2))
-                        * glm::scale(glm::vec3(l - 2*TILE_GAP, l - 2*TILE_GAP, tile_height));
+                        * glm::translate(glm::vec3(-l/2, -l/2, -th/2))
+                        * glm::scale(glm::vec3(l - 2*tile_gap(), l - 2*tile_gap(), th));
         BoxStyle s = g.style;
         s.alpha = a;
-        renderer.draw_box(model, glm::vec3(l, l, tile_height), s);
+        renderer.draw_box(model, glm::vec3(l, l, th), s);
     }
 
     // Cột sáng mờ phía trên lỗ đích để nhìn thấy mục tiêu từ xa (theme Original: không có, như game gốc).

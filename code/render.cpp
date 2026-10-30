@@ -151,6 +151,9 @@ void Renderer::init()
     ubg_time = glGetUniformLocation(bg_prog, "uTime");
     ubg_res  = glGetUniformLocation(bg_prog, "uRes");
     ubg_theme = glGetUniformLocation(bg_prog, "uTheme");
+    ubg_invvp = glGetUniformLocation(bg_prog, "uInvVP");
+    ubg_sky3d = glGetUniformLocation(bg_prog, "uSky3D");
+    ubg_sun = glGetUniformLocation(bg_prog, "uSunDir");
     draw_calls = 0;
     boxes = 0;
 }
@@ -163,6 +166,29 @@ void Renderer::draw_background(int fbwidth, int fbheight, float time)
     glUniform1f(ubg_time, time);
     glUniform2f(ubg_res, (float)fbwidth, (float)fbheight);
     glUniform1i(ubg_theme, theme);
+    glUniform1i(ubg_sky3d, 0);
+    glBindVertexArray(bg_vao);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_DEPTH_TEST);
+    draw_calls++;
+}
+
+void Renderer::draw_sky(const glm::mat4 &view_proj, float time)
+{
+    GLint vp[4];
+    glGetIntegerv(GL_VIEWPORT, vp);
+    glm::mat4 inv = glm::inverse(view_proj);
+    glm::vec3 sun = -light_dir();
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+    glUseProgram(bg_prog);
+    glUniform1f(ubg_time, time);
+    glUniform2f(ubg_res, (float)vp[2], (float)vp[3]);
+    glUniform1i(ubg_theme, theme);
+    glUniform1i(ubg_sky3d, 1);
+    glUniformMatrix4fv(ubg_invvp, 1, GL_FALSE, &inv[0][0]);
+    glUniform3fv(ubg_sun, 1, &sun[0]);
     glBindVertexArray(bg_vao);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glDepthMask(GL_TRUE);
@@ -172,9 +198,13 @@ void Renderer::draw_background(int fbwidth, int fbheight, float time)
 
 glm::vec3 Renderer::light_dir()
 {
+    // Tia sáng chiếu theo phương vị ~35° (từ phía sau bên trái camera mặc định C/B, vốn nhìn theo ~115°):
+    // bóng đổ chéo sang phải màn hình thay vì nấp sau khối, mặt trái khối sáng, mặt phải tối.
     if(theme == THEME_ORIGINAL)
-        return glm::normalize(glm::vec3(-0.55f, 0.40f, -0.95f));   // nắng chiều xiên hơn: bóng dài
-    return glm::normalize(glm::vec3(-0.35f, 0.55f, -1.0f));
+        return glm::normalize(glm::vec3(0.82f, 0.57f, -0.80f));   // nắng chiều thấp hơn: bóng dài hơn
+    if(theme == THEME_MINECRAFT)
+        return glm::normalize(glm::vec3(0.82f, 0.57f, -0.88f));
+    return glm::normalize(glm::vec3(0.82f, 0.57f, -1.0f));
 }
 
 void Renderer::begin(const glm::mat4 &view_proj, const glm::vec3 &eye, float time, float fog_near, float fog_far,
@@ -432,7 +462,7 @@ void Renderer::end_frame(int fbwidth, int fbheight)
     glBindTexture(GL_TEXTURE_2D, bloom_tex[3]);
     glActiveTexture(GL_TEXTURE0);
     glUseProgram(post_comp);
-    glUniform1f(up_comp_strength, theme == THEME_MINECRAFT ? 0.45f : 0.9f);
+    glUniform1f(up_comp_strength, theme == THEME_MINECRAFT ? 0.70f : 0.9f);
     glUniform1i(up_comp_theme, theme);
     fullscreen_pass(post_comp, 0, fbwidth, fbheight);
     glEnable(GL_DEPTH_TEST);

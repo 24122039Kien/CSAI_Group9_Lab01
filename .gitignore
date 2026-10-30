@@ -33,3 +33,6 @@ CLAUDE.md
 code/settings.ini
 code/stats.txt
 code/trace.txt
+# Kết quả bảng so sánh thuật toán do game ghi (lời giải, chỉ số, CSV xuất ra)
+code/compare_*.txt
+code/compare_stage_*.csv

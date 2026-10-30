@@ -59,7 +59,7 @@ void Camera::initialize_camera()
     // Góc mặc định: nhìn chéo từ phía dưới-phải màn, đủ thấp để thấy rõ độ cao của khối.
     follow_orbit = {-65.0f, 56.0f, 7.5f};
     tower_orbit = {-62.0f, 55.0f, 12.0f};
-    free_orbit = {-120.0f, 45.0f, 12.0f};
+    free_orbit = {-100.0f, 45.0f, 12.0f};   // lệch hướng nắng ~45°: bóng đổ vẫn thấy rõ
     mouse_orbit = {-65.0f, 50.0f, 8.0f};
     mouse_yaw = -65.0f;
     mouse_pitch = 50.0f;

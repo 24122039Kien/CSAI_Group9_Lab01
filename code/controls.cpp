@@ -84,6 +84,9 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
                 if(!cli_mode)
                     app_restart();
                 break;
+            case GLFW_KEY_Q:
+                app_toggle_compare();   // bảng so sánh 4 thuật toán
+                break;
             case GLFW_KEY_P:
                 app_toggle_pause();
                 break;
@@ -108,6 +111,8 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
         	        if(!hud_menu_back())    // đang ở trang con (chọn màn, Options...): về trang đầu
         	            app_toggle_menu();  // đóng màn hình chính, quay lại ván đang chơi
         	    }
+        	    else if(compare_open)
+        	        app_toggle_compare();   // đóng bảng so sánh
         	    else
         	        app_toggle_pause();     // trong màn: Esc = Pause (đang mở Visualizer thì đóng nó)
         	    break;
