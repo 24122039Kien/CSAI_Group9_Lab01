@@ -59,7 +59,7 @@ Game giải đố **Bloxorz** 3D (C++/OpenGL) kết hợp bộ giải bằng **c
 
 - **Solve**: chạy một thuật toán rồi khối tự lăn theo lời giải.
 - **Visualize search**: cây tìm kiếm chạy từng bước kèm g / h / f và bản đồ nhiệt trên bàn chơi.
-- **Compare all 4 algorithms** (`Q`): bảng 9 chỉ số, biểu đồ cột, nhận xét tự sinh, phát lại lời giải của từng thuật toán, xuất CSV.
+- **Compare all 4 algorithms** (`Q`): bảng 9 chỉ số, biểu đồ cột, phát lại lời giải của từng thuật toán, xuất CSV.
 
 ## Bắt đầu nhanh
 
@@ -156,7 +156,6 @@ Trong màn chơi, **bảng AI** ở góc phải có:
   - chạy lần lượt cả 4 thuật toán;
   - bảng số bước, chi phí, node mở rộng / sinh ra, frontier lớn nhất, thời gian, bộ nhớ; giá trị tốt nhất mỗi cột tô xanh;
   - biểu đồ cột (có thang log);
-  - nhận xét tự sinh;
   - nút **Replay** cho từng thuật toán;
   - **Save CSV** ghi `compare_stage_<n>.csv` để dùng cho phần thực nghiệm.
 

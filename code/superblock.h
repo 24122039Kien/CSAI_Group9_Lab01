@@ -19,6 +19,8 @@ class SuperBlock
         double end_start;
         glm::vec2 fall_dir;
         glm::mat4 model;             // ma trận vẽ của frame gần nhất (dùng cho bóng)
+        glm::mat4 face_sym;          // đối xứng của hộp 2x1x1: hướng thật so với tư thế chuẩn (mặt nào ở đâu)
+        glm::mat4 cube_rot[2];       // hướng thật của từng khối nhỏ sau khi tách
         void land_dust();
     public:
         bool is_split;

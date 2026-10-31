@@ -519,46 +519,6 @@ static const char *fmt_metric(char *buf, size_t n, double v, int m)
     return buf;
 }
 
-// Nhận xét tự sinh từ số liệu (ý chính của Docs/report6.md mục 6, áp vào màn đang xem).
-static void compare_insights(const CompareResult &r)
-{
-    const CompareRow *bfs = &r.rows[0], *dfs = &r.rows[1], *ucs = &r.rows[2], *ast = &r.rows[3];
-    char a[32], b[32];
-    int best = -1;
-    for(int k = 0; k < COMPARE_ALGOS; k++)
-        if(row_ok(r.rows[k]) && (best < 0 || r.rows[k].stats.length < best)) best = r.rows[k].stats.length;
-    if(best < 0)
-    {
-        bool none = true;
-        for(int k = 0; k < COMPARE_ALGOS; k++)
-            if(!(r.rows[k].state == ROW_DONE && r.rows[k].status == SOLVER_NO_SOLUTION)) none = false;
-        if(none)
-            ImGui::BulletText("No algorithm found a solution: every reachable state was explored, so the level is unsolvable.");
-        return;
-    }
-    string opt;
-    for(int k = 0; k < COMPARE_ALGOS; k++)
-        if(row_ok(r.rows[k]) && r.rows[k].stats.length == best)
-            opt += string(opt.empty() ? "" : ", ") + algo_label(r.rows[k].algo);
-    ImGui::BulletText("Optimal solution: %d moves (%s).", best, opt.c_str());
-    if(row_ok(*dfs) && dfs->stats.length > best)
-        ImGui::BulletText("DFS is not optimal: %d moves (+%d), but it expanded only %s nodes.", dfs->stats.length,
-                          dfs->stats.length - best, fmt_count(a, sizeof(a), (double)dfs->stats.expanded));
-    if(row_ok(*ucs) && row_ok(*ast) && ucs->stats.expanded > 0)
-    {
-        double cut = 100.0 * (1.0 - (double)ast->stats.expanded / (double)ucs->stats.expanded);
-        if(cut >= 5.0)
-            ImGui::BulletText("A* expanded %.0f%% fewer nodes than UCS (%s vs %s): the heuristic prunes the search.", cut,
-                              fmt_count(a, sizeof(a), (double)ast->stats.expanded), fmt_count(b, sizeof(b), (double)ucs->stats.expanded));
-        else
-            ImGui::BulletText("A* barely prunes here (%.1f%% fewer nodes than UCS): most reachable states are closer to the start\n"
-                              "than the goal, so any optimal search must expand them (see Docs/report6.md, 6.3).", cut);
-    }
-    if(row_ok(*bfs) && row_ok(*ucs) && ucs->stats.expanded > bfs->stats.expanded)
-        ImGui::BulletText("UCS expands %ld more nodes than BFS only because it tests the goal when popping, not when generating.",
-                          ucs->stats.expanded - bfs->stats.expanded);
-}
-
 static void compare_chart(const CompareResult &r, float w, float h)
 {
     ImDrawList *dl = ImGui::GetWindowDrawList();
@@ -759,11 +719,9 @@ static void compare_window(ImVec2 disp, double now)
     float chart_h = max(110.0f, min(170.0f, ImGui::GetContentRegionAvail().y - 120.0f));
     compare_chart(r, full, chart_h);
 
-    // Nhận xét
     if(!r.running)
     {
         ImGui::Separator();
-        compare_insights(r);
         ImGui::TextColored(DIM, "Time and memory are measured inside Python for the search only. Lower is better; green = best in column.");
     }
     ImGui::End();

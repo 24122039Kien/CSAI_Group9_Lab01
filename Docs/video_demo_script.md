@@ -133,7 +133,7 @@ Cột **"Thao tác"** là việc người quay làm trên máy. Cột **"Thuyế
 | Thao tác | Thuyết minh / phụ đề |
 |---|---|
 | Màn **5**, bấm `Q`. Đợi bảng chạy xong (vài giây). Rê chuột qua bảng chỉ số, rồi qua biểu đồ cột. | "Phím Q mở bảng so sánh: game chạy lần lượt cả bốn thuật toán trên màn hiện tại. Ô xanh là giá trị tốt nhất mỗi cột. Ở màn 5, A\* chỉ mở rộng 14 node, trong khi UCS mở rộng 52 node: heuristic giúp A\* đi thẳng về phía đích." |
-| Màn **13**, bấm `Q`. Cắt đoạn chờ. Dừng ở cột **Length** và **Expanded**, đọc các dòng nhận xét bên dưới. Bật thang log cho biểu đồ. | "Màn 13 là màn lớn nhất, có sáu công tắc với gần 48 nghìn trạng thái. BFS, UCS và A\* đều cho 66 bước. DFS mở rộng ít node nhất nhưng ra lời giải tới 4.295 bước. Ở màn này A\* gần như không cắt tỉa được, vì hầu hết các trạng thái đều gần điểm xuất phát hơn đích; phần giải thích chi tiết nằm trong báo cáo." |
+| Màn **13**, bấm `Q`. Cắt đoạn chờ. Dừng ở cột **Moves** và **Expanded**. Bật thang log cho biểu đồ. | "Màn 13 là màn lớn nhất, có sáu công tắc với gần 48 nghìn trạng thái. BFS, UCS và A\* đều cho 66 bước. DFS mở rộng ít node nhất nhưng ra lời giải tới 4.295 bước. Ở màn này A\* gần như không cắt tỉa được, vì hầu hết các trạng thái đều gần điểm xuất phát hơn đích; phần giải thích chi tiết nằm trong báo cáo." |
 | Bấm **Replay** ở dòng A\*, cho khối lăn vài giây. Bấm **Save CSV**. | "Có thể phát lại lời giải của từng thuật toán, và xuất bảng ra file CSV để đưa vào phần thực nghiệm." |
 
 ### Cảnh 11 – Search Visualizer (7:45 – 8:25) – màn 5 *(có thể cắt)*

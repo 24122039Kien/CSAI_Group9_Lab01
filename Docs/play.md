@@ -121,7 +121,6 @@ make              # build a.exe: cần khi mới clone, vừa pull, hoặc vừa
 - **Bảng so sánh thuật toán** (`Q`): chạy lần lượt BFS, DFS, UCS, A\* trên màn hiện tại trong luồng nền (cửa sổ không bị treo), rồi hiện:
   - bảng 9 chỉ số (kết quả, số bước, chi phí, node mở rộng, node sinh ra, frontier lớn nhất, thời gian, bộ nhớ); giá trị tốt nhất mỗi cột tô xanh;
   - biểu đồ cột chọn được chỉ số, có thang log;
-  - vài dòng nhận xét tự sinh (lời giải tối ưu, DFS dài hơn bao nhiêu, A\* cắt tỉa được bao nhiêu so với UCS...);
   - nút **Replay** cho từng thuật toán, chọn heuristic cho A\*, **Run again**, **Save CSV** (ghi `compare_stage_<n>.csv` cạnh file chạy, dùng cho phần thực nghiệm của báo cáo).
   - Kết quả được giữ theo từng màn trong lúc chơi. `Q` hoặc `Esc` để đóng.
 - **Search Visualizer:** xem cây tìm kiếm hoặc đồ thị trạng thái chạy từng bước, kèm g/h/f. Trên bàn chơi 3D có bản đồ nhiệt và khối mờ. Màn lớn chỉ ghi 4000 bước mở rộng đầu tiên.

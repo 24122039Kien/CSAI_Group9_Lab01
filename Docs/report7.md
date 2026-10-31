@@ -13,7 +13,7 @@
 | Phụ đề màn hình chính | ✅ "The block-rolling puzzle - **AI Search Algorithms implement edition**". Tự tách 2 dòng khi cửa sổ hẹp để không đè bảng bên phải |
 | Bóng đổ không thấy ở góc nhìn mặc định | ✅ Tìm ra nguyên nhân: nắng chiếu **cùng hướng với camera**, bóng nấp sau khối (mục 3). Nắng giờ chiếu chéo từ phía sau bên trái camera, bóng đổ sang phải màn hình ở C / B / X / N |
 | Theme Minecraft | ✅ Làm lại toàn bộ: texture 16x16 theo bảng màu gốc, **nổi khối từng texel**, nắng ấm + trời xanh, bóng đổ thật, AO ở chân khối, **ô sàn thành khối đầy** (đảo nổi), **trời 3D + biển phản chiếu + mặt trời vuông + mây khối**, ô đích là **cổng Nether**, tone mapping ACES |
-| So sánh 4 thuật toán | ✅ Nút **Compare all 4 algorithms** trong bảng AI / phím **Q**: chạy BFS, DFS, UCS, A\* ở luồng nền; bảng 9 chỉ số, biểu đồ cột, nhận xét tự sinh, **Replay** từng thuật toán, **Save CSV** |
+| So sánh 4 thuật toán | ✅ Nút **Compare all 4 algorithms** trong bảng AI / phím **Q**: chạy BFS, DFS, UCS, A\* ở luồng nền; bảng 9 chỉ số, biểu đồ cột, **Replay** từng thuật toán, **Save CSV** |
 | README | ✅ Viết lại thành README giới thiệu repo: tính năng, ảnh, cài đặt từng hệ điều hành, cách chạy, cấu trúc, test. Bỏ phần phân công và trạng thái tiến độ (vẫn còn trong `Docs/`) |
 | Kiểm chứng | pytest **357 passed, 1 skipped** · **15/15** màn tự phát lại vẫn **WON** · `make`, `make dist`, build WSL đều qua · theme Minecraft mới ~1150 FPS (không vsync, màn 13) |
 
@@ -164,11 +164,7 @@ Bảng gồm:
 - **Thanh tiến độ** khi đang chạy: thuật toán đang chạy, số đã xong, thời gian đã trôi.
 - **Bảng 9 chỉ số:** kết quả (optimal / found / no solution / failed), số bước (DFS ghi thêm `+N` so với tối ưu), chi phí, node mở rộng, node sinh ra, frontier lớn nhất, thời gian (ms), bộ nhớ đỉnh (KB). **Giá trị tốt nhất mỗi cột tô xanh.**
 - **Biểu đồ cột** cho chỉ số đang chọn (Expanded / Generated / Max frontier / Time / Memory / Moves), mỗi thuật toán một màu, có tùy chọn **thang log**.
-- **Nhận xét tự sinh** từ số liệu của chính màn đó:
-  - lời giải tối ưu và thuật toán nào đạt;
-  - DFS dài hơn bao nhiêu bước;
-  - A\* bớt được bao nhiêu % node so với UCS; nếu dưới 5% thì giải thích vì sao (đúng lưu ý 6.3 của [report6.md](report6.md));
-  - UCS mở rộng nhiều hơn BFS chỉ vì thời điểm kiểm tra đích (lưu ý 6.1).
+- *(Bản đầu có thêm vài dòng nhận xét tự sinh bên dưới biểu đồ. Phần này đã bỏ (mục 10) vì nhận xét theo luật cố định dễ thành chủ quan; phần giải thích số liệu để trong báo cáo.)*
 - **Replay:** khối tự lăn theo lời giải của thuật toán đó.
 - **A\* heuristic:** Manhattan hoặc Zero (= UCS), kèm **Run again**.
 - **Save CSV:** ghi `compare_stage_<n>.csv` cạnh file chạy (cột `level, algorithm, heuristic, status, length, cost, expanded, generated, max_frontier, time_ms, memory_kb`). File này dán thẳng vào phần thực nghiệm của báo cáo được.
@@ -192,7 +188,7 @@ Số node của bảng trùng khớp với bảng ở report6 mục 5 (ví dụ 
 | `code/compare.h/.cpp` (mới) | Chạy **tuần tự** 4 lần `main.py data/<n>.data --algo <a> --stats compare_<a>_stats.txt --out compare_<a>.txt` trong **một luồng nền**. Tuần tự để số đo thời gian/bộ nhớ không ảnh hưởng lẫn nhau. Kết quả giữ trong `map<màn, CompareResult>` có mutex; giao diện đọc bản sao mỗi frame. Xuất CSV |
 | `code/autoplay.cpp` | Hàm dùng chung `read_solver_stats()` đọc file `--stats` (bảng AI cũ và bảng so sánh cùng dùng) |
 | `code/main.cpp` | `app_toggle_compare`, `app_compare_rerun`, `app_replay_compare`. Không cho chạy Solve/Visualize khi đang so sánh và ngược lại, vì hai lần gọi Python cùng lúc sẽ tranh file `solver_log.txt`. Khóa phím lăn khối khi bảng mở. Cờ dev `--ui compare` |
-| `code/hud.cpp` | Cửa sổ so sánh (`compare_window`, `compare_chart`, `compare_insights`), nút trong bảng AI, dòng `Q` trong bảng phím và trang How to Play |
+| `code/hud.cpp` | Cửa sổ so sánh (`compare_window`, `compare_chart`), nút trong bảng AI, dòng `Q` trong bảng phím và trang How to Play |
 | `code/controls.cpp` | Phím `Q` mở/đóng, `Esc` đóng |
 | `.gitignore` | Bỏ qua `code/compare_*.txt`, `code/compare_stage_*.csv` (file game ghi lúc chạy) |
 
@@ -248,3 +244,17 @@ Bỏ khỏi README: bảng trạng thái từng thành viên và bảng phân c�
 - Bảng so sánh gọi Python 4 lần nối tiếp. Màn lớn (13) mất khoảng 20 giây, chủ yếu là thời gian tìm kiếm thật cộng với đo bộ nhớ bằng `tracemalloc`.
 - Replay lời giải DFS ở màn lớn rất dài (màn 13: 4.295 bước). Bấm `R` để dừng.
 - Texture Minecraft vẽ bằng shader nên không có mipmap: ở xa (góc B của màn lớn) texel nhỏ hơn điểm ảnh, mặt cỏ hơi lấm tấm (MSAA chỉ khử răng cưa ở mép hình, không làm mịn bên trong texture). Nếu cần có thể làm mờ dần hoa văn theo khoảng cách.
+
+---
+
+## 10. Cập nhật sau report7
+
+| Việc | Nguyên nhân / cách làm |
+|---|---|
+| **Ô đen nhấp nháy ở đáy màn hình (theme Minecraft)** | Công thức Fresnel `pow(1 - dot(...), k)`: ở đáy màn hình tia nhìn chúi gần thẳng xuống mặt biển, sai số làm `dot` nhỉnh hơn 1, cơ số âm nên `pow` ra NaN ở một điểm ảnh; các lượt làm nhòe của bloom thổi nó thành ô vuông đen khoảng 85 px, nhấp nháy theo sóng. Sửa: kẹp cơ số về [0, 1] ở cả 4 chỗ, và chặn NaN/Inf ở bước lọc sáng của bloom và bước ghép cuối (`code/shaders.h`) |
+| **Bỏ phần nhận xét tự sinh** trong bảng so sánh | Nhận xét là các câu mẫu điền số theo luật cố định (ngưỡng 5%...), dễ thành chủ quan. Bảng, biểu đồ, Replay và CSV giữ nguyên (`code/hud.cpp`). Ảnh 10, 11, 12, 14 đã chụp lại |
+| **Theme Original: khối như bị giật và đổi mặt khi lăn** | Hai nguyên nhân. (1) Lăn xong, khối được vẽ lại bằng phép xoay chuẩn cố định theo tư thế (`along`), không theo đúng hướng vừa lăn tới: cùng hình nhưng các mặt bị tráo chỗ ngay khi kết thúc lần lăn. Theme Classic một màu nên không thấy, Original mỗi mặt có vân gỉ riêng nên thấy rõ. (2) Vân gỉ lấy độ lệch theo mặt *trong thế giới* (trên / bên), nên đổi đột ngột giữa lúc lăn khi một mặt chuyển từ trên sang bên |
+| Cách sửa (1) | `code/superblock.cpp`: `face_sym` là một trong 4 phép đối xứng xoay của hộp 2×1×1, ghi hướng thật so với tư thế chuẩn. Mỗi lần lăn xong cộng dồn phần chênh `inverse(khung chuẩn mới) × khung cuối lần lăn` (làm tròn về −1/0/1). Khối nhỏ sau khi tách có `cube_rot` cộng dồn từng phép xoay 90°. Phần dựng ma trận lăn tách thành hàm `block_frame()` dùng chung cho vẽ và tính `face_sym`. Chỉ áp dụng ở theme Original, nên Classic và Minecraft (chữ TNT luôn nằm ngang) giữ nguyên |
+| Cách sửa (2) | `code/shaders.h`: vân gỉ lấy độ lệch theo pháp tuyến *của khối* (có dấu, 6 mặt 6 vân khác nhau), nên đi theo mặt khi lăn |
+| Kiểm chứng | Tạm in phần chênh ở mỗi lần lăn khi phát lại lời giải màn 1, 5, 14, 15, 16 (theme Original): 98/98 lần lăn có sai số 0 và hộp luôn giữ kích thước (2, 1, 1). Cả 5 màn vẫn thắng. Build không lỗi, không cảnh báo |
+

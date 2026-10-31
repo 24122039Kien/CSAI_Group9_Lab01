@@ -335,7 +335,9 @@ vec3 origMaterial(int mat, vec2 uv, vec2 sz, int face, inout vec3 N, out float s
     specK = 0.30; shin = 40.0; envK = 0.03; occl = 1.0;
     vec2 wp = vWorldPos.xy;
     if (mat == 7 || mat == 8) {                   // khối: kim loại gỉ sét
-        vec2 q = uv * sz * 2.2 + vec2(float(face) * 7.3, abs(vObjNormal.x) * 3.1 + abs(vObjNormal.y) * 5.7);
+        // Vân gắn theo mặt của chính khối (pháp tuyến vật thể, có dấu: 6 mặt 6 vân khác nhau), không theo
+        // hướng trong thế giới, nên khi khối lăn vân đi theo mặt chứ không nhảy khi mặt chuyển từ trên sang bên.
+        vec2 q = uv * sz * 2.2 + vec2(vObjNormal.z * 7.3 + vObjNormal.x * 2.9, vObjNormal.x * 3.1 + vObjNormal.y * 5.7);
         float n = fbm(q * 1.6), n2 = fbm(q * 4.5 + 11.0);
         vec3 metal = vec3(0.24, 0.17, 0.13);
         vec3 rust = vec3(0.55, 0.25, 0.09);

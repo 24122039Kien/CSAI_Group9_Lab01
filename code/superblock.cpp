@@ -13,6 +13,156 @@ float roll_speed = 450.0f;
 
 enum { END_NONE = 0, END_SINK = 1, END_FALL = 2 };
 
+// Ma trận đặt hộp tâm tại gốc (trục dài là trục x vật thể) vào thế giới: tư thế chuẩn của 'along'
+// rồi lăn dr độ theo rot_dir. rp_out (nếu có): vị trí chân khối dùng cho camera.
+static glm::mat4 block_frame(int along, int rot_dir, glm::vec3 pos, float dr, glm::vec3 *rp_out)
+{
+    glm::mat4 translate = glm::translate (pos);
+    glm::mat4 rev;
+    glm::mat4 F = translate;
+
+    glm::mat4 rotate(1.0f);
+    if(along==Y)
+        rotate = rotate * glm::rotate(glm::mat4(1.0f), float(-M_PI/2), glm::vec3(0,0,1));
+    else if(along==Z)
+        rotate = rotate * glm::rotate(glm::mat4(1.0f), float(-M_PI/2), glm::vec3(0,1,0));
+
+    F = F * rotate;
+
+    float x = tile_side_length;
+    glm::vec3 rp = pos;
+    rp.z = 0;
+
+    if(along==X)
+    {
+        if(rot_dir==R)
+        {
+            translate = glm::translate(glm::vec3(x, 0, -x/2));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,1,0));
+            rev = glm::translate(glm::vec3(-x, 0, x/2));
+            F = F * translate * rotate * rev;
+            rp.x += tile_side_length * (1-cos(dr*M_PI/180) + 0.5*sin(dr*M_PI/180));
+        }
+        else if(rot_dir==L)
+        {
+            translate = glm::translate(glm::vec3(-x, 0, -x/2));
+            rotate = glm::rotate(glm::mat4(1.0f), float(-M_PI*dr/180.0f), glm::vec3(0,1,0));
+            rev = glm::translate(glm::vec3(x, 0, x/2));
+            F = F * translate * rotate * rev;
+            rp.x -= tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
+        }
+        else if(rot_dir==U)
+        {
+            translate = glm::translate(glm::vec3(0, x/2, -x/2));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(-1,0,0));
+            rev = glm::translate(glm::vec3(0, -x/2, x/2));
+            F = F * translate * rotate * rev;
+            rp.y += 0.5*tile_side_length * (1-cos(dr*M_PI/180)+ sin(dr*M_PI/180));
+        }
+        else if(rot_dir==D)
+        {
+            translate = glm::translate(glm::vec3(0, -x/2, -x/2));
+            rotate = glm::rotate(glm::mat4(1.0f), float(-M_PI*dr/180.0f), glm::vec3(-1,0,0));
+            rev = glm::translate(glm::vec3(0, x/2, x/2));
+            F = F * translate * rotate * rev;
+            rp.y -= 0.5*tile_side_length * (1-cos(dr*M_PI/180)+ sin(dr*M_PI/180));
+        }
+    }
+    else if(along==Y)
+    {
+        if(rot_dir==R)
+        {
+            translate = glm::translate(glm::vec3(0, x/2, -x/2));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(-1,0,0));
+            rev = glm::translate(glm::vec3(0, -x/2, x/2));
+            F = F * translate * rotate * rev;
+            rp.x += 0.5*tile_side_length * (1-cos(dr*M_PI/180)+ sin(dr*M_PI/180));
+        }
+        else if(rot_dir==L)
+        {
+            translate = glm::translate(glm::vec3(0, -x/2, -x/2));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(1,0,0));
+            rev = glm::translate(glm::vec3(0, x/2, x/2));
+            F = F * translate * rotate * rev;
+            rp.x -= 0.5*tile_side_length * (1-cos(dr*M_PI/180)+ sin(dr*M_PI/180));
+        }
+        else if(rot_dir==U)
+        {
+            translate = glm::translate(glm::vec3(-x, 0, -x/2));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,-1,0));
+            rev = glm::translate(glm::vec3(x, 0, x/2));
+            F = F * translate * rotate * rev;
+            rp.y += tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
+        }
+        else if(rot_dir==D)
+        {
+            translate = glm::translate(glm::vec3(x, 0, -x/2));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,1,0));
+            rev = glm::translate(glm::vec3(-x, 0, x/2));
+            F = F * translate * rotate * rev;
+            rp.y -= tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
+        }
+    }
+    else if(along==Z)
+    {
+        if(rot_dir==R)
+        {
+            translate = glm::translate(glm::vec3(-x, 0, -x/2));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,1,0));
+            rev = glm::translate(glm::vec3(x, 0, x/2));
+            F = F * translate * rotate * rev;
+            rp.x += tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
+        }
+        else if(rot_dir==L)
+        {
+            translate = glm::translate(glm::vec3(-x, 0, x/2));
+            rotate = glm::rotate(glm::mat4(1.0f), float(-M_PI*dr/180.0f), glm::vec3(0,1,0));
+            rev = glm::translate(glm::vec3(x, 0, -x/2));
+            F = F * translate * rotate * rev;
+            rp.x -= tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
+        }
+        else if(rot_dir==U)
+        {
+            translate = glm::translate(glm::vec3(-x, x/2, 0));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,0,1));
+            rev = glm::translate(glm::vec3(x, -x/2, 0));
+            F = F * translate * rotate * rev;
+            rp.y += tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
+        }
+        else if(rot_dir==D)
+        {
+            translate = glm::translate(glm::vec3(-x, -x/2, 0));
+            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,0,-1));
+            rev = glm::translate(glm::vec3(x, x/2, 0));
+            F = F * translate * rotate * rev;
+            rp.y -= tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
+        }
+    }
+    if(rp_out)
+        *rp_out = rp;
+    return F;
+}
+
+// Làm tròn phần xoay về đúng các phần tử -1/0/1 (bỏ sai số float) và bỏ phần tịnh tiến.
+static glm::mat4 snap_rotation(const glm::mat4 &m)
+{
+    glm::mat4 r(1.0f);
+    for(int c=0; c<3; c++)
+        for(int k=0; k<3; k++)
+            r[c][k] = floorf(m[c][k] + 0.5f);
+    return r;
+}
+
+// Phép xoay khi khối nhỏ 1x1x1 lăn dr độ (khớp trục và chiều trong draw()).
+static glm::mat4 cube_roll_rotation(int dir, float dr)
+{
+    if(dir == R) return glm::rotate(glm::mat4(1.0f), float(dr * M_PI / 180.0f), glm::vec3(0, 1, 0));
+    if(dir == L) return glm::rotate(glm::mat4(1.0f), float(-dr * M_PI / 180.0f), glm::vec3(0, 1, 0));
+    if(dir == U) return glm::rotate(glm::mat4(1.0f), float(-dr * M_PI / 180.0f), glm::vec3(1, 0, 0));
+    if(dir == D) return glm::rotate(glm::mat4(1.0f), float(dr * M_PI / 180.0f), glm::vec3(1, 0, 0));
+    return glm::mat4(1.0f);
+}
+
 SuperBlock::SuperBlock(){}
 
 SuperBlock::SuperBlock(glm::vec3 pos, glm::vec3 dim, Color c, int a)
@@ -49,6 +199,8 @@ void SuperBlock::initialize(glm::vec3 pos, glm::vec3 dim, Color c, int a)
     buffered_move = 0;
     cube_model[0] = glm::mat4(1.0f);
     cube_model[1] = glm::mat4(1.0f);
+    face_sym = glm::mat4(1.0f);
+    cube_rot[0] = cube_rot[1] = glm::mat4(1.0f);
 }
 
 void SuperBlock::update(float dt)
@@ -62,6 +214,7 @@ void SuperBlock::update(float dt)
     {
         if(is_split)
         {
+            cube_rot[active_cube] = snap_rotation(cube_roll_rotation(rot_dir, 90.0f)) * cube_rot[active_cube];
             if(rot_dir == R) cube_ix[active_cube]++;
             else if(rot_dir == L) cube_ix[active_cube]--;
             else if(rot_dir == U) cube_iy[active_cube]++;
@@ -89,6 +242,9 @@ void SuperBlock::update(float dt)
             return;
         }
 
+        // Hộp cuối lần lăn và hộp ở tư thế chuẩn mới trùng nhau về hình nhưng có thể khác nhau về mặt:
+        // phần chênh là một phép đối xứng của hộp 2x1x1, cộng dồn vào face_sym để mặt không bị tráo.
+        glm::mat4 rolled = block_frame(along, rot_dir, pos, 90.0f, NULL);
         float x = tile_side_length;
         if(along==X)
         {
@@ -172,6 +328,7 @@ void SuperBlock::update(float dt)
             }
         }
         rot_dir = NO;
+        face_sym = snap_rotation(glm::inverse(block_frame(along, NO, pos, 0.0f, NULL)) * rolled) * face_sym;
         audio_play(along == Z ? SFX_STAND : SFX_ROLL);
         game.check_after_step();
         land_dust();
@@ -223,6 +380,10 @@ void SuperBlock::draw(glm::mat4 M)
 
             glm::vec3 P0(cube_ix[k] * l, cube_iy[k] * l, 0.0f);
             glm::mat4 box(1.0f);
+            // Theme Original: giữ hướng thật của khối nhỏ (xoay quanh tâm hộp đơn vị) để mặt không bị tráo.
+            glm::mat4 orient(1.0f);
+            if(renderer.theme == THEME_ORIGINAL)
+                orient = glm::translate(glm::vec3(0.5f)) * cube_rot[k] * glm::translate(glm::vec3(-0.5f));
 
             if(is_active && rot_dir != NO)
             {
@@ -257,7 +418,7 @@ void SuperBlock::draw(glm::mat4 M)
                 glm::mat4 T1 = glm::translate(pivot);
                 glm::mat4 Rmat = glm::rotate(glm::mat4(1.0f), float(angle * M_PI / 180.0f), axis);
                 glm::mat4 T2 = glm::translate(-pivot);
-                box = T1 * Rmat * T2 * glm::translate(P0) * glm::scale(csize);
+                box = T1 * Rmat * T2 * glm::translate(P0) * glm::scale(csize) * orient;
 
                 glm::vec3 current_center = glm::vec3(box * glm::vec4(0.5f, 0.5f, 0.5f, 1.0f));
                 real_pos = current_center;
@@ -265,7 +426,7 @@ void SuperBlock::draw(glm::mat4 M)
             }
             else
             {
-                box = glm::translate(P0) * glm::scale(csize);
+                box = glm::translate(P0) * glm::scale(csize) * orient;
                 if(is_active && rot_dir == NO && end_anim == END_NONE)
                 {
                     real_pos = glm::vec3(P0.x + l/2.0f, P0.y + l/2.0f, 0.0f);
@@ -292,134 +453,15 @@ void SuperBlock::draw(glm::mat4 M)
         return;
     }
 
-    glm::mat4 translate = glm::translate (pos);
-    glm::mat4 rev;
-    M = M * translate;
-
-    glm::mat4 rotate(1.0f);
-    if(along==Y)
-        rotate = rotate * glm::rotate(glm::mat4(1.0f), float(-M_PI/2), glm::vec3(0,0,1));
-    else if(along==Z)
-        rotate = rotate * glm::rotate(glm::mat4(1.0f), float(-M_PI/2), glm::vec3(0,1,0));
-
-    M = M * rotate;
-
     // Góc hiển thị có easing (tăng tốc rồi giảm tốc); luật chỉ dùng done_rotation.
     float dr = 90.0f * ease_in_out(done_rotation / 90.0f);
-    float x = tile_side_length;
-    real_pos = pos;
-    real_pos.z = 0;
-
-    if(along==X)
-    {
-        if(rot_dir==R)
-        {
-            translate = glm::translate(glm::vec3(x, 0, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,1,0));
-            rev = glm::translate(glm::vec3(-x, 0, x/2));
-            M = M * translate * rotate * rev;
-            real_pos.x += tile_side_length * (1-cos(dr*M_PI/180) + 0.5*sin(dr*M_PI/180));
-        }
-        else if(rot_dir==L)
-        {
-            translate = glm::translate(glm::vec3(-x, 0, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(-M_PI*dr/180.0f), glm::vec3(0,1,0));
-            rev = glm::translate(glm::vec3(x, 0, x/2));
-            M = M * translate * rotate * rev;
-            real_pos.x -= tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
-        }
-        else if(rot_dir==U)
-        {
-            translate = glm::translate(glm::vec3(0, x/2, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(-1,0,0));
-            rev = glm::translate(glm::vec3(0, -x/2, x/2));
-            M = M * translate * rotate * rev;
-            real_pos.y += 0.5*tile_side_length * (1-cos(dr*M_PI/180)+ sin(dr*M_PI/180));
-        }
-        else if(rot_dir==D)
-        {
-            translate = glm::translate(glm::vec3(0, -x/2, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(-M_PI*dr/180.0f), glm::vec3(-1,0,0));
-            rev = glm::translate(glm::vec3(0, x/2, x/2));
-            M = M * translate * rotate * rev;
-            real_pos.y -= 0.5*tile_side_length * (1-cos(dr*M_PI/180)+ sin(dr*M_PI/180));
-        }
-    }
-    else if(along==Y)
-    {
-        if(rot_dir==R)
-        {
-            translate = glm::translate(glm::vec3(0, x/2, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(-1,0,0));
-            rev = glm::translate(glm::vec3(0, -x/2, x/2));
-            M = M * translate * rotate * rev;
-            real_pos.x += 0.5*tile_side_length * (1-cos(dr*M_PI/180)+ sin(dr*M_PI/180));
-        }
-        else if(rot_dir==L)
-        {
-            translate = glm::translate(glm::vec3(0, -x/2, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(1,0,0));
-            rev = glm::translate(glm::vec3(0, x/2, x/2));
-            M = M * translate * rotate * rev;
-            real_pos.x -= 0.5*tile_side_length * (1-cos(dr*M_PI/180)+ sin(dr*M_PI/180));
-        }
-        else if(rot_dir==U)
-        {
-            translate = glm::translate(glm::vec3(-x, 0, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,-1,0));
-            rev = glm::translate(glm::vec3(x, 0, x/2));
-            M = M * translate * rotate * rev;
-            real_pos.y += tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
-        }
-        else if(rot_dir==D)
-        {
-            translate = glm::translate(glm::vec3(x, 0, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,1,0));
-            rev = glm::translate(glm::vec3(-x, 0, x/2));
-            M = M * translate * rotate * rev;
-            real_pos.y -= tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
-        }
-    }
-    else if(along==Z)
-    {
-        if(rot_dir==R)
-        {
-            //cout << pos.x << " " << pos.y << " " << pos.z << endl;
-            translate = glm::translate(glm::vec3(-x, 0, -x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,1,0));
-            rev = glm::translate(glm::vec3(x, 0, x/2));
-            M = M * translate * rotate * rev;
-            real_pos.x += tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
-        }
-        else if(rot_dir==L)
-        {
-            translate = glm::translate(glm::vec3(-x, 0, x/2));
-            rotate = glm::rotate(glm::mat4(1.0f), float(-M_PI*dr/180.0f), glm::vec3(0,1,0));
-            rev = glm::translate(glm::vec3(x, 0, -x/2));
-            M = M * translate * rotate * rev;
-            real_pos.x -= tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
-        }
-        else if(rot_dir==U)
-        {
-            translate = glm::translate(glm::vec3(-x, x/2, 0));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,0,1));
-            rev = glm::translate(glm::vec3(x, -x/2, 0));
-            M = M * translate * rotate * rev;
-            real_pos.y += tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
-        }
-        else if(rot_dir==D)
-        {
-            translate = glm::translate(glm::vec3(-x, -x/2, 0));
-            rotate = glm::rotate(glm::mat4(1.0f), float(M_PI*dr/180.0f), glm::vec3(0,0,-1));
-            rev = glm::translate(glm::vec3(x, x/2, 0));
-            M = M * translate * rotate * rev;
-            real_pos.y -= tile_side_length * (1-cos(dr*M_PI/180)+ 0.5*sin(dr*M_PI/180));
-        }
-    }
-
+    glm::mat4 F = M * block_frame(along, rot_dir, pos, dr, &real_pos);
+    // Theme Original: mỗi mặt có vân gỉ riêng nên phải giữ đúng mặt nào nằm ở đâu sau mỗi lần lăn.
+    if(renderer.theme == THEME_ORIGINAL)
+        F = F * face_sym;
 
     // Hộp đơn vị [0,1]^3 -> hộp tâm tại gốc, kích thước dim.
-    glm::mat4 box = M * glm::translate(-dim/2.0f) * glm::scale(dim);
+    glm::mat4 box = F * glm::translate(-dim/2.0f) * glm::scale(dim);
 
     // Hiệu ứng: rơi xuống khi mở màn, chìm vào lỗ khi thắng, lật và rơi khi thua.
     double now = glfwGetTime();
@@ -630,6 +672,7 @@ void SuperBlock::split(int x1, int y1, int x2, int y2)
     cube_pos[1] = glm::vec3(x2 * l + l/2.0f, y2 * l + l/2.0f, l/2.0f);
     cube_model[0] = glm::translate(glm::vec3(x1 * l, y1 * l, 0.0f)) * glm::scale(glm::vec3(l, l, l));
     cube_model[1] = glm::translate(glm::vec3(x2 * l, y2 * l, 0.0f)) * glm::scale(glm::vec3(l, l, l));
+    cube_rot[0] = cube_rot[1] = glm::mat4(1.0f);
     real_pos = glm::vec3(x1 * l + l/2.0f, y1 * l + l/2.0f, 0.0f);
 }
 
@@ -665,6 +708,7 @@ bool SuperBlock::check_recombine()
             iy = min(cube_iy[0], cube_iy[1]);
             pos = glm::vec3(ix * l + l/2.0f, iy * l + l, l/2.0f);
         }
+        face_sym = glm::mat4(1.0f);
         real_pos = pos;
         return true;
     }
