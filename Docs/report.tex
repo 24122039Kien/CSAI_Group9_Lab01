@@ -1,0 +1,1448 @@
+% !TeX program = xelatex
+% !TeX encoding = UTF-8
+% Báo cáo Nhóm 9; định dạng article theo mẫu mới Sang gửi ngày 30/10/2026.
+% Bản đối chiếu mã nguồn 82eae2c, ngày 30/10/2026 (Asia/Saigon).
+% Logo hcmus.png đi kèm trong ZIP; nếu thiếu ảnh, nguồn vẫn biên dịch với khoảng trống bìa.
+% Các thành viên sửa trong cùng tệp này; tìm \canbosung để thấy chỗ còn thiếu.
+% BFS/DFS/UCS/A* đều đã cài; kết quả được đo lại trên main 82eae2c.
+\documentclass[a4paper]{article}
+% Overleaf: chọn Compiler = XeLaTeX rồi Recompile from scratch.
+% Không dùng fontenc T5/inputenc trong nhánh XeLaTeX/LuaLaTeX.
+\usepackage{iftex}
+\usepackage{lmodern}
+\ifPDFTeX
+  \usepackage[T5]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \IfFileExists{vietnamese.ldf}{\usepackage[vietnamese]{babel}}{%
+    \usepackage{babel}\babelprovide[import,main]{vietnamese}}
+\else
+  \usepackage{fontspec}
+  \defaultfontfeatures{Ligatures=TeX}
+  \setmainfont[
+    SlantedFont={lmromanslant10-regular.otf},
+    BoldSlantedFont={lmromanslant10-bold.otf}
+  ]{Latin Modern Roman}
+  \setsansfont{Latin Modern Sans}
+  \setmonofont{Latin Modern Mono}
+  \usepackage{babel}
+  \babelprovide[import,main]{vietnamese}
+\fi
+\usepackage{amsmath,amssymb}
+\usepackage[left=2.5cm,right=2cm,top=2cm,bottom=2.5cm]{geometry}
+\usepackage[table]{xcolor}
+\usepackage{graphicx,float}
+\usepackage{xurl}
+\usepackage{tikz}
+\usetikzlibrary{calc,positioning,arrows.meta,fit}
+\usepackage{enumitem,array,tabularx,booktabs}
+\usepackage{listings}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{tcolorbox}
+\tcbuselibrary{breakable}
+\usepackage{indentfirst,setspace}
+\usepackage{scrextend}
+\changefontsizes{14pt}
+\usepackage[hidelinks]{hyperref}
+\hypersetup{pdftitle={Bloxorz Solver - Bao cao Nhom 9},pdfauthor={Nhom 9}}
+\onehalfspacing
+\setlength{\parindent}{2em}
+\setlength{\emergencystretch}{2em}
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{2}
+\setlist{itemsep=2pt,topsep=5pt}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\definecolor{reportblue}{RGB}{26,62,100}
+\definecolor{reportgray}{RGB}{245,247,249}
+\newcommand{\canbosung}[1]{\textcolor{red!65!black}{\textbf{[Cần bổ sung: #1]}}}
+\newcommand{\tep}[1]{{\small\ttfamily\detokenize{#1}}}
+\newcommand{\astar}{\texorpdfstring{A\ensuremath{^*}}{A*}}
+\newcommand{\phienban}{\texttt{82eae2c}}
+\newcommand{\ngaykiemtra}{30/10/2026}
+% ===== THÔNG TIN NHÓM: sửa tại đây trước khi nộp =====
+\newcommand{\giangvien}{Lê Hoài Bắc, Nguyễn Ngọc Đức}
+\newcommand{\lopmonhoc}{24TNT1}
+\newcommand{\tvone}{Nguyễn Duy Đạt}
+\newcommand{\tvtwo}{Trần Đình Tấn Phát}
+\newcommand{\tvthree}{Phạm Hoàng Hải Đăng}
+\newcommand{\tvfour}{Nguyễn Hoàng Sang}
+\newcommand{\tvfive}{Nguyễn Đỗ Bảo Kiên}
+% Thay bằng \url{https://youtu.be/...} khi đã upload video.
+\newcommand{\linkvideo}{\canbosung{link YouTube}}
+\newtcolorbox{ghichu}[1]{colback=reportblue!4,colframe=reportblue,title=#1,
+  fonttitle=\bfseries,breakable,boxrule=0.6pt}
+\lstset{basicstyle=\ttfamily\footnotesize,backgroundcolor=\color{reportgray},
+  breaklines=true,columns=fullflexible,keepspaces=true,frame=single,
+  numbers=left,numberstyle=\tiny\color{gray},numbersep=5pt,
+  showstringspaces=false,tabsize=2,captionpos=b}
+
+% Mẫu mới: article, chữ 14pt, lề 2.5/2/2/2.5cm, giãn dòng 1.5.
+% Mục lục chỉ hiện 2 cấp; cấp 1.1.1 vẫn có trong nội dung.
+\pagestyle{plain}
+\newcommand{\chenhinh}[4][0.9\textwidth]{%
+  \begin{figure}[H]\centering\includegraphics[width=#1]{#2}%
+  \caption{#3}\label{#4}\end{figure}}
+\newcommand{\frontmatterheading}[1]{\section*{#1}}
+
+\begin{document}
+\hypersetup{pageanchor=false}
+\begin{titlepage}
+\begin{tikzpicture}[remember picture,overlay,inner sep=0,outer sep=0]
+  \draw[blue!70!black,line width=4pt]
+    ([xshift=-1.5cm,yshift=-2cm]current page.north east) coordinate (A)--
+    ([xshift=1.5cm,yshift=-2cm]current page.north west) coordinate(B)--
+    ([xshift=1.5cm,yshift=2cm]current page.south west) coordinate (C)--
+    ([xshift=-1.5cm,yshift=2cm]current page.south east) coordinate(D)--cycle;
+  \draw
+    ([yshift=0.5cm,xshift=-0.5cm]A)-- ([yshift=0.5cm,xshift=0.5cm]B)--
+    ([yshift=-0.5cm,xshift=0.5cm]B)--([yshift=-0.5cm,xshift=-0.5cm]B)--
+    ([yshift=0.5cm,xshift=-0.5cm]C)--([yshift=0.5cm,xshift=0.5cm]C)--
+    ([yshift=-0.5cm,xshift=0.5cm]C)--([yshift=-0.5cm,xshift=-0.5cm]D)--
+    ([yshift=0.5cm,xshift=-0.5cm]D)--([yshift=0.5cm,xshift=0.5cm]D)--
+    ([yshift=-0.5cm,xshift=0.5cm]A)--([yshift=-0.5cm,xshift=-0.5cm]A)--
+    ([yshift=0.5cm,xshift=-0.5cm]A);
+  \draw
+    ([yshift=-0.3cm,xshift=0.3cm]A)--([yshift=-0.3cm,xshift=-0.3cm]B)--
+    ([yshift=0.3cm,xshift=-0.3cm]B)--([yshift=0.3cm,xshift=0.3cm]B)--
+    ([yshift=-0.3cm,xshift=0.3cm]C)--([yshift=-0.3cm,xshift=-0.3cm]C)--
+    ([yshift=0.3cm,xshift=-0.3cm]C)--([yshift=0.3cm,xshift=0.3cm]D)--
+    ([yshift=-0.3cm,xshift=0.3cm]D)--([yshift=-0.3cm,xshift=-0.3cm]D)--
+    ([yshift=0.3cm,xshift=-0.3cm]A)--([yshift=0.3cm,xshift=0.3cm]A)--
+    ([yshift=-0.3cm,xshift=0.3cm]A);
+\end{tikzpicture}
+\begin{center}
+\vspace{7pt}
+\textbf{ĐẠI HỌC QUỐC GIA THÀNH PHỐ HỒ CHÍ MINH}\\[7pt]
+\textbf{TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN}
+\vspace{0.7cm}
+
+% Logo nguyên bản do Trường công bố; đi kèm tệp hcmus.png trong ZIP.
+\IfFileExists{hcmus.png}{\includegraphics[height=3cm]{hcmus.png}}{\vspace*{3cm}}
+\vspace{0.7cm}
+
+{\fontsize{18pt}{22pt}\selectfont\textbf{BÁO CÁO ĐỒ ÁN}}\\[7pt]
+{\fontsize{18pt}{22pt}\selectfont\textbf{CSC14003 -- CƠ SỞ TRÍ TUỆ NHÂN TẠO}}
+\end{center}
+\begin{flushleft}
+\fontsize{14pt}{17pt}\selectfont\textbf{\textsl{ĐỀ TÀI}}
+\end{flushleft}
+\begin{center}
+{\fontsize{24pt}{28pt}\selectfont\textbf{BLOXORZ SOLVER}}\\[12pt]
+{\fontsize{18pt}{22pt}\selectfont\textbf{Lớp: 24TNT1 -- Nhóm 9}}\\[10pt]
+\textbf{Giảng viên: Lê Hoài Bắc, Nguyễn Ngọc Đức}\\[14pt]
+{\fontsize{18pt}{22pt}\selectfont\textbf{Thành viên thực hiện:}}\\[12pt]
+\begin{tabular}{l @{\hspace{2cm}} c}
+\multicolumn{1}{c}{\textbf{\textit{Họ và tên}}} & \textbf{\textit{MSSV}}\\[0.35cm]
+\textbf{Nguyễn Duy Đạt} & \textbf{24122014}\\
+\textbf{Phạm Hoàng Hải Đăng} & \textbf{24122030}\\
+\textbf{Nguyễn Đỗ Bảo Kiên} & \textbf{24122039}\\
+\textbf{Trần Đình Tấn Phát} & \textbf{24122046}\\
+\textbf{Nguyễn Hoàng Sang} & \textbf{24122050}\\
+\end{tabular}
+\vfill
+\end{center}
+\end{titlepage}
+\hypersetup{pageanchor=true}
+
+\pagenumbering{arabic}
+\begingroup
+\singlespacing
+\tableofcontents
+\endgroup
+\newpage
+
+\frontmatterheading{Lời cảm ơn}
+Nhóm xin cảm ơn giảng viên Lê Hoài Bắc, Nguyễn Ngọc Đức và học phần Cơ sở Trí tuệ Nhân tạo đã cung cấp kiến thức nền tảng cùng định hướng thực hiện đồ án. Bài toán Bloxorz giúp nhóm kết nối lý thuyết tìm kiếm với một sản phẩm có mô hình luật, giao diện ba chiều và kết quả thực nghiệm cụ thể. Nhóm mong nhận được góp ý để tiếp tục hoàn thiện chất lượng mô hình, thực nghiệm và cách trình bày.
+
+\frontmatterheading{Lời cam đoan}
+Nhóm trình bày báo cáo dựa trên mã nguồn, dữ liệu màn chơi và kết quả chạy được lưu kèm. Các thành phần kế thừa được ghi nguồn; phạm vi hỗ trợ của công cụ AI được khai báo tại Phụ lục C. Số liệu thực nghiệm được đo từ chương trình, không điền thay bằng số ước lượng. 
+
+
+
+\frontmatterheading{Lời cam kết}
+Các thành viên có trách nhiệm hiểu mã nguồn và giải thích được luật, mô hình trạng thái, thuật toán, heuristic cùng kết quả thực nghiệm. Việc sử dụng tài liệu tham khảo và AI không thay thế trách nhiệm kiểm chứng của từng người. Nhóm sẽ cập nhật báo cáo khi mã nguồn hoặc giao thức thực nghiệm thay đổi, đồng thời giữ các bằng chứng cần thiết để tái lập kết quả.
+
+
+\frontmatterheading{Tóm tắt}
+Đồ án xây dựng hệ thống giải Bloxorz bằng tìm kiếm trên đồ thị trạng thái, với C++/OpenGL cho game ba chiều và Python cho luật cùng solver. Trạng thái thể hiện tư thế khối, cấu hình cầu và vị trí hai cube khi tách. Lời giải là chuỗi hành động được phát lại trong trò chơi.
+
+Phiên bản có đủ BFS, DFS, UCS và \astar{}. Gồm 16 màn: 15 có lời giải và một màn cố ý vô nghiệm. Bộ kiểm thử đạt 357 phép thử thành công, một phép thử khung cũ được bỏ qua. Báo cáo trình bày triển khai bốn thuật toán, chứng minh heuristic theo chi phí đơn vị, thực nghiệm trên 5 cấu hình gồm bốn solver và \astar{} với $h=0$ làm đối chứng. Kết quả minh họa sự khác nhau giữa lời giải hợp lệ và lời giải tối ưu, giữa lượng node và thời gian, cùng giới hạn của heuristic hình học trên các màn nhiều công tắc.
+
+Thực nghiệm gồm 480 lượt đo với thời gian và bộ nhớ tách riêng, kiểm tra path trên mọi kết quả và kiểm tra heuristic trên toàn bộ đồ thị đạt được. Màn 5 giảm expanded của A* từ 52 xuống 14 khi dùng Manhattan, trong khi màn 13 chỉ giảm từ 47\,675 xuống 47\,657. DFS ở màn 13 trả 4\,295 bước so với tối ưu 66, cho thấy hiệu năng cần được đọc cùng chất lượng lời giải. Báo cáo giải thích các kết quả này bằng cấu trúc trạng thái, lớp chi phí và phạm vi nới lỏng của heuristic.
+
+Sản phẩm còn có bảng so sánh bốn thuật toán trong game, phát lại lời giải, xuất CSV và Search Visualizer. Ảnh game được ghi nguồn từ repo; biểu đồ được tạo từ dữ liệu đo mới. Mô hình chi phí sản phẩm hiện là đơn vị; các thí nghiệm trọng số được trình bày riêng. 
+
+\newpage
+
+\section{Giới thiệu}
+\subsection{Bối cảnh và động cơ}
+Bloxorz là trò chơi đưa khối hộp kích thước $1\times1\times2$ đến lỗ đích bằng các thao tác lăn. Một vị trí gần đích chưa chắc dẫn đến lời giải ngắn: khối có thể sai tư thế, một cây cầu chưa được mở hoặc một ô chỉ chịu được khối khi nằm. Vì vậy bài toán yêu cầu biểu diễn đầy đủ trạng thái và lập kế hoạch trên nhiều bước.
+
+Đây là môi trường quan sát đầy đủ, tất định và rời rạc. Mỗi hành động tạo ra một trạng thái kế tiếp xác định, thuận lợi cho việc kiểm chứng thuật toán và phân tích vai trò của tri thức định hướng. BFS cung cấp chuẩn số bước tối ưu khi chi phí đồng nhất; UCS mở rộng sang tối ưu tổng chi phí; \astar{} kết hợp chi phí đã đi với cận dưới chi phí còn lại. Cơ sở lý thuyết tìm kiếm được trình bày trong tài liệu của Russell và Norvig~\cite{aima}.
+
+\subsection{Mục tiêu và câu hỏi đánh giá}
+Đồ án hướng tới bốn mục tiêu: mô hình hóa đúng luật Bloxorz; xây dựng giao diện ba chiều có thể tự phát lại lời giải; cài đặt và giải thích bốn thuật toán; thực nghiệm so sánh bằng dữ liệu có thể chạy lại. Các câu hỏi chính gồm:
+\begin{enumerate}
+\item Cần lưu những thành phần nào để trạng thái có đủ thông tin xác định các nước đi tiếp theo?
+\item Khi chi phí mỗi bước bằng 1, BFS và \astar{} có trả về cùng độ dài tối ưu không?
+\item Heuristic có giảm lượng tìm kiếm trên màn công tắc, ô dễ vỡ và tách khối không?
+\item Khi đổi hàm chi phí, điều kiện tối ưu của UCS và \astar{} thay đổi như thế nào?
+\end{enumerate}
+
+\subsection{Phạm vi, sản phẩm và trạng thái hiện tại}
+Dự án được lập kế hoạch thực hiện trong 3 tuần. Sản phẩm gồm game C++ trong \tep{code/} (phát triển từ mã nguồn Bloxorz của Chaitanya Patel~\cite{upstream}), mô hình và solver Python trong \tep{ai/}, CLI \tep{main.py}, các phép thử trong \tep{tests/}, bộ màn và lời giải tham chiếu trong \tep{code/data/}.
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.4}
+\setlength{\tabcolsep}{8pt}
+\arrayrulecolor{black!25}
+
+\begin{tabularx}{\textwidth}{
+    |>{\raggedright\arraybackslash\bfseries}p{3.2cm}
+    |>{\raggedright\arraybackslash}X|
+}
+\hline
+\rowcolor{blue!12}
+Hạng mục & \textbf{Tình trạng} \\
+\hline
+
+Luật chơi &
+Có sàn, ô dễ vỡ, công tắc thường/nặng, nhiều ô cầu,
+permanent và split/merge. \\
+\hline
+
+Thuật toán &
+Đã cài đủ BFS, DFS, UCS và \astar{};
+có kiểm thử riêng và đối chiếu lời giải. \\
+\hline
+
+Heuristic &
+Manhattan có xét cổng split, kèm chứng minh
+theo chi phí đơn vị. \\
+\hline
+
+Mô hình chi phí &
+Chọn chi phí đơn vị (mỗi hành động tốn 1);
+\tep{cost_fn} là điểm mở rộng cho thí nghiệm có trọng số. \\
+\hline
+
+Giao diện và dữ liệu &
+Có menu, chọn màn, restart/pause, bảng AI,
+Visualizer, Compare/Replay/CSV và bộ 16 màn. \\
+\hline
+
+Báo cáo và video &
+Báo cáo kèm số liệu đo lại, ảnh game;
+video demo có thuyết minh (Phụ lục A). \\
+\hline
+\end{tabularx}
+
+\caption{Phạm vi và tình trạng triển khai của hệ thống.}
+\label{tab:pham-vi}
+\end{table}
+
+\input{sections/introduction.tex}
+
+\subsection{Bố cục báo cáo}
+Mục 2 trình bày luật, mô hình và kiến trúc. Mục 3 thống nhất cách mô tả các thuật toán và heuristic. Mục 4 mô tả giao diện cùng bộ màn. Mục 5 cung cấp phương pháp, số liệu và phân tích thực nghiệm. Mục 6 ghi nhận phân công và cách phối hợp. Mục 7 tổng kết kết quả, hạn chế và bài học. Phụ lục gồm video demo, lệnh tái lập và khai báo sử dụng AI.
+
+\section{Mô hình bài toán và kiến trúc}
+\subsection{Luật chơi và điều kiện kết thúc}
+Khối nguyên vẹn có ba tư thế: $Z$ là đứng, $X$ là nằm theo trục $x$, $Y$ là nằm theo trục $y$. Khối phải đứng trên lỗ đích để thắng. Nằm vắt qua lỗ đích hoặc một khối nhỏ đi lên đích chưa hoàn thành màn. Một hành động làm bất kỳ phần khối nào rơi khỏi sàn là hành động thua và không được sinh trong đồ thị tìm kiếm.
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.4}
+\setlength{\tabcolsep}{8pt}
+\arrayrulecolor{black!25}
+
+\begin{tabularx}{\textwidth}{
+    |>{\raggedright\arraybackslash\bfseries}p{3.2cm}
+    |>{\raggedright\arraybackslash}X|
+}
+\hline
+\rowcolor{blue!12}
+Loại ô/cơ chế &
+\textbf{Quy tắc trong mô hình hiện tại} \\
+\hline
+
+Sàn thường / ô trống &
+Khối có thể đứng hoặc nằm trên sàn.
+Vị trí không có sàn làm khối rơi. \\
+\hline
+
+Ô dễ vỡ &
+Không chịu được khối nguyên vẹn ở tư thế đứng.
+Khối nằm và cube đơn có thể đi qua. \\
+\hline
+
+Công tắc thường &
+Kích hoạt khi khối kết thúc nước đi trên công tắc.
+Cube đơn cũng có thể kích hoạt. \\
+\hline
+
+Công tắc nặng &
+Chỉ kích hoạt khi khối nguyên vẹn đứng trên công tắc. \\
+\hline
+
+Cầu &
+Mỗi ô cầu được biểu diễn bằng một bit trạng thái.
+Trạng thái mở/đóng quyết định ô đó có sàn hay không. \\
+\hline
+
+Toggle / permanent &
+Toggle đảo các bit liên kết.
+\texttt{permanent\_on} đặt mở;
+\texttt{permanent\_off} đặt đóng. \\
+\hline
+
+Tách / gộp &
+Khối đứng trên split switch được tách thành hai cube
+tại các vị trí định sẵn.
+Mỗi cube được điều khiển riêng;
+hai cube kề nhau sẽ tự gộp. \\
+\hline
+\end{tabularx}
+
+\caption{Các luật cần thống nhất giữa mô phỏng Python và game C++.}
+\label{tab:luat-choi}
+\end{table}
+
+Một nước đi được xử lý theo thứ tự: dịch chuyển, kiểm tra thắng/thua, kích hoạt công tắc nếu chưa kết thúc, rồi kiểm tra lại an toàn sau thay đổi cầu. Thứ tự này quan trọng khi công tắc làm cầu dưới khối biến mất hoặc khi hai công tắc cùng tác động một ô cầu. 
+\subsection{Biểu diễn trạng thái}
+\subsubsection{Khối nguyên vẹn}
+Trạng thái được mô tả bằng
+\begin{equation}
+s=(x,y,o,B),\quad o\in\{X,Y,Z\},
+\end{equation}
+trong đó $(x,y)$ là ô neo và $B$ là bitmask các ô cầu đang mở. Khi $o=X$, khối chiếm $(x,y)$ và $(x+1,y)$; khi $o=Y$, khối chiếm $(x,y)$ và $(x,y+1)$; khi $o=Z$, khối chỉ chiếm $(x,y)$.
+
+Không thể chỉ dùng tọa độ làm khóa visited. Hai trạng thái có cùng tọa độ nhưng khác tư thế hoặc cấu hình cầu có thể có tập nước đi khác nhau. Nếu loại một trạng thái chỉ vì đã gặp tọa độ đó, solver có thể làm mất lời giải.
+
+\subsubsection{Hai khối nhỏ}
+Khi tách, trạng thái có thêm cặp tọa độ cube $C=\{c_1,c_2\}$. Cặp này được sắp xếp để hai cách gán nhãn cho cùng vị trí vật lý có chung một biểu diễn. Hành động \tep{0U}, \tep{1R} chỉ cube theo thứ tự chuẩn hóa của trạng thái hiện tại. Cube đang chọn trên GUI phục vụ tương tác, không cần lưu trong trạng thái tìm kiếm vì solver được quyền chọn một trong hai cube ở mỗi bước.
+
+Lớp \tep{State} bất biến và có thể băm nên dùng được làm khóa của từ điển hoặc tập hợp. Việc chuẩn hóa hai cube phải thống nhất với bộ phát lại để hành động sau khi đổi thứ tự vẫn điều khiển đúng vị trí.
+
+\input{sections/model_detail.tex}
+
+\subsection{Hành động, chuyển trạng thái và chi phí}
+\subsubsection{Quy ước tọa độ}
+Mã nguồn dùng $x$ là chỉ số dòng trong tệp, $y$ là chỉ số cột. Các ký hiệu điều khiển tuân theo game: $R:x+1$, $L:x-1$, $U:y+1$, $D:y-1$. Khi nhìn ma trận văn bản, chữ $R$ vì vậy dịch xuống một dòng. Báo cáo sử dụng nhất quán quy ước mã nguồn.
+
+\begin{table}[H]\centering\small
+\begin{tabular}{@{}c c c c c@{}}\toprule
+\textbf{Tư thế} & $L$ & $R$ & $U$ & $D$\\\midrule
+$Z(x,y)$ & $X(x-2,y)$ & $X(x+1,y)$ & $Y(x,y+1)$ & $Y(x,y-2)$\\
+$X(x,y)$ & $Z(x-1,y)$ & $Z(x+2,y)$ & $X(x,y+1)$ & $X(x,y-1)$\\
+$Y(x,y)$ & $Y(x-1,y)$ & $Y(x+1,y)$ & $Z(x,y+2)$ & $Z(x,y-1)$\\\bottomrule
+\end{tabular}
+\caption{Bảng chuyển tư thế trước khi kiểm tra sàn và công tắc.}
+\end{table}
+
+Khối nguyên vẹn có tối đa 4 hành động, trạng thái tách có tối đa 8. \tep{successors(state)} trả về các bộ $(a,s',c)$ hợp lệ; thuật toán tìm kiếm không tự cài lại luật vật lý.
+
+\subsubsection{Hình thức hóa bài toán tìm kiếm}
+Bài toán là $\mathcal{P}=(S,A,T,s_0,G,c)$: $S$ là các trạng thái hợp lệ; $A(s)$ là các hành động hợp lệ; $T$ là hàm chuyển; $s_0$ lấy từ tệp màn; $G$ là tập khối đứng trên đích; $c(s,a,s')>0$ là chi phí bước. Chi phí một đường đi $\pi$ là
+\begin{equation}
+C(\pi)=\sum_{i=0}^{k-1}c(s_i,a_i,s_{i+1}).
+\end{equation}
+Hiện tại $c=1$ nên $C(\pi)=k$.
+Lựa chọn chi phí đơn vị có ý nghĩa rõ: mục tiêu hiện tại là giảm số lệnh lăn mà người chơi hoặc bộ phát lại phải thực hiện. Một hành động cube và một hành động khối đều tính một lệnh; thời gian hoạt ảnh hay mức đẹp của đường đi không nằm trong mục tiêu này. Nhờ đó, chuẩn tối ưu của các màn có thể được kiểm tra trực tiếp bằng BFS. Đề cho phép dùng chi phí đơn vị khi giải thích hợp lý; mô hình không đồng nhất là hướng mở rộng theo kế hoạch nhóm để làm rõ hơn vai trò riêng của UCS, không phải một tính năng sản phẩm đã có.
+
+\subsubsection{Kích thước không gian trạng thái}
+Với $N$ ô và $K$ ô cầu, một cận trên thô cho phần nguyên vẹn là $3N2^K$. Phần tách có thể đạt bậc $O(N^2 2^K)$ do phải lưu hai vị trí. Nhiều tổ hợp trong cận này không đạt được trên màn thật. Số công tắc và số ô cầu có thể khác nhau; một công tắc v2 điều khiển nhiều bit cầu. Đây là lý do cần đo số trạng thái đạt được thay vì suy độ khó chỉ từ kích thước lưới.
+
+\subsection{Kiến trúc phần mềm và giao tiếp}
+\begin{figure}[H]\centering
+\begin{tikzpicture}[node distance=1.25cm,
+  box/.style={draw=reportblue,fill=reportblue!5,rounded corners,
+  text width=3.3cm,align=center,minimum height=1.6cm,font=\small},
+  arrow/.style={-{Latex},thick,draw=reportblue}]
+\node[box] (gui) {\textbf{Game C++/OpenGL}\\Chơi tay, GUI, phát lại};
+\node[box,right=of gui] (cli) {\textbf{CLI Python}\\Màn, thuật toán, thống kê};
+\node[box,right=of cli] (search) {\textbf{Mô hình và solver}\\Level, State, Problem};
+\draw[arrow] (gui) -- node[above,font=\scriptsize]{gọi} (cli);
+\draw[arrow] (cli) -- (search);
+\draw[arrow] (search.south) -- ++(0,-0.7) -| node[pos=0.25,below,font=\scriptsize]{lời giải / stats / trace} (gui.south);
+\end{tikzpicture}
+\caption{Luồng dữ liệu chính.}
+\label{fig:architecture}
+\end{figure}
+
+\tep{Level} đọc và kiểm tra dữ liệu; \tep{State} biểu diễn trạng thái; \tep{BloxorzProblem} cung cấp luật, successor, kiểm tra đích và chi phí. \tep{BaseSolver} đo thời gian, bộ nhớ và đóng gói \tep{SearchResult}. Game gọi Python để tìm lời giải, nhận chuỗi hành động rồi tự phát lại trong môi trường ba chiều.
+
+\tep{main.py} còn hỗ trợ thống kê JSON và trace phục vụ Search Visualizer. Trace chỉ ghi số lần mở rộng giới hạn để tránh tệp quá lớn. Giới hạn trace không phải giới hạn số node solver được phép tìm; vì vậy một hình cây chưa hiển thị hết không đồng nghĩa quá trình giải dừng sớm.
+
+\input{sections/data_architecture.tex}
+
+\section{Thuật toán tìm kiếm và heuristic}
+\subsection{Quy ước trình bày chung}
+Mỗi thuật toán được trình bày theo cùng trình tự: mục tiêu, cấu trúc dữ liệu, cách chọn node, xử lý trùng lặp, điều kiện dừng, mã giả, tính đúng đắn, chi phí tính toán và kiểm thử. Gọi $V,E$ là số đỉnh và cạnh của đồ thị đạt được. Các cận đồ thị dưới đây giả sử thao tác hash và sinh một cạnh có chi phí hằng số; thực tế việc kiểm tra luật, tính heuristic và lưu trạng thái cũng tốn tài nguyên.
+
+\subsection{BFS}
+\subsubsection{Ý tưởng và cấu trúc dữ liệu}
+BFS mở rộng lần lượt theo số bước từ trạng thái đầu. Frontier là hàng đợi FIFO dùng \tep{collections.deque}, có thao tác thêm/lấy ở hai đầu hiệu quả~\cite{deque}. Dictionary \tep{parent} vừa đánh dấu đã phát hiện vừa lưu cha để truy vết. Trạng thái được đánh dấu ngay khi sinh lần đầu, tránh đưa nhiều bản sao vào hàng đợi.
+
+\subsubsection{Quy trình và điều kiện dừng}
+\par\noindent\begin{minipage}{\textwidth}
+\begin{lstlisting}[caption={Mã giả BFS tương ứng với cách kiểm tra đích sớm hiện tại.}]
+parent[start] = None
+if goal(start): return []
+queue = [start]
+while queue is not empty:
+    s = pop_left(queue)
+    count_expanded()
+    children = successors(s)
+    count_generated(len(children))
+    for action, t, cost in children:
+        if t not in parent:
+            parent[t] = (s, action)
+            if goal(t): return reconstruct(parent, t)
+            push_right(queue, t)
+return no_solution
+\end{lstlisting}
+\end{minipage}\par\medskip
+
+\subsubsection{Tính đúng đắn và độ phức tạp}
+Trong đồ thị hữu hạn, chống lặp bảo đảm BFS kết thúc. Khi mỗi cạnh có chi phí 1, lần đầu phát hiện đỉnh ở tầng $d$ là một đường ngắn nhất theo số cạnh. Vì vậy kiểm tra đích khi sinh con là hợp lệ với BFS hiện tại. Thời gian là $O(V+E)$, bộ nhớ $O(V)$ với adjacency sinh theo nhu cầu. BFS không bảo đảm tối thiểu tổng chi phí khi trọng số khác nhau.
+
+
+\input{sections/bfs_dfs_detail.tex}
+
+\subsection{DFS}
+\subsubsection{Ý tưởng và cấu trúc dữ liệu}
+DFS ưu tiên đi sâu theo một nhánh trước khi quay lại. Cài đặt trong \tep{dfs_solver.py} dùng stack tường minh bằng list, không dùng đệ quy. Dictionary \tep{parent} vừa là tập đã thăm vừa lưu cha. Trạng thái được đánh dấu khi đẩy vào stack, nên mỗi trạng thái chỉ được đẩy một lần.
+
+Các successor được đẩy theo thứ tự ngược để khi lấy ra, thứ tự ưu tiên là $U,D,L,R$; khi tách là $0U,0D,0L,0R,1U,1D,1L,1R$. Nếu một trạng thái đã được phát hiện qua nhánh khác, visited vẫn loại bản sao đó. Vì vậy DFS graph-search không hoàn toàn trùng cây duyệt đệ quy nếu chọn thời điểm đánh dấu khác.
+
+\subsubsection{Quy trình đã cài đặt}
+\par\noindent\begin{minipage}{\textwidth}
+\begin{lstlisting}[caption={DFS: visited khi đẩy, kiểm tra đích khi lấy ra.}]
+stack = [start]
+parent = {start: None}
+while stack is not empty:
+    s = pop(stack)
+    if goal(s): return reconstruct(parent, s)
+    count_expanded()
+    for action, t, cost in reversed(successors(s)):
+        count_generated()
+        if t not in parent:
+            parent[t] = (s, action)
+            push(stack, t)
+    update_max_frontier(len(stack))
+return no_solution
+\end{lstlisting}
+\end{minipage}\par\medskip
+
+\subsubsection{Bảo đảm và độ phức tạp}
+Trên đồ thị hữu hạn, visited ngăn lặp và mỗi trạng thái được mở rộng nhiều nhất một lần, nên DFS kết thúc và tìm ra lời giải nếu đích đạt được. Thời gian là $O(V+E)$; bộ nhớ graph-search là $O(V)$ do lưu cả visited/parent, không chỉ đường đi hiện hành. DFS không bảo đảm lời giải ít bước hoặc ít chi phí. Một lời giải dài hơn BFS không phải lỗi nếu toàn bộ chuỗi hành động vẫn hợp lệ.
+
+
+\input{sections/dfs_detail.tex}
+
+\subsection{UCS và hàm chi phí}
+\subsubsection{Ý tưởng và cấu trúc dữ liệu}
+UCS mở rộng bản ghi có $g(s)$ nhỏ nhất. Cài đặt dùng min-heap chứa $(g,\mathrm{counter},s)$, bảng \tep{best_g} và \tep{parent}. Counter phá hòa theo thứ tự chèn, tránh so sánh trực tiếp hai \tep{State}. Các thao tác ưu tiên dùng thư viện \tep{heapq}~\cite{heapq}.
+
+\subsubsection{Quy trình đã cài đặt}
+\par\noindent\begin{minipage}{\textwidth}
+\begin{lstlisting}[caption={UCS: bỏ bản ghi cũ, chỉ nhận đích khi lấy ra.}]
+best_g = {start: 0}
+parent = {start: None}
+heap = [(0, counter(), start)]
+while heap is not empty:
+    g, _, s = pop_min(heap)
+    if g > best_g.get(s, infinity): continue
+    if goal(s): return reconstruct(parent, s)
+    count_expanded()
+    for action, t, cost in successors(s):
+        count_generated()
+        new_g = g + cost
+        if new_g >= best_g.get(t, infinity): continue
+        best_g[t] = new_g
+        parent[t] = (s, action)
+        push(heap, (new_g, counter(), t))
+        update_max_frontier(len(heap))
+return no_solution
+\end{lstlisting}
+\end{minipage}\par\medskip
+
+\subsubsection{Tính tối ưu và chi phí tính toán}
+Với chi phí bước dương trên đồ thị hữu hạn, bản ghi hợp lệ nhỏ nhất của đích chỉ được lấy ra sau mọi khả năng có chi phí thấp hơn. Vì thế UCS trả về tổng chi phí tối ưu. Kiểm tra đích khi sinh có thể trả một đường đắt trước khi tìm thấy đường rẻ. Lazy deletion loại bản ghi cũ khi lấy ra và không tính nó là node mở rộng.
+
+Với heap có thể lưu nhiều bản ghi, cận điển hình là $O((V+E)\log(V+E))$ thời gian và $O(V+E)$ bộ nhớ. Với $c=1$, UCS tối ưu số bước như BFS; số node có thể khác do BFS hiện kiểm tra đích khi sinh, UCS kiểm tra khi lấy ra.
+
+
+\input{sections/ucs_detail.tex}
+
+\subsection{\astar{}}
+\subsubsection{Ý tưởng và cấu trúc dữ liệu}
+\astar{} sử dụng
+\begin{equation}
+f(s)=g(s)+h(s),
+\end{equation}
+trong đó $g$ là chi phí đường từ đầu, $h$ là cận dưới chi phí từ trạng thái hiện tại tới đích~\cite{hart1968}. Cài đặt hiện tại dùng heap chứa $(f,h,\mathrm{counter},g,s)$. Khi bằng $f$, bản ghi có $h$ nhỏ hơn được ưu tiên, sau đó dùng thứ tự chèn. Cách phá hòa giúp kết quả tái lập với cùng dữ liệu và thứ tự successor.
+
+\subsubsection{Quy trình đã cài đặt}
+\par\noindent\begin{minipage}{\textwidth}
+\begin{lstlisting}[caption={Mã giả phản ánh vòng lặp trong astar\_solver.py.}]
+best_g = {start: 0}
+parent = {start: None}
+heap = [(h(start), h(start), counter(), 0, start)]
+while heap is not empty:
+    f, h_s, _, g, s = pop_min(heap)
+    if g != best_g[s]: continue
+    if goal(s): return reconstruct(parent, s)
+    count_expanded()
+    for action, t, cost in successors(s):
+        count_generated()
+        new_g = g + cost
+        if new_g >= best_g.get(t, infinity): continue
+        best_g[t] = new_g
+        parent[t] = (s, action)
+        h_t = heuristic(problem, t)
+        push(heap, (new_g+h_t, h_t, counter(), new_g, t))
+        update_max_frontier(len(heap))
+return no_solution
+\end{lstlisting}
+\end{minipage}\par\medskip
+
+\subsubsection{Xử lý trùng lặp và chứng minh tính tối ưu}
+Mỗi khi tìm được đường rẻ hơn, solver cập nhật \tep{best_g}, cha và thêm bản ghi mới. Bản ghi cũ chỉ bị bỏ khi lấy ra; thao tác này không được tính là mở rộng. Solver không dùng closed set khóa vĩnh viễn, nên một trạng thái có thể được mở rộng lại nếu chi phí tốt hơn xuất hiện. Điều này cần thiết để hỗ trợ heuristic admissible nhưng chưa consistent.
+
+Giả sử $h(s)\le h^*(s)$, $h(G)=0$, chi phí bước dương và việc mở lại được cho phép. Nếu một đích có chi phí $C>C^*$ được chọn để trả về, trên một đường tối ưu vẫn còn một bản ghi chưa xử lý với $f\le C^*$. Heap phải chọn bản ghi đó trước đích có $f=C$, mâu thuẫn. Vì vậy đích đầu tiên được lấy ra bằng bản ghi hợp lệ có chi phí tối ưu. Điều kiện này áp dụng cho heuristic theo đúng đơn vị chi phí, không tự động đúng với mọi hàm \tep{cost_fn}.
+
+\subsubsection{Chi phí tính toán và bộ nhớ}
+Trong trường hợp consistent, mỗi trạng thái cần mở rộng tối đa một lần và heap có thể lưu nhiều bản ghi; cận điển hình tương tự UCS, cộng chi phí tính heuristic. Khi chỉ admissible nhưng inconsistent, việc mở lại có thể tăng đáng kể số lần mở rộng; không nên khẳng định một cận tuyến tính theo số cạnh cho mọi trường hợp. \astar{} vẫn có thể dùng nhiều bộ nhớ để giữ frontier, best\_g và parent.
+
+
+\input{sections/astar_detail.tex}
+
+\subsection{Heuristic Manhattan có xét cổng}
+\subsubsection{Bài toán nới lỏng}
+Manhattan thông thường có thể đánh giá quá khi split switch dịch chuyển khối tới gần đích. Vì vậy hàm hiện tại bỏ qua chướng ngại, tư thế và yêu cầu cầu/công tắc, đồng thời cho phép đi tắt qua split switch với chi phí dịch chuyển bằng 0.
+
+Ký hiệu $M(a,b)$ là khoảng cách Manhattan, $q_j$ là vị trí split switch, $T_j$ là các điểm đến. Hàm $D(c)$ và chi phí cổng $P_j$ thỏa
+\begin{align}
+D(c)&=\min\left\{M(c,G),\ \min_j\big(M(c,q_j)+P_j\big)\right\},\\
+P_j&=\min_{t\in T_j} D(t).
+\end{align}
+Mã nguồn dùng phép nới lỏng lặp để xử lý nhiều cổng nối nhau; khi không có cổng, $D$ chính là Manhattan. Với $\mathrm{cells}(s)$ là các ô khối đang chiếm, đặt $d(s)=\min_{c\in\mathrm{cells}(s)}D(c)$ và
+\begin{equation}\label{eq:h}
+h_{\mathrm{steps}}(s)=
+\begin{cases}
+0,&s\in G,\\
+\max\{\lceil d(s)/2\rceil,1\},&s\notin G.
+\end{cases}
+\end{equation}
+
+\subsubsection{Admissible và consistent với chi phí đơn vị}
+Mỗi ô mới sau một lần lăn cách ít nhất một ô cũ không quá 2 đơn vị Manhattan; một cube chỉ dịch một ô. $D$ là khoảng cách nới lỏng với biến thiên không quá khoảng cách Manhattan. Vì vậy $d$ giảm tối đa 2 trong một hành động thường. Khi bước lên split switch, các cung dịch chuyển đã được tính trong bài toán nới lỏng nên không tạo ra mức giảm chưa được dự liệu. Gộp cube không thay tập ô đang chiếm.
+
+Do đích có $d=0$, cần ít nhất $\lceil d/2\rceil$ hành động để đạt đích; nếu chưa thắng thì còn cần ít nhất một hành động. Do đó $h_{\mathrm{steps}}\le h^*_{\mathrm{steps}}$. Đồng thời $\lceil d/2\rceil$ giảm nhiều nhất 1 mỗi bước; thao tác vào đích xuất phát từ trạng thái có $d\le2$, suy ra
+\begin{equation}
+h(s)\le1+h(s').
+\end{equation}
+Heuristic vì thế admissible và consistent cho chi phí đơn vị. Không cộng thêm một bước chỉ vì khối đang nằm: có trạng thái nằm chỉ cần một lần dựng lên là thắng, nên cộng tùy tiện có thể đánh giá quá.
+
+\subsubsection{Chuyển sang chi phí không đồng nhất}
+Nếu mọi cạnh có $c(s,a,s')\ge c_{\min}>0$, chọn
+\begin{equation}\label{eq:scaled}
+h_{\mathrm{cost}}(s)=c_{\min}\,h_{\mathrm{steps}}(s).
+\end{equation}
+Từ tính consistent theo bước suy ra $c_{\min}h(s)\le c_{\min}+c_{\min}h(s')\le c(s,a,s')+c_{\min}h(s')$. Do đó cận mới phù hợp với đơn vị chi phí. Cần xác định cận dưới \(c_{\min}\) có cơ sở cho mô hình chi phí, không lấy giá trị nhỏ nhất tình cờ xuất hiện trong một lần chạy làm cận cho toàn bộ bài toán.
+
+
+\input{sections/heuristic_detail.tex}
+
+\subsection{Đối chiếu các thuật toán}
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.4}
+\setlength{\tabcolsep}{6pt}
+\arrayrulecolor{black!25}
+
+\begin{tabularx}{\textwidth}{
+    |>{\raggedright\arraybackslash\bfseries}p{1.6cm}
+    |>{\raggedright\arraybackslash}p{2.3cm}
+    |>{\raggedright\arraybackslash}X
+    |>{\raggedright\arraybackslash}X|
+}
+\hline
+\rowcolor{blue!12}
+Thuật toán &
+\textbf{Chọn node} &
+\textbf{Điều kiện tối ưu} &
+\textbf{Giới hạn chính} \\
+\hline
+
+BFS &
+FIFO, ưu tiên ít bước. &
+Mọi bước có cùng chi phí. &
+Tốn bộ nhớ khi số trạng thái lớn. \\
+\hline
+
+DFS &
+LIFO, ưu tiên đi sâu. &
+Không bảo đảm tối ưu. &
+Kết quả phụ thuộc thứ tự duyệt. \\
+\hline
+
+UCS &
+Ưu tiên $g$ nhỏ nhất. &
+Chi phí bước dương; kiểm tra đích khi lấy
+bản ghi hợp lệ khỏi heap. &
+Không có heuristic định hướng về đích. \\
+\hline
+
+\astar{} &
+Ưu tiên $g+h$ nhỏ nhất. &
+Chi phí bước dương; heuristic admissible,
+bằng 0 tại đích; mở lại khi cần và kiểm tra
+đích khi lấy bản ghi hợp lệ khỏi heap. &
+Hiệu quả phụ thuộc chất lượng
+và chi phí tính heuristic. \\
+\hline
+\end{tabularx}
+
+\caption{So sánh bốn thuật toán đã cài đặt và điều kiện tối ưu theo mô hình chi phí.}
+\label{tab:so-sanh-thuat-toan}
+\end{table}
+
+\input{sections/worked_example.tex}
+
+\section{Trò chơi và thiết kế màn}
+\subsection{Giao diện và trải nghiệm sử dụng}
+Phiên bản có menu chính, chọn màn, hướng dẫn, tùy chọn, restart/pause và bảng AI. Người dùng chọn BFS, DFS, UCS hoặc \astar{}; với \astar{} có lựa chọn \tep{zero}/\tep{manhattan}. Cả bốn solver đã có phần triển khai và lời giải được phát lại bằng chuyển động của khối. Camera hỗ trợ các góc nhìn và thao tác xoay/zoom; có ba theme Classic, Original, Minecraft, bóng đổ và bloom. Game dùng GLFW~\cite{glfw}, GLAD~\cite{glad} và GLM~\cite{glm} cho cửa sổ, OpenGL và toán học; Dear ImGui~\cite{imgui} cho menu và bảng điều khiển; miniaudio~\cite{miniaudio} để phát âm thanh được tổng hợp bằng code.
+
+
+\input{sections/game_interface.tex}
+
+\input{sections/game_comparison.tex}
+
+\input{sections/game_rendering.tex}
+
+\subsection{Bộ màn và mục tiêu bao phủ}
+Bộ dữ liệu gồm nhóm cơ bản G1, ô dễ vỡ G2, công tắc/cầu G3, tách khối G4, màn lớn kết hợp G5 và trường hợp đặc biệt G6. Catalog lưu kích thước, loại màn, độ dài tối ưu và đường dẫn lời giải, giúp kiểm thử tự động. Bảng~\ref{tab:nhom-test} mô tả các nhóm theo độ khó tăng dần; số thứ tự màn giữ theo lịch sử dữ liệu nên không trùng với thứ tự độ khó.
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.4}
+\setlength{\tabcolsep}{6pt}
+\arrayrulecolor{black!25}
+
+\begin{tabularx}{\textwidth}{
+    |>{\centering\arraybackslash\bfseries}p{1.3cm}
+    |>{\raggedright\arraybackslash}p{3.2cm}
+    |>{\centering\arraybackslash}p{1.8cm}
+    |>{\raggedright\arraybackslash}X|
+}
+\hline
+\rowcolor{blue!12}
+Nhóm & \textbf{Đặc điểm} & \textbf{Màn} & \textbf{Mục đích kiểm tra} \\
+\hline
+G1 & Cơ bản, chỉ sàn thường & 3, 4 &
+Chu kỳ đứng--nằm của khối, đổi hướng và tư thế. \\
+\hline
+G2 & Có ô dễ vỡ & 5, 6, 14 &
+Ô dễ vỡ chặn điểm dựng đứng và làm đổi đường tối ưu; màn 14 có 200 ô dễ vỡ. \\
+\hline
+G3 & Có công tắc và cầu & 7, 8, 1, 2, 15 &
+Công tắc thường, công tắc nặng, công tắc mở nhiều ô cầu và công tắc vĩnh viễn; màn 1--2 của repo gốc kết hợp thêm ô dễ vỡ. \\
+\hline
+G4 & Tách khối & 16 &
+Split switch, điều khiển hai cube độc lập và gộp lại. \\
+\hline
+G5 & Màn lớn kết hợp nhiều cơ chế & 9, 12, 13 &
+Nhiều công tắc thường/nặng (tới 6 công tắc, 64 cấu hình cầu), màn 9 có thêm ô dễ vỡ; dùng để so sánh hiệu năng khi không gian trạng thái lớn. \\
+\hline
+G6 & Trường hợp đặc biệt & 10, 11 &
+Sân trống 20$\times$30 để so sánh số trạng thái và thời gian; màn 11 cố ý vô nghiệm. \\
+\hline
+\end{tabularx}
+
+\caption{Các nhóm test theo độ khó và cơ chế.}
+\label{tab:nhom-test}
+\end{table}
+
+% BEGIN AUTO LEVEL_TABLE
+\begin{table}[H]\centering\small
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{@{}cccrcr@{}}\toprule
+\textbf{Màn} & \textbf{Nhóm} & \textbf{Lưới} & \textbf{Dễ vỡ} & \textbf{CT thường/nặng} & \textbf{Tối ưu}\\\midrule
+1 & G3 & 13$\times$13 & 1 & 2/1 & 10\\
+2 & G3 & 19$\times$14 & 39 & 0/3 & 68\\
+3 & G1 & 7$\times$13 & 0 & 0/0 & 4\\
+4 & G1 & 11$\times$15 & 0 & 0/0 & 16\\
+5 & G2 & 9$\times$13 & 1 & 0/0 & 6\\
+6 & G2 & 12$\times$16 & 1 & 0/0 & 20\\
+7 & G3 & 11$\times$19 & 0 & 1/0 & 12\\
+8 & G3 & 11$\times$19 & 0 & 0/1 & 15\\
+9 & G5 & 19$\times$25 & 4 & 1/1 & 36\\
+10 & G6 & 20$\times$30 & 0 & 0/0 & 27\\
+11 & G6 & 11$\times$17 & 0 & 0/0 & Vô nghiệm\\
+12 & G5 & 17$\times$35 & 0 & 2/2 & 44\\
+13 & G5 & 21$\times$49 & 0 & 3/3 & 66\\
+14 & G2 & 21$\times$29 & 200 & 0/0 & 36\\
+15 & G3 & 14$\times$17 & 0 & 2/0 & 37\\
+16 & G4 & 14$\times$18 & 0 & 2/0 & 49\\
+\bottomrule\end{tabular}
+\caption[Danh mục 16 màn theo catalog]{Danh mục 16 màn theo catalog; CT là công tắc. Màn 16 còn có split switch.}
+\end{table}
+% END AUTO LEVEL_TABLE
+
+\subsection{Ba màn khó bổ sung}
+Màn 12 có 4 công tắc gồm 2 thường, 2 nặng; màn 13 có 6 công tắc gồm 3 thường, 3 nặng. Các màn này buộc solver phân biệt cùng vị trí với cấu hình cầu khác nhau. Test tham chiếu xác nhận quan sát được lần lượt 16 và 64 cấu hình cầu trong quá trình tìm. Số bước tối ưu tương ứng là 44 và 66.
+
+Màn 14 có 200 ô dễ vỡ, tối ưu 36 bước; nếu thay ô dễ vỡ thành sàn thường thì còn 25 bước. Vì vậy lớp ô đặc biệt thực sự làm thay đổi đường tối ưu. Số lượng ô dễ vỡ lớn tự nó chưa đủ chứng minh độ khó; cần đối chiếu thêm độ dài lời giải, số node và tác động của việc bỏ ràng buộc.
+
+Màn 11 cố ý vô nghiệm do các vùng sàn tách rời. Trường hợp này đánh giá khả năng kết thúc khi frontier rỗng và trả trạng thái \tep{no_solution}; không nên gán độ dài bằng 0, vì 0 bước chỉ phù hợp khi trạng thái đầu đã thắng.
+
+\input{sections/hard_levels.tex}
+
+\subsection{Tiêu chí kiểm tra một màn mới}
+Màn mới phải đọc hợp lệ, có nguồn gốc và mục tiêu kiểm thử rõ ràng. Lời giải cần thắng đúng ở bước cuối, khớp số bước BFS với chi phí đơn vị. Với màn v2, cần phát lại trong cả Python và C++ để kiểm tra hai bản luật đồng bộ.
+
+\section{Thực nghiệm và phân tích}
+\subsection{Thiết lập và cách tái lập}
+\subsubsection{Mã nguồn, môi trường và biến kiểm soát}
+Mã nguồn được đo ngày \ngaykiemtra{} theo giờ Việt Nam. Máy sử dụng Windows 11 (build 26200), CPU AMD Ryzen 7 PRO 4750U, Python 3.12.7 64-bit. Thông tin nền tảng chi tiết nằm trong \tep{data/benchmark.json}. Mọi cấu hình dùng cùng tệp màn, luật, thứ tự successor và chi phí 1. Không tính thời gian render, ghi trace hoặc khởi động game vào thời gian tìm kiếm.
+
+
+\subsubsection{Giao thức đo}
+Script \tep{benchmark_report.py} đo 5 cấu hình: BFS, DFS, UCS, \astar{} $h=0$, \astar{} Manhattan có xét cổng. Đây là bốn thuật toán, trong đó \astar{} có thêm một cấu hình đối chứng. Mỗi ô thời gian là trung vị của 5 lần chạy trong 5 tiến trình mới, đọc màn trước khi bấm giờ và dùng cache heuristic lạnh. Bộ nhớ được đo bằng một tiến trình riêng; không trộn thời gian có \tep{tracemalloc} vào trung vị thời gian.
+
+\begin{equation}
+t_{\mathrm{median}}=\operatorname{median}(t_1,\ldots,t_5),\qquad
+\mathrm{reduction}=100\left(1-\frac{N_h}{N_0}\right)\%.
+\end{equation}
+Tổng cộng có $16\times5\times6=480$ lượt tìm kiếm để đo. Mọi lời giải được phát lại Python; BFS/UCS/\astar{} phải khớp tối ưu trong catalog, còn DFS chỉ cần hợp lệ và không ngắn hơn chuẩn tối ưu. Màn vô nghiệm phải trả \tep{no_solution}. Mẫu thời gian thô, min/max, trạng thái và môi trường được giữ trong JSON/CSV. Các phép kiểm tra đồ thị và chi phí bổ sung được chạy riêng, không tính vào 480 lượt đo.
+
+\subsubsection{Định nghĩa chỉ số và giới hạn đo}
+\begin{itemize}
+\item \textbf{Expanded}: số lần lấy một trạng thái để sinh successor, không tính bản ghi heap cũ hoặc đích được trả về ngay khi pop. Với BFS hiện tại, đích được kiểm tra khi sinh nên thời điểm dừng khác \astar{}.
+\item \textbf{Max frontier}: kích thước cấu trúc chờ lớn nhất; heap có thể có nhiều bản ghi của một trạng thái.
+\item \textbf{Generated}: tổng successor hợp lệ đã sinh, gồm cả successor sau đó bị loại do trùng/chi phí không tốt hơn.
+\item \textbf{Length/cost}: số hành động và tổng chi phí; chỉ trùng nhau khi mỗi bước có giá 1.
+\item \textbf{Peak memory}: đỉnh cấp phát Python trong \tep{solver.run()}, chia 1024 để ra KiB; không phải toàn bộ RAM hệ điều hành, GPU hoặc bộ nhớ đọc màn trước thời điểm đo. Cache được tạo khi tìm kiếm nằm trong phạm vi này.
+\end{itemize}
+
+Không so sánh thời gian có bật trace/tracemalloc với thời gian tìm kiếm thuần. Các lần đo cache đã nóng cần một nhóm kết quả riêng; nếu không xóa cache trước lượt đo bộ nhớ, kết quả có thể bỏ sót các vùng đã được cấp phát từ trước.
+
+
+\subsection{Kết quả kiểm thử tự động}
+Bộ kiểm thử đạt \textbf{357 passed, 1 skipped} trong 23,71 giây ở lần chạy xác nhận. Skip duy nhất là test khung cũ chỉ dành cho thời điểm BFS chưa được cài, không phải một solver chưa hoàn thành. Lệnh chạy dùng \tep{--basetemp} trong workspace để tránh vấn đề quyền truy cập thư mục tạm của máy.
+
+Ngoài unit test, script duyệt toàn bộ trạng thái đạt được của 16 màn, dựng cạnh ngược và BFS ngược từ mọi đích để tính khoảng cách thật theo số bước. Trên mọi trạng thái có thể tới đích kiểm tra $h\le h^*$; trên mọi cạnh kiểm tra $h(s)\le1+h(s')$. Không phát hiện vi phạm trên bộ dữ liệu kiểm tra. Đây là bằng chứng hữu hạn hỗ trợ chứng minh, không thay thế chứng minh cho mọi màn trong tương lai.
+
+% BEGIN AUTO GRAPH_TOTALS
+Tổng cộng các đồ thị kiểm tra có 66\,813 trạng thái và 244\,213 cạnh có hướng (cộng theo từng màn). Chi tiết từng màn nằm trong JSON đi kèm.
+% END AUTO GRAPH_TOTALS
+
+\input{sections/experiment_audit.tex}
+
+\subsection{Độ dài lời giải và số node}
+% BEGIN AUTO LENGTH_TABLE
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.35}
+\setlength{\tabcolsep}{6pt}
+\arrayrulecolor{black!25}
+
+\begin{tabularx}{\textwidth}{
+    |>{\centering\arraybackslash}p{0.8cm}
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X|
+}
+\hline
+\rowcolor{blue!12}
+\textbf{Màn} &
+$\boldsymbol{L^*}$ &
+\textbf{BFS} &
+\textbf{DFS} &
+\textbf{UCS} &
+\textbf{\astar{} $\boldsymbol{h_M}$} \\
+\hline
+
+1 & 10 & 10 & 41 & 10 & 10 \\
+\hline
+2 & 68 & 68 & 76 & 68 & 68 \\
+\hline
+3 & 4 & 4 & 4 & 4 & 4 \\
+\hline
+4 & 16 & 16 & 42 & 16 & 16 \\
+\hline
+5 & 6 & 6 & 49 & 6 & 6 \\
+\hline
+6 & 20 & 20 & 78 & 20 & 20 \\
+\hline
+7 & 12 & 12 & 50 & 12 & 12 \\
+\hline
+8 & 15 & 15 & 56 & 15 & 15 \\
+\hline
+9 & 36 & 36 & 347 & 36 & 36 \\
+\hline
+10 & 27 & 27 & 377 & 27 & 27 \\
+\hline
+11 & -- & -- & -- & -- & -- \\
+\hline
+12 & 44 & 44 & 1\,293 & 44 & 44 \\
+\hline
+13 & 66 & 66 & 4\,295 & 66 & 66 \\
+\hline
+14 & 36 & 36 & 89 & 36 & 36 \\
+\hline
+15 & 37 & 37 & 81 & 37 & 37 \\
+\hline
+16 & 49 & 49 & 655 & 49 & 49 \\
+\hline
+\end{tabularx}
+
+\caption[Độ dài lời giải của các thuật toán]{
+Độ dài lời giải; $L^*$ là số bước tối ưu.
+Với chi phí đơn vị, tổng chi phí bằng độ dài lời giải.
+Dấu -- ở màn 11 biểu thị vô nghiệm.
+}
+\label{tab:do-dai-loi-giai}
+\end{table}
+% END AUTO LENGTH_TABLE
+% BEGIN AUTO NODE_TABLE
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.35}
+\setlength{\tabcolsep}{6pt}
+\arrayrulecolor{black!25}
+
+\begin{tabularx}{\textwidth}{
+    |>{\centering\arraybackslash}p{0.8cm}
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X|
+}
+\hline
+\rowcolor{blue!12}
+\textbf{Màn} &
+\textbf{BFS} &
+\textbf{DFS} &
+\textbf{UCS} &
+\textbf{\astar{} $h=0$} &
+\textbf{\astar{} $h_M$} \\
+\hline
+
+1 & 125 & 43 & 160 & 160 & 81 \\
+\hline
+2 & 371 & 148 & 377 & 377 & 357 \\
+\hline
+3 & 4 & 4 & 4 & 4 & 4 \\
+\hline
+4 & 126 & 66 & 127 & 127 & 71 \\
+\hline
+5 & 34 & 57 & 52 & 52 & 14 \\
+\hline
+6 & 214 & 121 & 215 & 215 & 214 \\
+\hline
+7 & 209 & 143 & 238 & 238 & 118 \\
+\hline
+8 & 206 & 191 & 232 & 232 & 143 \\
+\hline
+9 & 1\,319 & 1\,303 & 1\,393 & 1\,393 & 925 \\
+\hline
+10 & 1\,190 & 582 & 1\,201 & 1\,201 & 1\,126 \\
+\hline
+11 & 113 & 113 & 113 & 113 & 113 \\
+\hline
+12 & 6\,661 & 5\,019 & 6\,663 & 6\,663 & 6\,342 \\
+\hline
+13 & 47\,673 & 41\,456 & 47\,675 & 47\,675 & 47\,657 \\
+\hline
+14 & 679 & 607 & 687 & 687 & 555 \\
+\hline
+15 & 330 & 254 & 351 & 351 & 309 \\
+\hline
+16 & 4\,503 & 1\,660 & 4\,600 & 4\,600 & 4\,557 \\
+\hline
+\end{tabularx}
+
+\caption[Số node mở rộng của các thuật toán]{
+Số node mở rộng; $h_M$ là Manhattan có xét cổng.
+BFS kiểm tra đích khi sinh;
+các solver còn lại kiểm tra đích khi lấy ra.
+}
+\label{tab:so-node-mo-rong}
+\end{table}
+% END AUTO NODE_TABLE
+
+
+BFS, UCS và cả hai cấu hình \astar{} tìm đúng độ dài tối ưu trên 15 màn có nghiệm; DFS tìm lời giải hợp lệ nhưng có thể dài hơn. Cả năm cấu hình nhận diện màn 11 vô nghiệm. UCS được đo bằng solver riêng, vì vậy không dùng \astar{} $h=0$ để thay phần triển khai UCS. Hai thuật toán có thể cho chuỗi hành động khác nhau nhưng cùng chi phí tối ưu.
+
+\input{sections/experiment_counters.tex}
+
+\subsection{Thời gian tìm kiếm và bộ nhớ đỉnh}
+% BEGIN AUTO TIME_TABLE
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.35}
+\setlength{\tabcolsep}{6pt}
+\arrayrulecolor{black!25}
+
+\begin{tabularx}{\textwidth}{
+    |>{\centering\arraybackslash}p{0.8cm}
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X|
+}
+\hline
+\rowcolor{blue!12}
+\textbf{Màn} &
+\textbf{BFS} &
+\textbf{DFS} &
+\textbf{UCS} &
+\textbf{\astar{} $h=0$} &
+\textbf{\astar{} $h_M$} \\
+\hline
+
+1 & 2.055 & 0.907 & 2.856 & 2.872 & 2.033 \\
+\hline
+2 & 5.436 & 2.416 & 6.313 & 6.210 & 7.183 \\
+\hline
+3 & 0.156 & 0.140 & 0.165 & 0.165 & 0.202 \\
+\hline
+4 & 1.906 & 1.156 & 2.186 & 2.140 & 1.707 \\
+\hline
+5 & 0.700 & 1.139 & 1.090 & 1.412 & 0.510 \\
+\hline
+6 & 3.603 & 2.322 & 3.811 & 3.923 & 4.725 \\
+\hline
+7 & 3.974 & 2.577 & 5.355 & 4.451 & 3.108 \\
+\hline
+8 & 3.444 & 3.409 & 4.231 & 4.332 & 3.714 \\
+\hline
+9 & 23.680 & 25.314 & 30.345 & 28.994 & 23.979 \\
+\hline
+10 & 21.974 & 11.991 & 25.015 & 25.656 & 31.991 \\
+\hline
+11 & 2.260 & 2.653 & 2.844 & 3.189 & 4.196 \\
+\hline
+12 & 213.761 & 118.768 & 159.056 & 179.356 & 226.279 \\
+\hline
+13 & 1\,160.457 & 952.982 & 1\,191.990 & 1\,219.641 & 1\,488.433 \\
+\hline
+14 & 11.171 & 10.432 & 12.248 & 13.293 & 13.075 \\
+\hline
+15 & 5.298 & 4.391 & 6.591 & 6.519 & 6.988 \\
+\hline
+16 & 174.621 & 64.606 & 203.445 & 236.445 & 205.416 \\
+\hline
+\end{tabularx}
+
+\caption[Trung vị thời gian tìm kiếm (ms)]{
+Trung vị thời gian tìm kiếm qua 5 tiến trình độc lập,
+đơn vị mili giây (ms); không bật \texttt{tracemalloc}.
+}
+\label{tab:thoi-gian-tim-kiem}
+\end{table}
+% END AUTO TIME_TABLE
+
+% BEGIN AUTO MEMORY_TABLE
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.35}
+\setlength{\tabcolsep}{6pt}
+\arrayrulecolor{black!25}
+
+\begin{tabularx}{\textwidth}{
+    |>{\centering\arraybackslash}p{0.8cm}
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X
+    |>{\centering\arraybackslash}X|
+}
+\hline
+\rowcolor{blue!12}
+\textbf{Màn} &
+\textbf{BFS} &
+\textbf{DFS} &
+\textbf{UCS} &
+\textbf{\astar{} $h=0$} &
+\textbf{\astar{} $h_M$} \\
+\hline
+
+1 & 28.3 & 14.1 & 54.0 & 55.7 & 49.7 \\
+\hline
+2 & 72.1 & 28.1 & 97.8 & 98.1 & 114.9 \\
+\hline
+3 & 3.3 & 2.3 & 2.8 & 2.8 & 4.5 \\
+\hline
+4 & 23.9 & 14.8 & 31.4 & 31.8 & 40.0 \\
+\hline
+5 & 11.8 & 18.5 & 20.7 & 21.9 & 17.2 \\
+\hline
+6 & 39.5 & 36.2 & 54.9 & 55.8 & 72.6 \\
+\hline
+7 & 42.5 & 36.8 & 60.8 & 61.8 & 78.2 \\
+\hline
+8 & 41.6 & 42.6 & 59.8 & 60.9 & 71.1 \\
+\hline
+9 & 281.8 & 286.3 & 391.6 & 394.2 & 300.3 \\
+\hline
+10 & 190.4 & 181.9 & 258.8 & 260.2 & 428.3 \\
+\hline
+11 & 21.8 & 20.2 & 30.0 & 31.3 & 41.6 \\
+\hline
+12 & 1\,128.4 & 1\,141.9 & 1\,597.8 & 1\,605.4 & 1\,704.3 \\
+\hline
+13 & 9\,323.5 & 9\,435.6 & 13\,147.9 & 13\,234.6 & 13\,862.3 \\
+\hline
+14 & 141.8 & 103.2 & 195.9 & 196.9 & 218.9 \\
+\hline
+15 & 72.3 & 48.9 & 98.9 & 99.6 & 87.4 \\
+\hline
+16 & 1\,187.7 & 851.0 & 1\,482.7 & 1\,488.6 & 1\,508.9 \\
+\hline
+\end{tabularx}
+
+\caption[Bộ nhớ Python đỉnh (KiB)]{
+Bộ nhớ Python đỉnh được đo trong lượt chạy riêng,
+đơn vị KiB; không phải toàn bộ RAM của tiến trình.
+}
+\label{tab:bo-nho-python}
+\end{table}
+% END AUTO MEMORY_TABLE
+
+\input{sections/experiment_charts.tex}
+
+\subsection{Phân tích kết quả}
+\subsubsection{DFS đổi chất lượng lời giải lấy ưu tiên đi sâu}
+Ở màn 1, DFS mở rộng 43 node và tìm lời giải 41 bước; BFS mở rộng 125 node nhưng chỉ cần 10 bước. Ở màn 13, DFS tìm đường 4\,295 bước trong khi tối ưu là 66. Màn 16 cũng cho 655 bước so với tối ưu 49. Các ví dụ này cho thấy lượng node ít hoặc tìm nhanh không tự đồng nghĩa với chất lượng lời giải cao. Kết quả phụ thuộc cấu trúc màn và thứ tự duyệt; không kết luận DFS luôn nhanh hoặc luôn dùng ít bộ nhớ hơn.
+
+\subsubsection{Heuristic giảm node nhưng không bảo đảm giảm thời gian}
+Ở màn 1, Manhattan giảm số node \astar{} từ 160 xuống 81; ở màn 5 từ 52 xuống 14. Điều này cho thấy cận vị trí có ích khi khoảng cách hình học phản ánh một phần cấu trúc lời giải. Tuy nhiên, tính heuristic và tra cache có chi phí; trên các màn hầu như không giảm node, lượt chạy có heuristic có thể chậm hơn. Bảng thời gian phải được đọc cùng lượng node và phạm vi đo, không suy rằng \astar{} luôn nhanh nhất.
+
+Bộ nhớ cho thấy cùng xu hướng: \astar{} Manhattan dùng nhiều bộ nhớ hơn \astar{} $h=0$ trên phần lớn các màn, ví dụ màn 10 là 428,3 so với 260,2 KiB, dù số node giảm từ 1\,201 xuống 1\,126. Nguyên nhân là hàm khoảng cách nới lỏng trong \tep{heuristics.py} được ghi nhớ bằng \tep{lru_cache}, và cache này được tạo trong lúc tìm kiếm nên nằm trong phạm vi đo. Chỉ ở các màn heuristic cắt được nhiều node (màn 1, 5, 9, 15), phần frontier và \tep{best_g} giảm đủ để bù chi phí cache.
+
+\subsubsection{Màn nhiều công tắc làm lộ giới hạn của cận hình học}
+Màn 13 giảm từ 47\,675 xuống 47\,657 node, khoảng 0,04\%. Heuristic nới lỏng cầu và công tắc nên không nhận ra chuỗi thao tác bắt buộc để mở đúng đường. Hiện tượng này phản ánh độ yếu của thông tin định hướng, không phải bằng chứng vòng lặp \astar{} sai. Một hướng nghiên cứu là khoảng cách trên đồ thị nới lỏng có giữ hình học sàn hoặc một abstraction về công tắc; mọi cận mới phải được chứng minh và đo chi phí tính toán.
+
+\input{sections/experiment_layers.tex}
+
+
+\subsubsection{Phản ví dụ khi dùng sai đơn vị chi phí}
+Giữ màn 14 nhưng đặt mọi bước tốn 0,1: \astar{} với $h=0$ trả 36 bước, chi phí 3,6; dùng Manhattan chưa nhân tỷ lệ trả 54 bước, chi phí 5,4. Khi nhân heuristic với 0,1, kết quả trở lại 36 bước, chi phí 3,6. Đây là kiểm tra khả năng mở rộng hàm chi phí, không phải lỗi của chế độ chi phí đơn vị hiện tại.
+
+\begin{figure}[H]\centering
+\begin{tikzpicture}
+\begin{axis}[width=0.92\textwidth,height=6.8cm,ybar,bar width=5pt,
+  ylabel={Node mở rộng},symbolic x coords={1,5,12,13,16},xtick=data,
+  xlabel={Màn chơi},ymode=log,log origin=infty,ymin=1,
+  legend cell align=left,
+  legend style={at={(0.5,1.03)},anchor=south,legend columns=2,font=\small,column sep=12pt,row sep=3pt},
+  grid=major,enlarge x limits=0.15]
+% BEGIN AUTO PLOT_SERIES
+\addplot[fill=blue!65] coordinates {(1,125) (5,34) (12,6661) (13,47673) (16,4503)};
+\addplot[fill=gray!70] coordinates {(1,43) (5,57) (12,5019) (13,41456) (16,1660)};
+\addplot[fill=green!50!black] coordinates {(1,160) (5,52) (12,6663) (13,47675) (16,4600)};
+\addplot[fill=orange!75] coordinates {(1,81) (5,14) (12,6342) (13,47657) (16,4557)};
+\legend{BFS,DFS,UCS,\astar{} Manhattan}
+% END AUTO PLOT_SERIES
+\end{axis}
+\end{tikzpicture}
+\caption{Node của bốn solver trên các màn đại diện; trục tung logarithm, DFS không bảo đảm tối ưu.}
+\label{fig:nodes}
+\end{figure}
+
+
+\subsection{Đối chiếu với mô hình chi phí trong test}
+Dùng đúng quy tắc kiểm tra của \tep{test_ucs_solver.py}: giá 3 nếu \tep{next_state.orientation} là $Z$, ngược lại giá 1. Quy tắc này xét trường orientation như trong test, không được diễn giải thêm thành mô hình vật lý cho cube. Do $c_{\min}=1$, Manhattan theo số bước vẫn admissible cho phép kiểm tra này.
+
+% BEGIN AUTO NONUNIFORM_TABLE
+\begin{table}[H]\centering\small
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{@{}crrrrr@{}}\toprule
+\textbf{Màn} & \textbf{$L_{BFS}$} & \textbf{$C_{BFS}$} & \textbf{$L_{UCS}$} & \textbf{$C_{UCS}$} & \textbf{$C_{A^*}$}\\\midrule
+1 & 10 & 16 & 10 & 16 & 16\\
+2 & 68 & 108 & 68 & 108 & 108\\
+4 & 16 & 26 & 16 & 26 & 26\\
+15 & 37 & 61 & 37 & 61 & 61\\
+16 & 49 & 137 & 49 & 133 & 133\\
+\bottomrule\end{tabular}
+\caption[Đối chiếu mô hình test có trọng số]{Đối chiếu mô hình test có trọng số: L là số bước, C là chi phí; chưa phải mô hình sản phẩm.}
+\end{table}
+% END AUTO NONUNIFORM_TABLE
+
+UCS và \astar{} trùng tổng chi phí trên cả năm màn kiểm tra. Đặc biệt màn 16: BFS và UCS đều đi 49 bước nhưng có chi phí lần lượt 137 và 133. Có nhiều đường ngắn bằng nhau theo số bước, và BFS không ưu tiên đường rẻ hơn theo trọng số mới. Nếu các thuật toán bằng chi phí trên một màn, điều đó không chứng minh BFS tối ưu với mọi trọng số. Test đồ thị một cạnh giá 10 so với ba cạnh tổng giá 3 còn minh họa trường hợp ít bước khác ít chi phí. 
+
+\subsection{Giới hạn và thực nghiệm tiếp theo}
+Thực nghiệm hiện dùng một máy, 16 màn và chi phí đơn vị cho bảng hiệu năng chính. 
+Nếu thêm timeout hoặc giới hạn node, phải có trạng thái \tep{timeout}/\tep{limit} riêng, không gộp vào vô nghiệm. \tep{BaseSolver} hiện chưa có giới hạn dùng chung. Timeout tiến trình trong script chỉ làm lượt đo báo lỗi nếu vượt hạn, không tạo dữ liệu thay thế. Ảnh hưởng cache, cấp phát và đo bộ nhớ cần được giữ nhất quán khi mở rộng kết quả.
+
+\section{Phân công và quy trình làm việc}
+
+\subsection{Vai trò và phần báo cáo tương ứng}
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.4}
+\setlength{\tabcolsep}{7pt}
+\arrayrulecolor{black!25}
+
+\begin{tabularx}{\textwidth}{
+    |>{\raggedright\arraybackslash\bfseries}p{3cm}
+    |>{\raggedright\arraybackslash}p{3cm}
+    |>{\raggedright\arraybackslash}X|
+}
+\hline
+\rowcolor{blue!12}
+Thành viên &
+\textbf{Phần đã triển khai} &
+\textbf{Nội dung phụ trách/rà soát} \\
+\hline
+
+Nguyễn Duy Đạt &
+BFS và luật &
+Mô hình, luật v2, BFS và đối chiếu Python/C++. \\
+\hline
+
+Trần Đình Tấn Phát &
+DFS &
+Stack, đánh dấu visited khi đẩy vào stack,
+thứ tự duyệt và kết quả DFS. \\
+\hline
+
+Phạm Hoàng Hải Đăng &
+UCS &
+Heap theo $g$, kiểm thử chi phí
+và chốt mô hình chi phí. \\
+\hline
+
+Nguyễn Hoàng Sang &
+\astar{} và màn chơi &
+Thuật toán, catalog màn 3--14,
+các màn khó và kịch bản video. \\
+\hline
+
+Nguyễn Đỗ Bảo Kiên &
+Heuristic, tích hợp và GUI &
+Chứng minh heuristic, nâng cấp GUI,
+tổng hợp thực nghiệm và báo cáo. \\
+\hline
+\end{tabularx}
+
+\caption[Phân công thành viên]{
+Phân công thành viên và phần báo cáo tương ứng.
+}
+\label{tab:phan-cong-thanh-vien}
+\end{table}
+
+
+
+\subsection{Quản lý phiên bản và tích hợp}
+Nhóm dùng nhánh tính năng, commit theo quy ước và Pull Request để review. Các phần gồm PR \#1 cho \astar{}, PR \#2 cho bộ màn và PR \#3 cho màn khó; các thay đổi này đã được tích hợp trong lịch sử main. Khi nhiều nhánh thêm màn trùng số, catalog và lời giải phải được cập nhật đồng bộ; dữ liệu v2 hiện dùng mã màn 15--16 để giữ các màn khó 12--14.
+
+Mỗi thay đổi luật cần đi kèm test và phát lại trong game. Mỗi thay đổi thuật toán cần giữ giao diện \tep{SearchResult}; mỗi thay đổi mô hình chi phí cần kiểm tra lại giả thiết của heuristic. Báo cáo phải ghim commit được đo để số liệu không bị lẫn giữa các phiên bản.
+
+
+\input{sections/team_workflow.tex}
+
+\subsection{Đánh giá tiến độ}
+Bốn solver đã hoàn thành phần cài đặt và có kiểm thử. Bộ test bổ sung kiểm chứng chéo giữa các solver và sửa thống kê generated của BFS. GUI có Compare/Replay/CSV, ba theme và Search Visualizer. Mô hình chi phí của sản phẩm được chốt là chi phí đơn vị; tỷ lệ hoàn thành của từng thành viên nằm trong Bảng~\ref{tab:danh-gia-thanh-vien}.
+
+\section{Kết luận}
+
+\subsection{Kết quả đạt được}
+Đồ án đã hình thành hệ thống từ mô hình luật đến game ba chiều, có đủ BFS, DFS, UCS và \astar{}. Bộ kiểm thử mới đạt 357 pass, một skip có lý do. Thực nghiệm 16 màn xác nhận BFS/UCS/\astar{} tối ưu theo số bước với chi phí đơn vị, DFS tìm lời giải hợp lệ, mọi solver kết thúc đúng ở màn vô nghiệm. Nhóm có dữ liệu thô, script tái lập và mô tả các giả thiết của phép đo.
+
+Phần \astar{} dùng heap ưu tiên, lưu chi phí tốt nhất, bỏ bản ghi cũ và mở lại trạng thái khi cần. Heuristic xét cổng tách khối có chứng minh theo chi phí đơn vị. Bộ màn khó làm rõ cả lợi ích lẫn giới hạn của cận hình học; ví dụ màn nhiều công tắc gần như không giảm node dù dùng heuristic. Kết quả này giúp định hướng cải tiến dựa trên bằng chứng thay vì chỉ nhìn một màn chạy nhanh.
+
+\subsection{Những điều học được}
+\subsubsection{Mô hình hóa quyết định tính đúng đắn}
+Bài học đầu tiên là trạng thái phải chứa mọi thông tin ảnh hưởng tới tương lai: vị trí, tư thế, bit cầu và hai cube khi tách. Một solver viết đúng trên mô hình thiếu thông tin vẫn có thể trả lời sai cho trò chơi thật. Kiểm thử thứ tự kích hoạt công tắc và đối chiếu Python/C++ giúp làm rõ sự khác nhau giữa luật mô tả bằng lời và luật đã cài.
+
+\subsubsection{Tối ưu phụ thuộc mục tiêu và giả thiết}
+Ngắn nhất theo số bước khác rẻ nhất theo tổng chi phí. BFS phù hợp khi mọi bước có giá như nhau, còn UCS/\astar{} phải xét trọng số. Tên gọi Manhattan không tự bảo đảm admissible: cổng dịch chuyển và đơn vị chi phí có thể phá giả thiết. Phản ví dụ chi phí 0,1 cho thấy cần ghi rõ điều kiện toán học và dùng test phản chứng trước khi mở rộng hệ thống.
+
+\subsubsection{Thực nghiệm phải công bằng và có thể chạy lại}
+Số node giảm không luôn kéo theo thời gian giảm. Cache, trace, đo bộ nhớ, thời điểm kiểm tra đích và khác biệt phần cứng đều ảnh hưởng kết quả. Giữ mẫu thô, ghi commit, tách lượt đo thời gian/bộ nhớ và công bố phạm vi đo giúp người khác đánh giá kết luận chính xác hơn.
+
+\subsubsection{Phối hợp nhóm và trách nhiệm học thuật}
+Chia module giúp các thành viên làm song song nhưng đòi hỏi giao diện chung, review và kỷ luật cập nhật dữ liệu. Mỗi người cần hiểu phần mình và đọc chéo toàn hệ thống để giải thích được luật, bốn thuật toán và heuristic. Công cụ AI có thể hỗ trợ tìm lỗi, thiết kế test và soạn tài liệu; thành viên vẫn phải kiểm chứng, hiểu nội dung và khai báo phạm vi sử dụng.
+
+\input{sections/conclusion_lessons.tex}
+
+
+
+\subsection{Hạn chế hiện tại}
+Sản phẩm chỉ dùng chi phí đơn vị; hàm chi phí không đồng nhất mới có ở các phép thử, chưa có lựa chọn qua CLI/GUI. Heuristic còn yếu trên màn nhiều công tắc và cần điều chỉnh đơn vị trước khi dùng chi phí bước dưới 1. 
+
+\subsection{Hướng phát triển}
+Ưu tiên là chọn công thức chi phí có ý nghĩa, công bố $c_{\min}$, tích hợp heuristic tương ứng và chạy lại thực nghiệm có trọng số. Sau đó có thể phát triển cận gộp cube, khoảng cách giữ thêm cấu trúc sàn hoặc abstraction cầu/công tắc, kèm chứng minh và test. Cơ chế giới hạn tài nguyên dùng chung giúp phân biệt vô nghiệm với hết thời gian. 
+
+\input{sections/future_priorities.tex}
+
+\subsection*{ĐÁNH GIÁ THÀNH VIÊN}
+\addcontentsline{toc}{subsection}{Đánh giá thành viên}
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.4}
+\setlength{\tabcolsep}{4pt}
+\arrayrulecolor{black!25}
+
+\begin{tabularx}{\textwidth}{
+    |>{\centering\arraybackslash}p{0.55cm}
+    |>{\raggedright\arraybackslash}p{2.5cm}
+    |>{\centering\arraybackslash}p{1.6cm}
+    |>{\raggedright\arraybackslash}p{1.8cm}
+    |>{\raggedright\arraybackslash}X
+    |>{\centering\arraybackslash}p{1.1cm}|
+}
+\hline
+\rowcolor{blue!12}
+\textbf{STT} &
+\textbf{Họ và tên} &
+\textbf{MSSV} &
+\textbf{Vai trò} &
+\textbf{Nhận xét} &
+\textbf{HT (\%)} \\
+\hline
+
+1 &
+Nguyễn Duy Đạt &
+24122014 &
+BFS, luật &
+Hoàn thành mô hình trạng thái, BFS và luật nâng cao; kiểm thử, đối chiếu luật giữa Python và C++. &
+100 \\
+\hline
+
+2 &
+Phạm Hoàng Hải Đăng &
+24122030 &
+UCS &
+	Hoàn thành UCS và tài liệu liên quan; kiểm thử thuật toán với chi phí có trọng số. &
+100 \\
+\hline
+
+3 &
+Nguyễn Đỗ Bảo Kiên &
+24122039 &
+Heuristic, PM &
+	Hoàn thành heuristic, tích hợp hệ thống và nâng cấp GUI; tổng hợp thực nghiệm, phối hợp công việc nhóm. &
+100 \\
+\hline
+
+4 &
+Trần Đình Tấn Phát &
+24122046 &
+DFS &
+	Hoàn thành DFS và các kiểm thử liên quan; làm rõ thứ tự duyệt và cách xử lý trạng thái trùng. &
+100 \\
+\hline
+
+5 &
+Nguyễn Hoàng Sang &
+24122050 &
+\astar{}, màn chơi &
+	Hoàn thành A*, xây dựng màn 3–14 và các kiểm thử; biên soạn, chỉnh sửa báo cáo. &
+100 \\
+\hline
+\end{tabularx}
+
+\caption[Đánh giá thành viên]{
+Đánh giá thành viên; HT là tỷ lệ hoàn thành công việc được giao.
+}
+\label{tab:danh-gia-thanh-vien}
+\end{table}
+
+
+\clearpage
+\frontmatterheading{PHỤ LỤC}
+\phantomsection\addcontentsline{toc}{section}{PHỤ LỤC}
+\subsection*{A. Video demo}
+\phantomsection
+\addcontentsline{toc}{subsection}{A. Video demo}
+\renewcommand{\thesubsubsection}{A.\arabic{subsubsection}}\setcounter{subsubsection}{0}
+\renewcommand{\thetable}{A.\arabic{table}}\setcounter{table}{0}
+\renewcommand{\theHsubsubsection}{appendixA.\arabic{subsubsection}}
+\renewcommand{\theHtable}{appendixA.\arabic{table}}
+\label{app:video}
+\subsubsection{Liên kết và nội dung}
+Video demo (YouTube, công khai, có thuyết minh tiếng Việt): \linkvideo.
+
+Nội dung video theo hai phần của đề:
+\begin{itemize}
+\item \textbf{Giao diện}: menu chính, chọn màn, các loại ô (sàn, ô trống, đích, ô dễ vỡ, công tắc thường/nặng, cầu) trên màn 1; ba tư thế của khối trên màn 3; các nút New Game, Restart, Pause và bảng chọn BFS/DFS/UCS/\astar{}.
+\item \textbf{Chức năng}: chơi tay (lăn khối, kích hoạt công tắc ở màn 7, rơi qua ô dễ vỡ và thắng ở màn 5); giải tự động và phát lại lời giải (màn 15 và màn 16 có tách khối); bảng so sánh bốn thuật toán, màn 11 vô nghiệm và màn 13 với lời giải DFS 4\,295 bước so với tối ưu 66.
+\end{itemize}
+
+\input{sections/submission.tex}
+
+\subsection*{B. Lệnh tái lập và dữ liệu}
+\phantomsection
+\addcontentsline{toc}{subsection}{B. Lệnh tái lập và dữ liệu}
+\renewcommand{\thesubsubsection}{B.\arabic{subsubsection}}\setcounter{subsubsection}{0}
+\renewcommand{\thetable}{B.\arabic{table}}\setcounter{table}{0}
+\renewcommand{\theHsubsubsection}{appendixB.\arabic{subsubsection}}
+\renewcommand{\theHtable}{appendixB.\arabic{table}}
+\subsubsection{Chạy phần Python}
+Các lệnh sau thực hiện từ thư mục gốc repo bằng Python được cấu hình trên máy:\\
+
+\par\noindent\begin{minipage}{\textwidth}
+\begin{lstlisting}[caption={Lệnh kiểm thử và giải một số màn đại diện.}]
+python -m pip install -r requirements.txt
+python -m pytest -q -rs
+python main.py code/data/1.data --compare --memory
+python main.py code/data/13.data --algo astar --heuristic zero
+python main.py code/data/16.data --algo astar --heuristic manhattan
+python Docs/Report/benchmark_report.py
+\end{lstlisting}
+\end{minipage}\par\medskip
+Nếu thư mục tạm mặc định bị khóa quyền truy cập, có thể thêm \tep{--basetemp} trỏ tới một thư mục tạm riêng trong workspace; không dùng một thư mục chứa dữ liệu cần giữ vì pytest quản lý nội dung bên trong đường dẫn đó.
+
+\subsubsection{Chạy game và đối chiếu lời giải}
+Build theo \tep{Docs/play.md}. Khi chạy game cần đứng trong \tep{code/} để tìm đúng dữ liệu tương đối. Bản release Windows dùng \tep{Bloxorz.exe}; bản dev tùy make target có thể dùng tên khác.\\
+\par\noindent\begin{minipage}{\textwidth}
+\begin{lstlisting}[caption={Ví dụ phát lại trong bản release Windows.}]
+cd code
+.\Bloxorz.exe 14 --play data/solutions/14.txt
+.\Bloxorz.exe 16 --solve astar
+\end{lstlisting}
+\end{minipage}\par\medskip
+
+
+\subsection*{C. Khai báo hỗ trợ AI}
+\phantomsection
+\addcontentsline{toc}{subsection}{C. Khai báo hỗ trợ AI}
+\renewcommand{\thesubsubsection}{C.\arabic{subsubsection}}\setcounter{subsubsection}{0}
+\renewcommand{\thetable}{C.\arabic{table}}\setcounter{table}{0}
+\renewcommand{\theHsubsubsection}{appendixC.\arabic{subsubsection}}
+\renewcommand{\theHtable}{appendixC.\arabic{table}}
+\label{app:ai}
+\subsubsection{Công cụ đã sử dụng}
+\begin{itemize}
+\item \textbf{Claude Code} (Anthropic): trợ lý lập trình chạy trong VS Code, dùng trên máy của \tvfive{} từ 15/10 đến 31/10/2026. Công cụ đọc mã nguồn trong repo, sửa tệp, chạy build, test và git theo yêu cầu bằng tiếng Việt.
+\item \textbf{ChatGPT} (OpenAI): \tvfour{} dùng từ 29/10 đến 31/10/2026 để chỉnh bố cục, mục lục, định dạng bảng và cách diễn đạt của báo cáo LaTeX. Yêu cầu chỉ gồm mẫu LaTeX và nội dung báo cáo, không chứa thông tin cá nhân không cần thiết.
+\end{itemize}
+
+\subsubsection{Phạm vi hỗ trợ theo hạng mục}
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.3}
+\setlength{\tabcolsep}{5pt}
+\arrayrulecolor{black!25}
+
+\begin{tabularx}{\textwidth}{
+    |>{\raggedright\arraybackslash\bfseries}p{2.4cm}
+    |>{\raggedright\arraybackslash}X
+    |>{\raggedright\arraybackslash}p{4.2cm}|
+}
+\hline
+\rowcolor{blue!12}
+Hạng mục & \textbf{AI đã làm} & \textbf{Phần của nhóm} \\
+\hline
+Phân tích đề, kế hoạch &
+Claude Code đọc đề, soạn bản phân tích, chia sprint và danh sách task. &
+Rút gọn task, phân công trên Notion. \\
+\hline
+Khung mã nguồn &
+Nhập repo gốc thành một commit riêng; viết khung Python (\tep{Level}, \tep{State}, \tep{BloxorzProblem}, \tep{BaseSolver}, \tep{main.py}, test), các solver để trống phần thân. &
+Review khung trước khi chia việc. \\
+\hline
+Bốn thuật toán &
+Không viết thân thuật toán. Sau khi các thành viên cài xong, Claude Code rà soát, sửa bộ đếm generated của BFS và thêm test đối chiếu độc lập. &
+BFS: \tvone; DFS: \tvtwo; UCS: \tvthree; \astar{}: \tvfour{} (theo lịch sử commit). \\
+\hline
+Heuristic &
+Claude Code viết hàm Manhattan có xét cổng split trong \tep{heuristics.py} cùng test, và kiểm tra admissible/consistent bằng cách duyệt toàn bộ đồ thị trạng thái. &
+\tvfive{} đặt yêu cầu, review mã và chứng minh, chịu trách nhiệm giải thích. \\
+\hline
+Luật v2, tích hợp &
+Merge các nhánh, xử lý xung đột; sửa luật mỗi ô cầu một bit, công tắc vĩnh viễn, gộp cube trên công tắc; đồng bộ C++ với Python. &
+\tvone{} thiết kế cơ chế v2; nhóm đối chiếu lời giải trên Python và C++. \\
+\hline
+Giao diện game &
+Phần lớn mã nâng cấp giao diện: menu, camera, âm thanh tổng hợp, Search Visualizer, ba theme, shader và bloom, bảng so sánh, Replay, CSV; sửa lỗi ô đen nhấp nháy và lỗi khối đổi mặt khi lăn. &
+\tvfive{} đặt yêu cầu và kiểm tra trực quan từng thay đổi; phần vẽ cube khi tách do \tvone{} viết. \\
+\hline
+Tài liệu &
+Soạn \tep{system.md}, \tep{play.md}, các báo cáo tiến độ, README và kịch bản video. &
+Đọc lại, yêu cầu viết lại phần khó hiểu. \\
+\hline
+Báo cáo LaTeX &
+ChatGPT chỉnh trình bày. Claude Code rà soát nội dung, sửa trích dẫn, bổ sung bảng nhóm test và soạn phụ lục này. &
+\tvfour{} rà soát định dạng; người phụ trách từng phần đối chiếu số liệu. \\
+\hline
+\end{tabularx}
+
+\caption{Phạm vi hỗ trợ của AI và phần việc của nhóm.}
+\label{tab:pham-vi-ai}
+\end{table}
+
+\subsubsection{Một số prompt tiêu biểu}
+Các prompt dưới đây được trích nguyên văn từ lịch sử Claude Code (dấu […] là phần lược bớt), kèm kết quả và cách nhóm xử lý.
+\begin{enumerate}[leftmargin=*]
+\item \textbf{15/10.} \textit{``Hãy đọc trước file AI - Project 1.pdf. Sau đó viết report0.md phân tích về project1 này! Nên có phát biểu chi tiết của project, yêu cầu của project, kế hoạch thực hiện bài toán một cách chia thành từng sprints […]''}\\
+Kết quả: bản phân tích đề và kế hoạch sprint; prompt tiếp theo tạo danh sách task cho 5 thành viên. Nhóm yêu cầu rút gọn bảng task trước khi dùng.
+\item \textbf{20/10.} \textit{``Thôi tôi sài luôn của repo chaitanya vì dù sao đây cũng là repo học thuật và thầy đã cho phép rồi và trong code tôi cũng sẽ sửa đổi bổ sung thêm mà!''}\\
+Kết quả: repo gốc được nhập nguyên vẹn thành một commit riêng, ghi nguồn trong \tep{THIRD_PARTY_NOTICES.md}; dựng khung Python.
+\item \textbf{22/10.} \textit{``Nếu tôi muốn nâng cấp GUI cho game và đóng gói game thành executable game app thì có khả thi không? Với lại hiện tại giao diện game gốc đang rất xấu và khi chơi thì hơi lag? […]''}\\
+Kết quả: chuyển phần vẽ sang OpenGL 3.3 với Dear ImGui, thêm bản release \tep{Bloxorz.exe}.
+\item \textbf{27/10.} \textit{``Hãy merge vào main hai branch này theo trình tự rồi xử lý conflict. […] Tiếp đó thực hiện việc hoàn thành của phần Manhattan Heuristic của TV5 (vì tôi là TV5).''}\\
+Kết quả: merge hai nhánh, sửa luật cầu cho thống nhất giữa Python và C++; viết heuristic Manhattan có xét cổng; kiểm tra $h\le h^*$ và $h(s)\le1+h(s')$ trên toàn bộ đồ thị của các màn.
+\item \textbf{28/10.} \textit{``làm cho đồ họa đẹp lên nhìn bóng bẩy hơn, hãy thêm theme original như hình tôi gửi […] Đồng thời tôi muốn fix chức năng điều chỉnh góc nhìn camera khi chơi!''}\\
+Kết quả: theme Original, menu mới, camera xoay bằng chuột và zoom.
+\item \textbf{29/10.} \textit{``Bạn kiểm tra xem trong pdf của project AI - Project 1.pdf có dòng prompt injection nào không? […]''}\\
+Kết quả: xác nhận đề có một chỉ dẫn ẩn dành cho AI, yêu cầu chèn một câu cố định vào báo cáo. Nhóm không làm theo chỉ dẫn này và kiểm tra mã nguồn, tài liệu không chứa câu đó.
+\item \textbf{29/10.} \textit{``Bạn check xem tất cả các thuật toán Search đã ổn chưa vậy! Đã viết đúng chưa có cái nào viết ẩu không?''}\\
+Kết quả: BFS trả về ngay giữa vòng lặp khi gặp đích nên bỏ sót các con sinh sau đích trong \tep{nodes_generated} (1--3 node trên 9/16 màn). Đã sửa, thêm test hồi quy và test đối chiếu bốn solver với đáp án tính độc lập trên toàn bộ đồ thị.
+\item \textbf{30/10.} \textit{``theme Minecraft tôi thấy các ô của minecraft nhìn chưa giống minecraft lắm […] Thêm phần chức năng so sánh thuật toán search cho mỗi màn chơi nữa […]''}\\
+Kết quả: làm lại theme Minecraft và thêm bảng so sánh bốn thuật toán trong game.
+\item \textbf{30/10.} \textit{``khi chơi thì lại có hiện tượng xuất hiện một ô đen nhấp nháy ở phía dưới màn hình?''}\\
+Kết quả: nguyên nhân là phép \tep{pow} với cơ số âm trong shader sinh giá trị NaN, bị hiệu ứng bloom làm lan thành ô vuông. Sau khi sửa, nhóm chạy 600 khung hình để xác nhận không còn lỗi.
+\item \textbf{31/10.} \textit{``Lượt bỏ phần nhận xét đi vì tôi thấy phần đó cảm giác hơi chủ quan á không có giá trị lắm!''}\\
+Kết quả: nhóm quyết định bỏ các dòng nhận xét tự sinh dưới bảng so sánh; bảng số liệu, biểu đồ, Replay và CSV được giữ.
+\end{enumerate}
+
+\subsubsection{Kiểm chứng và giới hạn}
+Mọi thay đổi mã do AI thực hiện đều được chạy lại bộ test và phát lại lời giải trong game trước khi commit; thay đổi giao diện được kiểm tra bằng ảnh chụp và chơi thử. AI có lúc đưa ra nội dung sai: bản kịch bản video đầu tiên mô tả khi khối rơi sẽ hiện màn hình GAME OVER, trong khi chế độ chơi tay chỉ cho sàn sập và tự chơi lại; nhóm phát hiện khi đối chiếu với game và đã sửa. Số liệu thực nghiệm trong báo cáo được lấy từ lần chạy chương trình, không do AI ước lượng.
+
+\subsubsection{Trách nhiệm xác nhận}
+Nhóm chịu trách nhiệm đối với nội dung, mã nguồn và kết quả được trình bày trong báo cáo. Mỗi thành viên đã đọc phần mã có hỗ trợ AI liên quan tới phần mình phụ trách và có thể giải thích khi được vấn đáp.
+
+
+
+\begin{thebibliography}{99}
+\addcontentsline{toc}{section}{Tài liệu tham khảo}
+\bibitem{aima} Stuart Russell và Peter Norvig. \textit{Artificial Intelligence: A Modern Approach}, ấn bản 4, chương 3. Trang tài liệu của tác giả: \url{https://aima.cs.berkeley.edu/}. Truy cập 29/10/2026.
+\bibitem{repo} Nhóm 9. \textit{CSAI\_Group9\_Lab01}, mã nguồn tại commit 82eae2c. \url{https://github.com/24122039Kien/CSAI_Group9_Lab01/tree/82eae2cb09d57792e992af8ceb4f5b16dcab79ce}. Đối chiếu 30/10/2026.
+\bibitem{upstream} Chaitanya Patel. \textit{Bloxorz}, mã nguồn nền tại commit c0ccb55b273f24abdee4eb4adc0620e016d748ad. \url{https://github.com/chaitanya100100/Bloxorz}. Thông tin kế thừa theo thông báo của nhóm.
+\bibitem{project} Khoa Công nghệ Thông tin, Trường Đại học Khoa học Tự nhiên, ĐHQG-HCM. \textit{CSC14003 Introduction to Artificial Intelligence -- Project 1}, 2026.
+\bibitem{hart1968} Peter E. Hart, Nils J. Nilsson và Bertram Raphael. A Formal Basis for the Heuristic Determination of Minimum Cost Paths. \textit{IEEE Transactions on Systems Science and Cybernetics}, 4(2):100--107, 1968.
+\bibitem{deque} Python Software Foundation. \textit{collections -- Container datatypes} (\texttt{deque}). \url{https://docs.python.org/3/library/collections.html}.
+\bibitem{heapq} Python Software Foundation. \textit{heapq -- Heap queue algorithm}. \url{https://docs.python.org/3/library/heapq.html}.
+\bibitem{imgui} Omar Cornut. \textit{Dear ImGui}, bản v1.91.9, MIT License. \url{https://github.com/ocornut/imgui}.
+\bibitem{glfw} \textit{GLFW}, zlib/libpng License. \url{https://www.glfw.org/}.
+\bibitem{glm} G-Truc Creation. \textit{OpenGL Mathematics (GLM)}, MIT License. \url{https://github.com/g-truc/glm}.
+\bibitem{glad} David Herberth. \textit{glad} 0.1.36 (bộ sinh OpenGL loader), MIT License. \url{https://github.com/Dav1dde/glad}.
+\bibitem{miniaudio} David Reid. \textit{miniaudio} 0.11.21, Public Domain hoặc MIT-0. \url{https://github.com/mackron/miniaudio}.
+
+\bibitem{logo} Trường Đại học Khoa học Tự nhiên, ĐHQG-HCM. \textit{Hướng dẫn sử dụng logo Trường}. Logo PNG nguyên bản, giữ tỷ lệ khi đặt trên bìa. \url{https://hcmus.edu.vn/huong-dan-su-dung-logo-truong-dai-hoc-khoa-hoc-tu-nhien-dhgq-hcm/}. 
+\end{thebibliography}
+\end{document}
