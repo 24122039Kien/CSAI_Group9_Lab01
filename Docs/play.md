@@ -150,7 +150,6 @@ make              # build a.exe: cần khi mới clone, vừa pull, hoặc vừa
 | Kéo chuột / lăn chuột | Ở mọi góc nhìn 3D: kéo để xoay quanh, lăn để zoom. Góc đã chỉnh được giữ khi đổi qua lại |
 | `Tab` | Bật/tắt bản đồ nhỏ |
 | `F1` / `F12` | Ẩn/hiện bảng phím / chụp màn hình |
-| `Q` | Thoát |
 
 **Khi Search Visualizer đang mở:** `←` / `→` lùi/tiến một bước, `Space` chạy/dừng. Kéo chuột để di chuyển khung cây, cuộn để zoom.
 
